@@ -1,0 +1,22 @@
+# Forecast Penjualan (Shaistanaya City)
+
+Web app proyeksi UTJ, akad, dan penerimaan. Spesifikasi: `docs/SPEC.md`; mockup: `docs/mockup/`.
+
+## Menjalankan
+    npm install
+    npm run dev        # http://localhost:3000
+    npm test
+    npm run typecheck
+
+## Status terhadap fase SPEC bagian 9
+- **1. Mesin forecast (TS):** ada. Rata-rata 12 bln, tren OLS pembanding, hazard pipeline, backtest rolling-origin, rentang dari kuantil galat. UTJ MAE 1-3 bln = 3,24 (26 titik asal), sesuai SPEC.
+- **2. Dashboard:** grafik, rentang, toggle Bulanan/Tahunan, tabel, tanda tren menyimpang. Belum: filter, enam kartu data aktual, konteks makro.
+- **3. What-if:** 11 variabel, garis dasar abu-abu, peringatan stok. Koefisien masih ilustrasi, stok = konstanta demo. Belum: simpan skenario.
+- **4. Sinkron Sheets + makro:** belum. Layar Data hanya kerangka + cek total 284/188.
+- **5. Laporan + narasi:** pratinjau cetak A4 (2 dari 12 halaman); `/api/narasi` dengan validator angka (butuh `ANTHROPIC_API_KEY`).
+
+## Data demo
+`fixtures/monthly_utj_akad.csv` hanya hitungan bulanan. Transaksi untuk pipeline direkonstruksi di
+`src/lib/demo.ts` (akad dipasangkan FIFO ke UTJ tertua; sisa > 8 bulan dianggap batal). Maka MAE akad
+pipeline (~5,7) belum sebanding dengan target 2,95 dan angka "pipeline berjalan" tidak nyata. Kriteria Fase 1
+untuk akad baru bisa diverifikasi setelah `FORECASTING_UPDATE.xlsx` diimpor (taruh di `data/`, di-gitignore).
