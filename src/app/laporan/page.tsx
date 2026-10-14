@@ -22,16 +22,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const r = d.f.rows, bt = d.f.bt;
   const net = (real && avgNetPrice(txns)) ? avgNetPrice(txns)! / 1e9 : d.netPrice;
   const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
-  const tot = { utj: sum(r.map((x) => x.utj)), akad: sum(r.map((x) => x.akad)), lo: sum(r.map((x) => x.utjLo)), hi: sum(r.map((x) => x.utjHi)), penerimaanM: sum(r.map((x) => x.akad)) * net };
+  const tot = { utj: sum(r.map((x) => x.utj)), akad: sum(r.map((x) => x.akadInt)), lo: sum(r.map((x) => x.utjLo)), hi: sum(r.map((x) => x.utjHi)), penerimaanM: sum(r.map((x) => x.akadInt)) * net };
   const last12 = d.monthly.slice(-12);
   const l12 = { utj: sum(last12.map((m) => m.utj)), akad: sum(last12.map((m) => m.akad)) };
-  const bars = [...last12.map((m) => ({ label: labelBulan(m.bulan), utj: m.utj, akad: m.akad, proj: false })), ...r.map((x) => ({ label: labelBulan(x.bulan), utj: x.utj, akad: x.akad, proj: true, lo: x.utjLo, hi: x.utjHi, trend: x.trend }))];
-  const q = [0, 1, 2, 3].map((i) => ({ q: `Kuartal ${i + 1} (${labelPanjang(r[i * 3].bulan)} – ${labelPanjang(r[i * 3 + 2].bulan)})`, utj: sum(r.slice(i * 3, i * 3 + 3).map((x) => x.utj)), akad: sum(r.slice(i * 3, i * 3 + 3).map((x) => x.akad)) }));
+  const bars = [...last12.map((m) => ({ label: labelBulan(m.bulan), utj: m.utj, akad: m.akad, proj: false })), ...r.map((x) => ({ label: labelBulan(x.bulan), utj: x.utj, akad: x.akadInt, proj: true, lo: x.utjLo, hi: x.utjHi, trend: x.trend }))];
+  const q = [0, 1, 2, 3].map((i) => ({ q: `Kuartal ${i + 1} (${labelPanjang(r[i * 3].bulan)} – ${labelPanjang(r[i * 3 + 2].bulan)})`, utj: sum(r.slice(i * 3, i * 3 + 3).map((x) => x.utj)), akad: sum(r.slice(i * 3, i * 3 + 3).map((x) => x.akadInt)) }));
   const years = new Map<string, { utj: number; akad: number }>();
   for (const m of d.monthly) { const y = years.get(m.bulan.slice(0, 4)) ?? { utj: 0, akad: 0 }; y.utj += m.utj; y.akad += m.akad; years.set(m.bulan.slice(0, 4), y); }
   const skenario = parseScenario(sRaw);
   const sk = skenario ? applyScenario(r, skenario) : null;
-  const skTot = sk ? { utj: sum(sk.rows.map((x) => x.utj)), akad: sum(sk.rows.map((x) => x.akad)), pen: sum(sk.rows.map((x) => x.penerimaan)) } : null;
+  const skTot = sk ? { utj: sum(sk.rows.map((x) => x.utj)), akad: sum(sk.rows.map((x) => Math.floor(x.akad + 1e-9))), pen: sum(sk.rows.map((x) => Math.floor(x.akad + 1e-9))) * net } : null;
   const ringkas = ringkasanTeks(tot, k, l12);
   const batalPct = pot(k.funnel.batal);
   const mk = d.marketing && d.marketing.leads.length ? marketingInsights(d.marketing, txns) : null;
@@ -54,7 +54,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
     <div className="wrap noprint"><p>{badge(d.source)}</p><p className="muted">Laporan {jenis}. Cetak ke PDF dari browser (Ctrl/Cmd+P, A4, tanpa margin). narasi Claude: {claudeConfigured() ? (narasi ? "aktif" : "key ada, tetapi narasi gagal divalidasi; memakai teks templat") : "nonaktif (ANTHROPIC_API_KEY belum diset); memakai teks templat"}.</p></div>
 
     <section className="page"><h1>Laporan Proyeksi Penjualan {jenis === "tahunan" ? "Tahunan" : "Bulanan"}</h1><p className="muted">Shaistanaya City · PT Neo Pudji Jaya · data s.d. {labelPanjang(d.end)}</p>
-      <table><tbody><tr><td>UTJ 12 bulan ke depan</td><td className="n">{f1(tot.utj)} ({f1(tot.lo)}–{f1(tot.hi)})</td></tr><tr><td>Akad 12 bulan ke depan</td><td className="n">{f1(tot.akad)}</td></tr><tr><td>Penerimaan (Rp miliar)</td><td className="n">{f1(tot.penerimaanM)}</td></tr></tbody></table>
+      <table><tbody><tr><td>UTJ 12 bulan ke depan</td><td className="n">{f1(tot.utj)} ({f1(tot.lo)}–{f1(tot.hi)})</td></tr><tr><td>Akad 12 bulan ke depan (dibulatkan ke bawah per bulan)</td><td className="n">{tot.akad}</td></tr><tr><td>Penerimaan (Rp miliar)</td><td className="n">{f1(tot.penerimaanM)}</td></tr></tbody></table>
       <h2 style={{ marginTop: 24 }}>Isi laporan</h2><ol className="muted"><li>Ringkasan manajemen</li><li>Kinerja 12 bulan terakhir</li><li>Proyeksi UTJ</li><li>Akad dan penerimaan</li><li>Funnel dan pembatalan</li><li>Tipe rumah dan harga</li><li>Agent dan sumber leads</li><li>Proses bank dan kondisi ekonomi</li><li>Efektivitas marketing</li><li>Temuan dan tindakan marketing</li><li>Skenario, cara angka dibuat, keterbatasan</li></ol></section>
 
     <ReportPage n={2} title="Ringkasan manajemen">{narasi ? <><p>{narasi.ringkasan}</p><p className="muted" style={{ fontSize: 11 }}>Ditulis Claude dari angka mesin; setiap angka di teks sudah dicek ada di data.</p></> : ringkas.map((t) => <p key={t}>{t}</p>)}
@@ -70,9 +70,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       {d.f.trendDivergent && <Note>Garis tren berjauhan dari proyeksi utama: arah penjualan mungkin berubah.</Note>}</ReportPage>
 
     <ReportPage n={5} title="Akad dan penerimaan"><p>Akad diproyeksikan dari UTJ yang sedang berjalan ({d.open} UTJ belum akad atau batal) ditambah UTJ baru, memakai peluang akad dan batal per umur UTJ dari data historis.</p>
-      <table>{th("Bulan", "Akad", "Penerimaan (Rp M)")}<tbody>{r.map((x) => <tr key={x.bulan}><td>{labelPanjang(x.bulan)}</td><td className="n">{f1(x.akad)}</td><td className="n">{f1(x.akad * net)}</td></tr>)}</tbody></table>
+      <table>{th("Bulan", "Akad", "Penerimaan (Rp M)")}<tbody>{r.map((x) => <tr key={x.bulan}><td>{labelPanjang(x.bulan)}</td><td className="n">{x.akadInt}</td><td className="n">{f1(x.akadInt * net)}</td></tr>)}</tbody></table>
       {d.stok && <Note>Stok Open saat ini {d.stok.open} unit dari {d.stok.total}. {d.stokHabis !== null ? `Pada laju proyeksi (UTJ dikurangi batal), stok habis di bulan ke-${d.stokHabis} dan kurang sekitar ${d.stokKurang} unit dalam 12 bulan; ${d.stok.belumDibangun} unit berstatus Close (belum dibangun) bisa dijual setelah dibangun. Proyeksi di atas mengasumsikan unit tersedia.` : "Stok cukup untuk seluruh 12 bulan proyeksi."}</Note>}
-      <p className="muted">Uji mundur (26 titik): galat total akad 3 bulan {f1(bt.akadMaeTotal3)} unit, dibanding {f1(bt.akadMaeMa12)} unit bila memakai rata-rata 12 bulan.</p></ReportPage>
+      <p className="muted">Uji mundur (26 titik): galat total akad 3 bulan {f1(bt.akadMaeTotal3)} unit, dibanding {f1(bt.akadMaeMa12)} unit bila memakai rata-rata 12 bulan. Untuk UTJ, galat 1–3 bulan exponential smoothing {f1(bt.utjMae13)} unit dibanding {f1(bt.utjMae13Ma12)} unit untuk rata-rata 12 bulan.</p></ReportPage>
 
     <ReportPage n={6} title="Funnel penjualan dan pembatalan">{narasi && <p>{narasi.funnel}</p>}<table>{th("Tahap", "Jumlah", "% dari UTJ")}<tbody>
       {[["UTJ", k.funnel.utj], ["SPR & PPJB", k.funnel.spr], ["Akad", k.funnel.akad], ["Pencairan", k.funnel.cair], ["Batal", k.funnel.batal]].map(([a, b]) => <tr key={a as string}><td>{a}</td><td className="n">{b}</td><td className="n">{pot(b as number)}%</td></tr>)}</tbody></table>
@@ -110,11 +110,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
         <table>{th("Variabel diubah", "Nilai")}<tbody>{describeScenario(skenario).map((x) => <tr key={x.label}><td>{x.label}</td><td className="n">{x.nilai}</td></tr>)}</tbody></table>
         <table style={{ marginTop: 8 }}>{th("12 bulan", "Dasar", "Skenario", "Selisih")}<tbody>
           <tr><td>UTJ</td><td className="n">{f1(tot.utj)}</td><td className="n">{f1(skTot.utj)}</td><td className="n">{f1(skTot.utj - tot.utj)}</td></tr>
-          <tr><td>Akad</td><td className="n">{f1(tot.akad)}</td><td className="n">{f1(skTot.akad)}</td><td className="n">{f1(skTot.akad - tot.akad)}</td></tr>
+          <tr><td>Akad</td><td className="n">{tot.akad}</td><td className="n">{skTot.akad}</td><td className="n">{skTot.akad - tot.akad}</td></tr>
           <tr><td>Penerimaan (Rp M)</td><td className="n">{f1(tot.penerimaanM)}</td><td className="n">{f1(skTot.pen)}</td><td className="n">{f1(skTot.pen - tot.penerimaanM)}</td></tr></tbody></table>
         {sk.stockWarning && <Note>Peringatan: UTJ skenario melebihi stok unit yang tersedia dijual.</Note>}
         <Note>Skenario memakai koefisien ilustrasi yang belum dikalibrasi dari data; baca sebagai gambaran arah, bukan ramalan. Pengaruh variabel ekonomi lemah pada data historis. Proyeksi dasar di halaman lain tidak berubah.</Note></>}
-      <h2 style={{ marginTop: 16 }}>Cara angka dibuat</h2><p>UTJ = rata-rata 12 bulan terakhir; akad = pipeline UTJ; rentang dari kuantil galat uji mundur ({bt.origins} titik uji, galat UTJ rata-rata {f1(bt.utjMae13)} unit/bulan).</p>
+      <h2 style={{ marginTop: 16 }}>Cara angka dibuat</h2><p>UTJ = exponential smoothing (level) atas deret bulanan; akad = pipeline UTJ, dibulatkan ke bawah per bulan; rentang dari kuantil galat uji mundur ({bt.origins} titik uji, galat UTJ rata-rata {f1(bt.utjMae13)} unit/bulan).</p>
       <h2>Keterbatasan</h2><ul><li>Penjualan berfluktuasi; satu angka tidak menjamin hasil.</li><li>Variabel ekonomi hanya konteks.</li><li>Skenario di menu Simulasi memakai koefisien ilustrasi dan belum dikalibrasi.</li><li>Penerimaan memakai harga bersih rata-rata, bukan jadwal termin.</li></ul>
       <h2>Langkah berikutnya</h2><ul><li>Lengkapi alasan batal dan status leads di sumber data.</li><li>Kalibrasi koefisien skenario dari data; sambungkan pembaruan otomatis data ekonomi (BPS, BI, Twelve Data).</li><li>Rencanakan order bangun dari unit Close agar stok tidak menjadi pembatas penjualan.</li></ul></ReportPage>
   </>);

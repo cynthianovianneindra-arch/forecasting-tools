@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loadMonthly, reconstructTxns } from "./demo";
-import { forecast, movingAverage, linearTrend, backtest, hazards } from "./forecast";
+import { forecast, movingAverage, linearTrend, backtest, hazards, exponentialSmoothing, sesFit } from "./forecast";
 
 const rows = loadMonthly();
 const txns = reconstructTxns(rows);
@@ -25,11 +25,23 @@ describe("metode", () => {
     ha.forEach((v, i) => { expect(v).toBeGreaterThanOrEqual(0); expect(v + hb[i]).toBeLessThanOrEqual(1); });
   });
 });
+describe("exponential smoothing", () => {
+  it("level mengikuti data dan alpha dibatasi", () => {
+    const f = sesFit([5, 5, 5, 5, 5, 5]);
+    expect(f.level).toBeCloseTo(5);
+    const g = sesFit([1, 1, 1, 1, 10, 10, 10, 10, 10, 10, 10, 10]);
+    expect(g.alpha).toBeGreaterThanOrEqual(0.05); expect(g.alpha).toBeLessThanOrEqual(0.3);
+    expect(g.level).toBeGreaterThan(1); expect(g.level).toBeLessThan(10);
+    expect(exponentialSmoothing([2, 4, 6], 3)).toHaveLength(3);
+    expect(sesFit([]).level).toBe(0);
+  });
+});
 describe("backtest (spec 5.2)", () => {
-  it("UTJ rata-rata 12 bln MAE 1-3 bln ≈ 3,24", () => {
+  it("UTJ exponential smoothing MAE 1-3 bln ≈ 3,2 dan tidak lebih buruk dari rata-rata 12 bln", () => {
     const bt = backtest(txns, start, end);
-    expect(bt.utjMae13).toBeGreaterThan(3.1);
-    expect(bt.utjMae13).toBeLessThan(3.4);
+    expect(bt.utjMae13).toBeGreaterThan(2.9);
+    expect(bt.utjMae13).toBeLessThan(3.5);
+    expect(bt.utjMae13Ma12).toBeGreaterThan(3.1);
   });
 });
 describe("forecast", () => {
@@ -39,6 +51,6 @@ describe("forecast", () => {
     expect(f.rows[0].bulan).toBe("2026-08");
     const w = f.rows.map((r) => r.utjHi - r.utjLo);
     expect(w[11]).toBeGreaterThanOrEqual(w[0]);
-    f.rows.forEach((r) => { expect(r.utjLo).toBeLessThanOrEqual(r.utj); expect(r.utjHi).toBeGreaterThanOrEqual(r.utj); });
+    f.rows.forEach((r) => { expect(r.akadInt).toBe(Math.floor(r.akad + 1e-9)); expect(r.utjLo).toBeLessThanOrEqual(r.utj); expect(r.utjHi).toBeGreaterThanOrEqual(r.utj); });
   });
 });

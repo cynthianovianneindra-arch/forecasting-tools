@@ -14,6 +14,7 @@ export interface Txn {
   database?: string;
   cluster?: string;
   tahap?: string;
+  unit?: string; // ID unit (bukan data pribadi)
   alasanBatal?: string;
   netPrice?: number; // rupiah
   banks?: BankCase[];
@@ -33,6 +34,26 @@ export const mean = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / 
 /** Rata-rata bergulir k bulan terakhir, diproyeksikan datar sebanyak h bulan. */
 export function movingAverage(y: number[], h: number, k = 12): number[] {
   return Array(h).fill(mean(y.slice(-k)));
+}
+
+export const ALPHA_MIN = 0.05, ALPHA_MAX = 0.3;
+
+/** Level exponential smoothing (SES) dengan alpha dicari di [ALPHA_MIN, ALPHA_MAX] yang meminimalkan galat satu langkah; level awal = rata-rata 3 data pertama. */
+export function sesFit(y: number[]): { alpha: number; level: number } {
+  if (!y.length) return { alpha: ALPHA_MIN, level: 0 };
+  const l0 = mean(y.slice(0, 3));
+  let best = { alpha: ALPHA_MIN, level: l0, sse: Infinity };
+  for (let a = ALPHA_MIN; a <= ALPHA_MAX + 1e-9; a += 0.01) {
+    let l = l0, sse = 0;
+    for (const v of y) { sse += (v - l) ** 2; l = a * v + (1 - a) * l; }
+    if (sse < best.sse) best = { alpha: a, level: l, sse };
+  }
+  return { alpha: +best.alpha.toFixed(2), level: best.level };
+}
+
+/** Exponential smoothing (level): proyeksi datar sebanyak h bulan. Metode utama UTJ (keputusan pemilik; SPEC 5.2: MAE 3,18). */
+export function exponentialSmoothing(y: number[], h: number): number[] {
+  return Array(h).fill(sesFit(y).level);
 }
 
 /** Garis tren OLS (pembanding, setara sklearn LinearRegression) pada k bulan terakhir; dipotong ke >= 0. */
@@ -126,7 +147,8 @@ export function pipelineAkad(txns: Txn[], T: string, utjForecast: number[]): num
 
 export interface BacktestResult {
   origins: number;
-  utjMae13: number;      // MAE 1-3 bln, rata-rata 12 bln
+  utjMae13: number;      // MAE 1-3 bln, exponential smoothing (metode utama)
+  utjMae13Ma12: number;  // pembanding: rata-rata 12 bulan
   utjMaeTotal3: number;
   akadMaeTotal3: number; // pipeline
   akadMaeMa12: number;   // pembanding
@@ -138,21 +160,22 @@ export function backtest(txns: Txn[], start: string, end: string, H = 3, minHist
   const u = monthlySeries(txns, "utj", start, end);
   const a = monthlySeries(txns, "akad", start, end);
   const n = u.values.length;
-  let ae13 = 0, ae13n = 0, tot = 0, atot = 0, mtot = 0, origins = 0;
+  let ae13 = 0, ae13n = 0, aeMa = 0, tot = 0, atot = 0, mtot = 0, origins = 0;
   const errs: number[][] = Array.from({ length: H }, () => []);
   for (let t = minHist; t <= n - H; t++) {
-    const fc = movingAverage(u.values.slice(0, t), H, 12);
+    const fc = exponentialSmoothing(u.values.slice(0, t), H);
+    const ma = movingAverage(u.values.slice(0, t), H, 12);
     const actU = u.values.slice(t, t + H), actA = a.values.slice(t, t + H);
-    fc.forEach((p, i) => { ae13 += Math.abs(p - actU[i]); ae13n++; errs[i].push(p - actU[i]); });
+    fc.forEach((p, i) => { ae13 += Math.abs(p - actU[i]); aeMa += Math.abs(ma[i] - actU[i]); ae13n++; errs[i].push(p - actU[i]); });
     tot += Math.abs(fc.reduce((x, y) => x + y, 0) - actU.reduce((x, y) => x + y, 0));
     const T = u.months[t - 1];
     const pa = pipelineAkad(txns, T, fc);
     atot += Math.abs(pa.reduce((x, y) => x + y, 0) - actA.reduce((x, y) => x + y, 0));
-    const ma = movingAverage(a.values.slice(0, t), H, 12);
-    mtot += Math.abs(ma.reduce((x, y) => x + y, 0) - actA.reduce((x, y) => x + y, 0));
+    const maA = movingAverage(a.values.slice(0, t), H, 12);
+    mtot += Math.abs(maA.reduce((x, y) => x + y, 0) - actA.reduce((x, y) => x + y, 0));
     origins++;
   }
-  return { origins, utjMae13: ae13 / ae13n, utjMaeTotal3: tot / origins, akadMaeTotal3: atot / origins, akadMaeMa12: mtot / origins, errorsByHorizon: errs };
+  return { origins, utjMae13: ae13 / ae13n, utjMae13Ma12: aeMa / ae13n, utjMaeTotal3: tot / origins, akadMaeTotal3: atot / origins, akadMaeMa12: mtot / origins, errorsByHorizon: errs };
 }
 
 const quantile = (a: number[], q: number) => {
@@ -172,18 +195,18 @@ export function utjInterval(point: number, horizon: number, errsByH: number[][])
   return { lo, hi };
 }
 
-export interface ForecastRow { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; batal: number; trend: number }
+export interface ForecastRow { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; akadInt: number; batal: number; trend: number }
 
 export function forecast(txns: Txn[], start: string, end: string, H = 12): { rows: ForecastRow[]; bt: BacktestResult; trendDivergent: boolean } {
   const u = monthlySeries(txns, "utj", start, end);
-  const base = movingAverage(u.values, H, 12);
+  const base = exponentialSmoothing(u.values, H);
   const trend = linearTrend(u.values, H, 24);
   const pj = pipelineAkadBatal(txns, end, base);
   const akad = pj.akad;
   const bt = backtest(txns, start, end);
   const rows = base.map((p, i) => {
     const { lo, hi } = utjInterval(p, i + 1, bt.errorsByHorizon);
-    return { bulan: addMonths(end, i + 1), utj: p, utjLo: lo, utjHi: hi, akad: akad[i], batal: pj.batal[i], trend: trend[i] };
+    return { bulan: addMonths(end, i + 1), utj: p, utjLo: lo, utjHi: hi, akad: akad[i], akadInt: Math.floor(akad[i] + 1e-9), batal: pj.batal[i], trend: trend[i] };
   });
   const bs = mean(base), ts = mean(trend);
   return { rows, bt, trendDivergent: Math.abs(ts - bs) / Math.max(bs, 1) > 0.25 };

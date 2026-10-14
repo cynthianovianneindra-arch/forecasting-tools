@@ -9,7 +9,7 @@ Web app proyeksi UTJ, akad, dan penerimaan. Spesifikasi: `docs/SPEC.md`; mockup:
     npm run typecheck
 
 ## Status terhadap fase SPEC bagian 9
-- **1. Mesin forecast (TS):** ada. Rata-rata 12 bln, tren OLS pembanding, hazard pipeline, backtest rolling-origin, rentang dari kuantil galat. UTJ MAE 1-3 bln = 3,24 (26 titik asal), sesuai SPEC.
+- **1. Mesin forecast (TS):** ada. Rata-rata 12 bln, tren OLS pembanding, hazard pipeline, backtest rolling-origin, rentang dari kuantil galat. UTJ MAE 1-3 bln = 3,16 dengan exponential smoothing (rata-rata 12 bln: 3,24; SPEC: 3,18).
 - **2. Dashboard:** grafik, rentang, toggle Bulanan/Tahunan, tabel, tanda tren menyimpang, filter (tipe, agent, marketing, periode untuk kartu) dan enam kartu data aktual. Nilai kartu cocok SPEC 6.2 (funnel 284/240/188/181, tipe, agent, persen approve bank, alasan batal). Belum: filter cluster/tahap (tidak ada di PENJUALAN), konteks makro, sumber leads dari sheet LEADS.
 - **3. What-if:** 11 variabel, garis dasar abu-abu, peringatan stok. Koefisien masih ilustrasi, stok = konstanta demo. Belum: simpan skenario.
 - **4. Sinkron Sheets + makro:** belum. Layar Data hanya kerangka + cek total 284/188.
@@ -60,3 +60,10 @@ Tabel `datasets` punya kolom `marketing` (jsonb); unggah ulang Excel agar data m
 ## Arti status unit dan peringatan stok (dikonfirmasi pemilik)
 Open = tersedia dijual (stok); Close = belum dibangun (potensi order bangun); Margal dan Sold = sudah terjual; Proses = sudah dipesan.
 Peringatan stok memakai pemakaian bersih = UTJ dikurangi batal (UTJ batal mengembalikan unit ke stok), dari model pipeline: pada proyeksi dasar sekitar 5,1 unit/bulan, stok Open (32) habis di bulan ke-7 dan kurang sekitar 29 unit dalam 12 bulan; 78 unit Close menjadi batas atas order bangun di Simulasi.
+
+## Revisi dashboard dan Data & Integrasi (keputusan pemilik)
+- **Metode UTJ: exponential smoothing** (level, alpha dicari di 0,05-0,30 dari galat satu langkah). Uji mundur 26 titik: galat UTJ 1-3 bulan **3,16** (rata-rata 12 bulan 3,24). Akibatnya level UTJ turun (6,3/bulan dari 7,1) dan galat total akad 3 bulan dari pipeline menjadi **3,15** (sebelumnya 2,95 dengan masukan rata-rata 12 bulan; pembanding rata-rata 6 bulan 4,13).
+- **Akad dibulatkan ke bawah** per bulan di dashboard, laporan, dan Simulasi; total dan penerimaan memakai angka yang sudah dibulatkan (jumlah 12 bulan bisa lebih kecil dari jumlah angka mentah).
+- Dashboard: filter Periode per tahun dan per bulan; grafik bisa disentuh/diarahkan untuk melihat bulan dan nilainya; label sumbu tiap 3 bulan; kartu Skenario dan Pipeline berjalan dihapus; analisa hasil integrasi (stok per tipe, konteks ekonomi, efektivitas marketing, sumber leads, struktur biaya, temuan dan tindakan) tampil langsung di dashboard dan ikut filter periode.
+- **Input data manual** (menu Data & Integrasi, butuh `UPLOAD_TOKEN`): UTJ baru, status transaksi (akad/batal), biaya event, leads (agregat), unit (status/tipe/tahap/cluster), dan data ekonomi (IHSG, emas, inflasi, BI Rate, IHPR). Setiap input menjadi snapshot dataset baru di Supabase (bisa diurungkan satu per satu); data ekonomi manual disimpan di tabel `macro_manual` dan mengalahkan data otomatis dan Excel untuk bulan yang sama. ID unit kini ikut tersimpan: **unggah ulang Excel sekali** agar fitur ubah status transaksi aktif.
+- Diuji end-to-end dengan server PostgREST tiruan lokal (unggah, semua jenis input, penolakan input salah, urungkan, filter bulan, tooltip).

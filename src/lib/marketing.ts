@@ -12,6 +12,12 @@ export function pearson(x: number[], y: number[]): number | null {
 }
 const median = (a: number[]) => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 0; };
 
+/** Batasi data marketing ke periode (bulan atau tahun) yang dipilih di dashboard. */
+export function filterMarketing(m: MarketingData, f: { tahun?: string; bulan?: string }): MarketingData {
+  const ok = (b: string) => (f.bulan ? b === f.bulan : !f.tahun || b.startsWith(f.tahun));
+  return { leads: m.leads.filter((l) => ok(l.bulan)), events: m.events.filter((e) => ok(e.bulan)) };
+}
+
 export interface Finding { id: string; judul: string; temuan: string; tindakan: string; ukuran: string; prioritas: "Tinggi" | "Sedang" | "Rendah"; label: "data" | "hipotesis" }
 
 /** Semua angka dan temuan dihitung deterministik (SPEC halaman 10–11). Tidak ada klaim sebab-akibat. */

@@ -5,16 +5,17 @@ import { f1, labelBulan } from "@/lib/format";
 import Link from "next/link";
 import { EMPTY, Scenario, VARS, applyScenario, changedCount, scenarioQuery } from "@/lib/whatif";
 
-interface Row { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; batal: number; trend: number }
+interface Row { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; akadInt: number; batal: number; trend: number }
 export function Simulasi({ rows, netPrice, stok, belumDibangun, kekurangan, perTipe }: { rows: Row[]; netPrice: number; stok?: number; belumDibangun?: number; kekurangan?: number | null; perTipe?: { tipe: string; open: number; belum: number }[] }) {
   const [s, setS] = useState<Scenario>(EMPTY);
   const [mode, setMode] = useState<"bulanan" | "tahunan">("bulanan");
   const { rows: sc, stockWarning } = useMemo(() => applyScenario(rows, s, stok), [rows, s, stok]);
   const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
-  const bU = sum(rows.map((r) => r.utj)), bA = sum(rows.map((r) => r.akad));
-  const sU = sum(sc.map((r) => r.utj)), sA = sum(sc.map((r) => r.akad));
+  const fl = (v: number) => Math.floor(v + 1e-9);
+  const bU = sum(rows.map((r) => r.utj)), bA = sum(rows.map((r) => r.akadInt));
+  const sU = sum(sc.map((r) => r.utj)), sA = sum(sc.map((r) => fl(r.akad)));
   const bars = mode === "bulanan"
-    ? sc.map((r, i) => ({ label: labelBulan(r.bulan), utj: r.utj, akad: r.akad, proj: true, baseUtj: rows[i].utj }))
+    ? sc.map((r, i) => ({ label: labelBulan(r.bulan), utj: r.utj, akad: fl(r.akad), proj: true, baseUtj: rows[i].utj }))
     : [{ label: "12 bln", utj: sU, akad: sA, proj: true, baseUtj: bU }];
   const groups = [...new Set(VARS.map((v) => v.group))];
   const d = (a: number, b: number) => `${a - b >= 0 ? "+" : ""}${f1(a - b)}`;
@@ -26,7 +27,7 @@ export function Simulasi({ rows, netPrice, stok, belumDibangun, kekurangan, perT
           <div className="card"><h2>Hasil skenario · 12 bulan</h2>
             <table className="mini"><tbody>
               <tr><td>UTJ</td><td className="n">{f1(sU)} ({d(sU, bU)})</td></tr>
-              <tr><td>Akad</td><td className="n">{f1(sA)} ({d(sA, bA)})</td></tr>
+              <tr><td>Akad</td><td className="n">{sA} ({sA - bA >= 0 ? "+" : ""}{sA - bA})</td></tr>
               <tr><td>Penerimaan (Rp miliar)</td><td className="n">{f1(sA * netPrice)} ({d(sA * netPrice, bA * netPrice)})</td></tr>
               <tr><td>Variabel diubah</td><td className="n">{changedCount(s)}</td></tr></tbody></table>
             {stockWarning && <p className="err">Peringatan: UTJ skenario melebihi stok unit yang tersedia dijual ({stok === undefined ? "stok demo" : `stok Open ${stok} unit + unit dibangun`}).</p>}</div>
@@ -47,7 +48,7 @@ export function Simulasi({ rows, netPrice, stok, belumDibangun, kekurangan, perT
             <div className="seg">{(["bulanan", "tahunan"] as const).map((m) => <button key={m} className={mode === m ? "on" : ""} onClick={() => setMode(m)}>{m === "bulanan" ? "Bulanan" : "Total 12 bln"}</button>)}</div></div>
           <div className="card"><Chart bars={bars} title="Grafik hasil skenario" /><Legend base /></div>
           <div className="card"><table><thead><tr><th>Periode</th><th className="n">UTJ</th><th className="n">Akad</th><th className="n">Penerimaan (Rp M)</th></tr></thead>
-            <tbody>{sc.map((r) => <tr key={r.bulan}><td>{labelBulan(r.bulan)}</td><td className="n">{f1(r.utj)}</td><td className="n">{f1(r.akad)}</td><td className="n">{f1(r.penerimaan)}</td></tr>)}</tbody></table></div>
+            <tbody>{sc.map((r) => <tr key={r.bulan}><td>{labelBulan(r.bulan)}</td><td className="n">{f1(r.utj)}</td><td className="n">{fl(r.akad)}</td><td className="n">{f1(fl(r.akad) * netPrice)}</td></tr>)}</tbody></table></div>
         </div>
       </div>
     </div>
