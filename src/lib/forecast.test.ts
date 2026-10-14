@@ -73,3 +73,12 @@ describe("rentang proyeksi untuk riwayat pendek", () => {
     f.rows.forEach((r) => expect(r.utjHi).toBeGreaterThan(r.utjLo));
   });
 });
+
+it("proyeksi jauh (24 bulan) tetap berupa angka, bukan NaN", async () => {
+  const { reconstructTxns } = await import("./demo");
+  const { loadMonthly } = await import("./demo");
+  const m = loadMonthly();
+  const f = forecast(reconstructTxns(m), m[0].bulan, m[m.length - 1].bulan, 36);
+  expect(f.rows).toHaveLength(36);
+  expect(f.rows.every((r) => Number.isFinite(r.akad) && Number.isFinite(r.batal) && Number.isFinite(r.utjInt))).toBe(true);
+});

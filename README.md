@@ -95,3 +95,9 @@ alter table narasi_cache enable row level security;
 2. Untuk hasil Claude: angka harus ada di teks halaman dan berdekatan (±200 karakter) dengan bulan dan tahun yang dilaporkan.
 3. Lonjakan lebih dari 1 poin (BI Rate) atau 2 poin (inflasi) terhadap nilai tersimpan terakhir tidak disimpan otomatis; layar Data menampilkan peringatan dan nilainya diisi manual bila benar.
 4. Input manual selalu menimpa data sinkron.
+
+## Rentang waktu laporan PDF
+- **Bulanan** = laporan satu bulan; **Tahunan** = 12 bulan berturut-turut mulai dari bulan dan tahun yang dipilih (pilih Januari untuk satu tahun kalender). Dipilih lewat formulir di halaman Laporan (`?jenis=...&bulan=MM&tahun=YYYY`); tanpa pilihan dipakai bulan setelah data terakhir.
+- Bulan yang sudah lewat memakai data nyata, bulan ke depan memakai proyeksi (sampai 36 bulan setelah data terakhir); rentang yang mencakup keduanya digabung. Angka total, grafik, tabel, stok, dan narasi mengikuti rentang itu.
+- Funnel, tipe, bank, dan marketing memakai data nyata di dalam rentang; bila rentang belum punya data nyata, dipakai bulan aktual terakhir dengan jumlah bulan yang sama.
+- Skenario what-if tetap memakai proyeksi dasar 12 bulan ke depan.
