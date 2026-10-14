@@ -24,6 +24,7 @@ export async function callClaude(system: string, user: string): Promise<string> 
     headers: { "x-api-key": process.env.ANTHROPIC_API_KEY!, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5", max_tokens: 1200, system, messages: [{ role: "user", content: user }] }),
   });
+  if (r.status === 401) throw new Error("Claude API 401: ANTHROPIC_API_KEY ditolak (key salah, ada spasi/baris baru di ujung, sudah dicabut, atau belum ada kredit); buat key baru dan isi ulang di Vercel");
   if (!r.ok) throw new Error(`Claude API ${r.status}`);
   const j = await r.json();
   return (j.content?.[0]?.text as string) ?? "";

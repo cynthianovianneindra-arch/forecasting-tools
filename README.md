@@ -54,6 +54,7 @@ Tabel `datasets` punya kolom `marketing` (jsonb); unggah ulang Excel agar data m
 - **Inflasi tahunan:** halaman bps.go.id (`BPS_INFLASI_URL`, default beranda). **BI Rate:** halaman bi.go.id (`BI_RATE_URL`). Teks halaman diekstrak Claude; hasil hanya diterima jika bulan valid, nilai wajar (0-20%), dan angkanya benar-benar muncul di teks halaman. Memakai kuota `CLAUDE_DAILY_LIMIT`.
 - Hasil disimpan di tabel Supabase `macro_live` dan menimpa bulan yang sama dari Excel. Sumber yang gagal tidak menimpa data terakhir; alasan gagal tampil di layar Data.
 - Pemicu: tombol "Sinkron data ekonomi sekarang" (butuh `UPLOAD_TOKEN`) dan Vercel Cron harian `/api/macro-sync` (butuh `CRON_SECRET`).
+- **Hasil uji pertama di produksi:** Yahoo (IHSG, emas) berhasil; bps.go.id menjawab HTTP 403 (memblokir akses otomatis), sehingga inflasi kini memakai cadangan halaman Data Inflasi bi.go.id (`BI_INFLASI_URL`); BI Rate gagal karena ANTHROPIC_API_KEY ditolak (401). Isi ulang key yang valid.
 - **Belum diuji dengan situs asli**: sandbox pengembangan tidak bisa menjangkau Yahoo, BPS, atau BI. URL BPS default (beranda) mungkin tidak memuat angka inflasi; isi `BPS_INFLASI_URL` dengan halaman yang memuatnya. Kegagalan akan tampil jelas di layar Data.
 
 ## Arti status unit dan peringatan stok (dikonfirmasi pemilik)

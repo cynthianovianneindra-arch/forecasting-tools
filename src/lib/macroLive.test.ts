@@ -24,6 +24,24 @@ it("merge: live menimpa bulan sama, inflasi persen -> pecahan", () => {
   expect(r[0]).toMatchObject({ bulan: "2026-05", ihsg: 9, emas: 1 });
   expect(r[1]).toMatchObject({ bulan: "2026-06", inflasi: 0.025 });
 });
+it("inflasi: BPS 403 -> cadangan halaman BI dipakai", async () => {
+  const f = vi.fn(async (u: RequestInfo | URL) => {
+    const url = String(u);
+    if (url.includes("yahoo")) return new Response(JSON.stringify(yahoo([100])));
+    if (url.includes("bps.go.id")) return new Response("forbidden", { status: 403 });
+    return new Response("<p>Inflasi IHK tahunan 2,42 persen</p>");
+  });
+  const { hasil } = await syncLive({ fetch: f as unknown as typeof fetch, call: async () => '{"bulan":"2026-09","nilai":2.42}' });
+  expect(hasil.find((h) => h.indikator === "inflasi")).toMatchObject({ ok: true, nilai: 2.42, sumber: "bi.go.id (data inflasi)" });
+});
+it("inflasi: semua sumber gagal -> galat gabungan, sumber lain tetap jalan", async () => {
+  const f = vi.fn(async (u: RequestInfo | URL) => String(u).includes("yahoo") ? new Response(JSON.stringify(yahoo([100]))) : new Response("x", { status: 403 }));
+  const { hasil } = await syncLive({ fetch: f as unknown as typeof fetch, call: async () => "{}" });
+  const inf = hasil.find((h) => h.indikator === "inflasi")!;
+  expect(inf.ok).toBe(false);
+  expect(inf.error).toMatch(/bps\.go\.id.*403.*bi\.go\.id/);
+  expect(hasil.find((h) => h.indikator === "ihsg")?.ok).toBe(true);
+});
 it("syncLive: satu sumber gagal tidak menghentikan yang lain", async () => {
   const f = vi.fn(async (u: RequestInfo | URL) => String(u).includes("yahoo") ? (String(u).includes("JKSE") ? new Response(JSON.stringify(yahoo([7000, 7100]))) : new Response("x", { status: 429 })) : new Response("<p>BI-Rate 5,25 persen</p>"));
   const { rows, hasil } = await syncLive({ fetch: f as unknown as typeof fetch, call: async () => '{"bulan":"2026-09","nilai":5.25}' });
