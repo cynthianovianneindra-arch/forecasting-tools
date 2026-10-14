@@ -20,3 +20,11 @@ Web app proyeksi UTJ, akad, dan penerimaan. Spesifikasi: `docs/SPEC.md`; mockup:
 `src/lib/demo.ts` (akad dipasangkan FIFO ke UTJ tertua; sisa > 8 bulan dianggap batal). Maka MAE akad
 pipeline (~5,7) belum sebanding dengan target 2,95 dan angka "pipeline berjalan" tidak nyata. Kriteria Fase 1
 untuk akad baru bisa diverifikasi setelah `FORECASTING_UPDATE.xlsx` ditaruh di `data/` (di-gitignore). Jika file ada, app otomatis membaca sheet PENJUALAN (kolom J, AT, AU, AX; `src/lib/importExcel.ts`), membersihkan error Excel, dan melaporkan peringatan di menu Data & Integrasi; jika tidak ada, memakai data demo. Impor baru diuji dengan workbook sintetis, belum dengan file asli.
+
+## Sinkron Google Drive
+File sumber: `FORECASTING UPDATE.xlsx` di Drive (ID di `.env.example`).
+1. Buat service account di Google Cloud, aktifkan Drive API, unduh kunci JSON.
+2. Share folder/file Drive ke email service account (Viewer).
+3. Set env `GOOGLE_SERVICE_ACCOUNT_JSON` (isi JSON satu baris), opsional `DRIVE_FILE_ID`, `CRON_SECRET`.
+4. Menu Data & Integrasi: tombol "Sinkron semua sekarang". Vercel Cron memanggil `/api/sync` tiap hari (`vercel.json`). Cache 1 jam.
+Prioritas sumber: Drive, lalu `data/FORECASTING_UPDATE.xlsx`, lalu data demo. Belum diuji dengan Drive asli (sandbox tidak bisa mengakses Drive).

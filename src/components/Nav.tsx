@@ -10,4 +10,4 @@ export function Nav({ active, updated }: { active: string; updated: string }) {
   );
 }
 export const DEMO_BADGE = <span className="warn">Data demo: direkonstruksi dari hitungan bulanan (fixture), bukan transaksi asli</span>;
-export const badge = (source: "excel" | "demo") => (source === "demo" ? DEMO_BADGE : <span className="ok">Data dari data/FORECASTING_UPDATE.xlsx</span>);
+export const badge = (source: "excel" | "drive" | "demo") => (source === "demo" ? DEMO_BADGE : <span className="ok">{source === "drive" ? "Data dari Google Drive" : "Data dari data/FORECASTING_UPDATE.xlsx"}</span>);
