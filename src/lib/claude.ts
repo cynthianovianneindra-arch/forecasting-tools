@@ -35,10 +35,10 @@ export async function callClaude(system: string, user: string, jenis: Jenis = "l
   return (j.content?.[0]?.text as string) ?? "";
 }
 
-export const SECTIONS = ["ringkasan", "proyeksi", "funnel", "bank", "marketing", "stok", "risiko", "rekomendasi"] as const;
+export const SECTIONS = ["ringkasan", "risiko", "rekomendasi"] as const;
 export type Sections = Record<(typeof SECTIONS)[number], string>;
 
-const FORMAT = `Balas HANYA JSON dengan kunci ${SECTIONS.join(", ")} (ringkasan = 6-8 kalimat yang merangkum hasil utama, kinerja, stok, marketing, ekonomi, dan risiko; yang lain masing-masing 2-4 kalimat): ringkasan = ringkasan manajemen yang detail; proyeksi = membaca proyeksi UTJ/akad beserta rentang; funnel = funnel dan pembatalan; bank = proses bank dan konteks ekonomi; stok = kondisi stok dan kebutuhan order bangun; risiko = risiko dan keterbatasan utama; rekomendasi = urutan tindakan prioritas untuk manajemen dari daftar rekomendasi yang diberikan; marketing = efektivitas marketing dari data marketing (sebut bahwa pola awal dan bukan sebab-akibat, sampel pendek). Jika data marketing tidak ada, isi marketing dengan "Data marketing belum tersedia."`;
+const FORMAT = `Balas HANYA JSON dengan kunci ${SECTIONS.join(", ")}. Singkat dan padat, tanpa pengantar atau pengulangan angka yang tidak perlu: ringkasan = 3-4 kalimat berisi hasil utama proyeksi, kinerja, stok, dan hal yang paling perlu diperhatikan; risiko = 2-3 kalimat tentang risiko dan keterbatasan utama; rekomendasi = 2-3 kalimat urutan tindakan prioritas dari daftar rekomendasi yang diberikan.`;
 
 const cache = new Map<string, { at: number; v: Sections | null }>();
 const TTL = 60 * 60 * 1000;
