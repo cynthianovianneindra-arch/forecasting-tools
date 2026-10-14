@@ -6,7 +6,12 @@ export interface LeadAgg { bulan: string; database: string; asal: string; market
 export interface EventCost { bulan: string; kategori: string; kegiatan: string; biaya: number }
 export interface MarketingData { leads: LeadAgg[]; events: EventCost[] }
 
+export interface UnitRow { unit: string; tipe: string; tahap: string; cluster: string; status: string }
+export interface MacroRow { bulan: string; emas: number | null; ihsg: number | null; inflasi: number | null; ihpr: number | null; birate: number | null }
+
 export interface ImportReport {
+  units?: UnitRow[];
+  macro?: MacroRow[];
   marketing?: MarketingData;
   txns: Txn[];
   rows: number;
@@ -76,8 +81,9 @@ export async function importPenjualan(input: string | Buffer | ArrayBuffer, mode
     if (!u.m) { if (a.m || b.m) warnings.push(`Baris ${n}: ada akad/batal tanpa tanggal UTJ, baris dilewati`); return; }
     if (a.m && b.m) warnings.push(`Baris ${n}: akad dan batal sama-sama terisi`);
     const banks = BANK_COLS.map((c) => ({ bank: normName(row.getCell(c).value), hari: num(row.getCell(c + 3).value), status: text(row.getCell(c + 4).value).toUpperCase() })).filter((x) => x.bank);
+    const unitId = normName(row.getCell(2).value);
     txns.push({
-      utj: u.m, akad: a.m, batal: b.m,
+      utj: u.m, akad: a.m, batal: b.m, ...(unitId ? { unitId } : {}),
       spr: hasValue(row.getCell(C.spr).value),
       cair: cellToMonth(row.getCell(C.cair).value).m !== null,
       tipe: text(row.getCell(C.tipe).value) || undefined,
@@ -91,7 +97,18 @@ export async function importPenjualan(input: string | Buffer | ArrayBuffer, mode
     });
   });
   const marketing = parseMarketing(wb);
-  return { marketing, txns, rows, utj: txns.length, akad: txns.filter((t) => t.akad).length, batal: txns.filter((t) => t.batal).length, warnings };
+  const units = parseUnits(wb), macro = parseMacro(wb);
+  if (units) {
+    const byId = new Map(units.map((x) => [x.unit, x]));
+    let miss = 0;
+    for (const t of txns) {
+      const id = (t as Txn & { unitId?: string }).unitId; delete (t as Txn & { unitId?: string }).unitId;
+      const un = id ? byId.get(id) : undefined;
+      if (un) { t.cluster = un.cluster; t.tahap = un.tahap; if (!t.tipe) t.tipe = un.tipe; } else miss++;
+    }
+    if (miss) warnings.push(`${miss} UTJ tidak ditemukan di sheet UNIT (cluster/tahap kosong)`);
+  } else for (const t of txns) delete (t as Txn & { unitId?: string }).unitId;
+  return { units, macro, marketing, txns, rows, utj: txns.length, akad: txns.filter((t) => t.akad).length, batal: txns.filter((t) => t.batal).length, warnings };
 }
 
 const val = (c: ExcelJS.Cell) => { const x = c.value; return x && typeof x === "object" && !(x instanceof Date) && "result" in x ? (x as { result: unknown }).result : x; };
@@ -120,4 +137,30 @@ export function parseMarketing(wb: ExcelJS.Workbook): MarketingData | undefined 
     events.push({ bulan, kategori: text(val(row.getCell(4))) || "(lain)", kegiatan: text(val(row.getCell(3))), biaya });
   }
   return { leads: [...agg.values()], events };
+}
+
+/** Sheet UNIT: kolom B unit, C tipe, H tahap, I cluster, J status. */
+export function parseUnits(wb: ExcelJS.Workbook): UnitRow[] | undefined {
+  const U = wb.getWorksheet("UNIT");
+  if (!U) return undefined;
+  const out: UnitRow[] = [];
+  for (let r = 4; r <= U.rowCount; r++) {
+    const row = U.getRow(r), unit = normName(val(row.getCell(2)));
+    if (!unit) continue;
+    out.push({ unit, tipe: text(val(row.getCell(3))), tahap: text(val(row.getCell(8))), cluster: text(val(row.getCell(9))), status: text(val(row.getCell(10))) });
+  }
+  return out;
+}
+
+/** Sheet INSTRUMEN EKONOMI (kolom P bulan, Q emas, R IHSG, S inflasi, T IHPR, Z BI Rate). Pernikahan/kelahiran/UMR tahunan sengaja tidak diambil (bukan sinyal bulanan). */
+export function parseMacro(wb: ExcelJS.Workbook): MacroRow[] | undefined {
+  const I = wb.getWorksheet("INSTRUMEN EKONOMI");
+  if (!I) return undefined;
+  const out: MacroRow[] = [];
+  for (let r = 4; r <= I.rowCount; r++) {
+    const row = I.getRow(r), bulan = cellToMonth(val(row.getCell(16))).m;
+    if (!bulan) continue;
+    out.push({ bulan, emas: num(val(row.getCell(17))), ihsg: num(val(row.getCell(18))), inflasi: num(val(row.getCell(19))), ihpr: num(val(row.getCell(20))), birate: num(val(row.getCell(26))) });
+  }
+  return out;
 }

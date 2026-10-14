@@ -35,6 +35,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const batalPct = pot(k.funnel.batal);
   const mk = d.marketing && d.marketing.leads.length ? marketingInsights(d.marketing, txns) : null;
   const narasi = await narasiLaporan({
+    stok: d.stok ? { unitOpen: d.stok.open, totalUnit: d.stok.total, bulanStokHabis: d.stokHabis } : null,
+    ekonomi: d.makro ? d.makro.map((m) => ({ indikator: m.indikator, korelasiDenganUtj: m.korelasi, bulanTerakhir: m.terakhir })) : null,
     marketing: mk ? { ...mk.stats, kategori: mk.kategori.slice(0, 5), temuan: mk.findings.map((f) => ({ judul: f.judul, temuan: f.temuan, label: f.label })) } : null,
     periode: `${labelPanjang(r[0].bulan)} - ${labelPanjang(r[11].bulan)}`, jenis,
     proyeksi12Bulan: { utj: Math.round(tot.utj), utjRendah: Math.round(tot.lo), utjTinggi: Math.round(tot.hi), akad: Math.round(tot.akad), penerimaanMiliarRp: +tot.penerimaanM.toFixed(1) },
@@ -43,7 +45,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
     ujiMundur: { titik: bt.origins, galatUtjRataRata: +bt.utjMae13.toFixed(1), galatAkadTotal3Bln: +bt.akadMaeTotal3.toFixed(1) },
     funnel: { ...k.funnel, persenBatal: batalPct }, alasanBatalTercatat: k.alasan,
     bank: k.bank.map((b) => ({ bank: b.bank, berkas: b.berkas, persenApprove: b.approve, rataHari: b.hari === null ? null : Math.round(b.hari) })),
-    peringatan: ["Variabel ekonomi belum tersambung; korelasi bulanan dengan UTJ lemah (sekitar 0,2)", "Alasan batal baru tercatat sebagian", "Sampel per agent kecil"],
+    peringatan: ["Korelasi bulanan variabel ekonomi dengan UTJ lemah; hanya konteks, bukan penggerak proyeksi", "Alasan batal baru tercatat sebagian", "Sampel per agent kecil"],
   });
   const harga = priceByType(txns);
 
@@ -68,6 +70,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
 
     <ReportPage n={5} title="Akad dan penerimaan"><p>Akad diproyeksikan dari UTJ yang sedang berjalan ({d.open} UTJ belum akad atau batal) ditambah UTJ baru, memakai peluang akad dan batal per umur UTJ dari data historis.</p>
       <table>{th("Bulan", "Akad", "Penerimaan (Rp M)")}<tbody>{r.map((x) => <tr key={x.bulan}><td>{labelPanjang(x.bulan)}</td><td className="n">{f1(x.akad)}</td><td className="n">{f1(x.akad * net)}</td></tr>)}</tbody></table>
+      {d.stok && <Note>Stok Open saat ini {d.stok.open} unit dari {d.stok.total}. {d.stokHabis !== null ? `Pada laju proyeksi, stok habis di bulan ke-${d.stokHabis}; proyeksi di atas mengasumsikan unit tersedia sehingga perlu tambahan unit (order bangun) atau pelepasan unit berstatus lain.` : "Stok cukup untuk seluruh 12 bulan proyeksi."}</Note>}
       <p className="muted">Uji mundur (26 titik): galat total akad 3 bulan {f1(bt.akadMaeTotal3)} unit, dibanding {f1(bt.akadMaeMa12)} unit bila memakai rata-rata 12 bulan.</p></ReportPage>
 
     <ReportPage n={6} title="Funnel penjualan dan pembatalan">{narasi && <p>{narasi.funnel}</p>}<table>{th("Tahap", "Jumlah", "% dari UTJ")}<tbody>
@@ -83,7 +86,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       <Note>Sampel per agent kecil; konversi dibaca sebagai hipotesis. Data leads (sheet LEADS) baru ada sejak Okt 2025 dan belum diimpor; kolom Asal Leads di PENJUALAN hanya terisi sebagian.</Note></ReportPage>
 
     <ReportPage n={9} title="Proses bank dan kondisi ekonomi">{narasi && <p>{narasi.bank}</p>}<table>{th("Bank", "Berkas", "Approve", "Rata-rata hari")}<tbody>{k.bank.map((x) => <tr key={x.bank}><td>{x.bank}</td><td className="n">{x.berkas}</td><td className="n">{x.approve}%</td><td className="n">{x.hari === null ? "-" : f1(x.hari)}</td></tr>)}</tbody></table>
-      <Note>Variabel ekonomi (IHSG, emas, inflasi, BI Rate) belum tersambung. Pada uji data historis, korelasinya dengan UTJ bulanan lemah (sekitar 0,2), sehingga hanya dipakai sebagai konteks, bukan penggerak proyeksi.</Note></ReportPage>
+      {d.makro ? <><h2 style={{ marginTop: 16 }}>Kondisi ekonomi (konteks)</h2><table>{th("Indikator", "Data terakhir", "Nilai", "Korelasi dengan UTJ")}<tbody>{d.makro.map((m) => <tr key={m.indikator}><td>{m.indikator}</td><td className="n">{m.terakhir ?? "-"}</td><td className="n">{m.nilaiTerakhir === null ? "-" : m.nilaiTerakhir.toLocaleString("id-ID", { maximumFractionDigits: 4 })}</td><td className="n">{m.korelasi === null ? "-" : m.korelasi.toLocaleString("id-ID")}</td></tr>)}</tbody></table>
+      <Note>Korelasi bulanan dengan UTJ lemah (semuanya di bawah 0,3 dalam nilai mutlak) dan data baru 4 tahun, jadi hanya dipakai sebagai konteks, bukan penggerak proyeksi. Korelasi tahunan yang tinggi di sheet lama berasal dari 4 titik data dan menyesatkan. Data pernikahan, kelahiran, dan UMR berupa angka tahunan yang diulang tiap bulan, bukan sinyal bulanan.</Note></> : <Note>Data ekonomi belum ada di unggahan ini (sheet INSTRUMEN EKONOMI).</Note>}</ReportPage>
 
     <ReportPage n={10} title="Efektivitas marketing">{!mk ? <Note>Data LEADS dan EVENT MARKETING belum ada di unggahan ini.</Note> : <>
       {narasi && <p>{narasi.marketing}</p>}
@@ -110,6 +114,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
         <Note>Skenario memakai koefisien ilustrasi yang belum dikalibrasi dari data; baca sebagai gambaran arah, bukan ramalan. Pengaruh variabel ekonomi lemah pada data historis. Proyeksi dasar di halaman lain tidak berubah.</Note></>}
       <h2 style={{ marginTop: 16 }}>Cara angka dibuat</h2><p>UTJ = rata-rata 12 bulan terakhir; akad = pipeline UTJ; rentang dari kuantil galat uji mundur ({bt.origins} titik uji, galat UTJ rata-rata {f1(bt.utjMae13)} unit/bulan).</p>
       <h2>Keterbatasan</h2><ul><li>Penjualan berfluktuasi; satu angka tidak menjamin hasil.</li><li>Variabel ekonomi hanya konteks.</li><li>Skenario di menu Simulasi memakai koefisien ilustrasi dan belum dikalibrasi.</li><li>Penerimaan memakai harga bersih rata-rata, bukan jadwal termin.</li></ul>
-      <h2>Langkah berikutnya</h2><ul><li>Lengkapi alasan batal dan status leads di sumber data.</li><li>Impor sheet UNIT (stok nyata) dan sambungkan data ekonomi; kalibrasi koefisien skenario dari data.</li></ul></ReportPage>
+      <h2>Langkah berikutnya</h2><ul><li>Lengkapi alasan batal dan status leads di sumber data.</li><li>Kalibrasi koefisien skenario dari data; sambungkan pembaruan otomatis data ekonomi (BPS, BI, Twelve Data).</li><li>Konfirmasi definisi stok tersedia dijual (Open saja, atau termasuk Margal/Close).</li></ul></ReportPage>
   </>);
 }

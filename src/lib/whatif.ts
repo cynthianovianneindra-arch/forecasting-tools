@@ -30,7 +30,7 @@ export interface ScenarioRow { bulan: string; utj: number; akad: number; penerim
 export const NET_PRICE_MILIAR = 0.762; // rata-rata net price (SPEC 5.1); versi sungguhan: per tipe/unit
 export const STOK_DEMO = 60; // unit siap jual (demo); sebenarnya dari sheet UNIT status Open
 
-export function applyScenario(base: ForecastRow[], s: Scenario): { rows: ScenarioRow[]; stockWarning: boolean } {
+export function applyScenario(base: ForecastRow[], s: Scenario, stok: number = STOK_DEMO): { rows: ScenarioRow[]; stockWarning: boolean } {
   const utjMul = Math.max(0, 1 - 0.008 * s.price * 1 + 0.02 * s.promo + 0.005 * s.leads + 0.03 * s.events - 0.0004 * s.birate + 0.0015 * s.ihsg + 0.001 * s.gold - 0.03 * s.inflation);
   const akadMul = Math.max(0, 1 - 0.015 * s.cancel - 0.003 * s.bank);
   const extraUtj = Array(base.length).fill(0), extraAkad = Array(base.length).fill(0);
@@ -48,7 +48,7 @@ export function applyScenario(base: ForecastRow[], s: Scenario): { rows: Scenari
     cum += utj;
     return { bulan: b.bulan, utj, akad, penerimaan: akad * NET_PRICE_MILIAR };
   });
-  return { rows, stockWarning: cum > STOK_DEMO };
+  return { rows, stockWarning: cum > stok + s.units };
 }
 export { addMonths };
 

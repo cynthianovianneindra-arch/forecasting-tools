@@ -6,6 +6,8 @@ import { latestDataset, storeConfigured } from "./store";
 import { driveConfigured, fetchFromDrive } from "./drive";
 import { importPenjualan, ImportReport } from "./importExcel";
 import { applyFilter, cards, Filter, options } from "./insights";
+import { stockSummary, stockoutMonth } from "./stock";
+import { macroContext, utjMonthMap } from "./macro";
 import { NET_PRICE_MILIAR } from "./whatif";
 
 export const EXCEL_PATH = path.join(process.cwd(), "data", "FORECASTING_UPDATE.xlsx");
@@ -23,7 +25,7 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
       const ds = await latestDataset();
       if (ds) {
         txns = ds.txns;
-        report = { marketing: ds.marketing ?? undefined, txns, rows: ds.rows, utj: ds.utj, akad: ds.akad, batal: ds.batal, warnings: ds.warnings };
+        report = { units: ds.units ?? undefined, macro: ds.macro ?? undefined, marketing: ds.marketing ?? undefined, txns, rows: ds.rows, utj: ds.utj, akad: ds.akad, batal: ds.batal, warnings: ds.warnings };
         uploadInfo = { filename: ds.filename, uploaded_at: ds.uploaded_at };
         source = "upload";
       }
@@ -62,6 +64,9 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
   const open = ft.filter((t) => !t.akad && !t.batal).length;
   const kartu = source === "demo" ? null : cards(applyFilter(txns, filter, false));
   const filtered = ft.length !== txns.length;
-  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null };
+  const stok = report?.units ? stockSummary(report.units.filter((u) => (!filter.cluster || u.cluster === filter.cluster) && (!filter.tahap || u.tahap === filter.tahap) && (!filter.tipe || u.tipe === filter.tipe))) : null;
+  const stokHabis = stok ? stockoutMonth(f.rows.map((x) => x.utj), stok.open) : null;
+  const makro = report?.macro ? macroContext(report.macro, utjMonthMap(txns)) : null;
+  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null, stok, stokHabis, makro, units: report?.units ?? null, macroRows: report?.macro ?? null };
 }
 export { f1, labelBulan, labelPanjang } from "./format";

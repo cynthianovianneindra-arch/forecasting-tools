@@ -5,7 +5,7 @@ import { Chart, Legend, Bar } from "./Chart";
 import { f1, labelBulan } from "@/lib/format";
 
 interface Row { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; trend: number }
-export function Dashboard({ monthly, rows, netPrice, open, divergent }: { monthly: { bulan: string; utj: number; akad: number }[]; rows: Row[]; netPrice: number; open: number; divergent: boolean }) {
+export function Dashboard({ monthly, rows, netPrice, open, divergent, stok, stokHabis }: { stok?: { open: number; total: number; perTipe: { tipe: string; n: number }[] } | null; stokHabis?: number | null; monthly: { bulan: string; utj: number; akad: number }[]; rows: Row[]; netPrice: number; open: number; divergent: boolean }) {
   const [mode, setMode] = useState<"bulanan" | "tahunan">("bulanan");
   let bars: Bar[];
   if (mode === "bulanan") {
@@ -39,6 +39,9 @@ export function Dashboard({ monthly, rows, netPrice, open, divergent }: { monthl
         <div className="stack">
           <div className="card"><h2>Mau coba skenario?</h2><p className="muted">Ubah harga, promo, leads, suplai unit, atau kondisi ekonomi dan lihat dampaknya.</p><Link className="btn" href="/simulasi">Buka Simulasi</Link></div>
           <div className="card"><h2>Unduh laporan</h2><Link className="btn" href="/laporan?jenis=bulanan">PDF Bulanan</Link> <Link className="btn alt" href="/laporan?jenis=tahunan">PDF Tahunan</Link></div>
+          {stok && <div className="card"><h2>Stok tersedia dijual</h2><div className="kpi">{stok.open} unit</div><p className="muted">status Open dari {stok.total} unit (sheet UNIT)</p>
+            {stokHabis !== null && stokHabis !== undefined ? <p className="err">Pada laju proyeksi, stok habis di bulan ke-{stokHabis}. Proyeksi di atas mengasumsikan unit tersedia; tambahan unit (order bangun) diperlukan.</p> : <p className="muted">Stok cukup untuk seluruh 12 bulan proyeksi.</p>}
+            <table className="mini"><tbody>{stok.perTipe.map((x) => <tr key={x.tipe}><td>{x.tipe}</td><td className="n">{x.n}</td></tr>)}</tbody></table></div>}
           <div className="card"><h2>Pipeline berjalan</h2><div className="kpi">{open} UTJ</div><p className="muted">belum akad dan belum batal</p></div>
         </div>
       </div>

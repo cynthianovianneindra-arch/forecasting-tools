@@ -20,3 +20,10 @@ it("parse skenario dari query, memotong ke rentang", () => {
   expect(parseScenario(decodeURIComponent(scenarioQuery(s)))).toEqual(s);
   expect(describeScenario(s).map((x) => x.label)).toEqual(["Perubahan harga", "Nilai promo (dari harga)"]);
 });
+
+it("peringatan stok memakai stok yang diberikan, unit dibangun menambah stok", () => {
+  expect(applyScenario(base, EMPTY, 32).stockWarning).toBe(true);
+  expect(applyScenario(base, EMPTY, 200).stockWarning).toBe(false);
+  expect(applyScenario(base, { ...EMPTY, units: 30 }, 80).stockWarning).toBe(false);
+  expect(applyScenario(base, { ...EMPTY, units: 30 }, 60).stockWarning).toBe(true);
+});

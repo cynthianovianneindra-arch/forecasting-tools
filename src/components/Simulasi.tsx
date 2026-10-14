@@ -6,10 +6,10 @@ import Link from "next/link";
 import { EMPTY, Scenario, VARS, applyScenario, changedCount, scenarioQuery } from "@/lib/whatif";
 
 interface Row { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; trend: number }
-export function Simulasi({ rows, netPrice }: { rows: Row[]; netPrice: number }) {
+export function Simulasi({ rows, netPrice, stok }: { rows: Row[]; netPrice: number; stok?: number }) {
   const [s, setS] = useState<Scenario>(EMPTY);
   const [mode, setMode] = useState<"bulanan" | "tahunan">("bulanan");
-  const { rows: sc, stockWarning } = useMemo(() => applyScenario(rows, s), [rows, s]);
+  const { rows: sc, stockWarning } = useMemo(() => applyScenario(rows, s, stok), [rows, s, stok]);
   const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
   const bU = sum(rows.map((r) => r.utj)), bA = sum(rows.map((r) => r.akad));
   const sU = sum(sc.map((r) => r.utj)), sA = sum(sc.map((r) => r.akad));
@@ -29,7 +29,7 @@ export function Simulasi({ rows, netPrice }: { rows: Row[]; netPrice: number }) 
               <tr><td>Akad</td><td className="n">{f1(sA)} ({d(sA, bA)})</td></tr>
               <tr><td>Penerimaan (Rp miliar)</td><td className="n">{f1(sA * netPrice)} ({d(sA * netPrice, bA * netPrice)})</td></tr>
               <tr><td>Variabel diubah</td><td className="n">{changedCount(s)}</td></tr></tbody></table>
-            {stockWarning && <p className="err">Peringatan: UTJ skenario melebihi stok unit yang tersedia dijual (stok demo).</p>}</div>
+            {stockWarning && <p className="err">Peringatan: UTJ skenario melebihi stok unit yang tersedia dijual ({stok === undefined ? "stok demo" : `stok Open ${stok} unit + unit dibangun`}).</p>}</div>
           <div>{groups.map((g, i) => (
             <details key={g} open={i === 0}><summary>{g}</summary>
               {VARS.filter((v) => v.group === g).map((v) => (
