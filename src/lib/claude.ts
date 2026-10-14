@@ -3,10 +3,10 @@ import { tulisNarasi } from "./narasi";
 
 export const claudeConfigured = () => !!process.env.ANTHROPIC_API_KEY;
 
-/** Batas panggilan Claude per hari (UTC), env CLAUDE_DAILY_LIMIT, default 30. Disimpan di memori instance: pada serverless
+/** Batas panggilan Claude per hari (UTC), env CLAUDE_DAILY_LIMIT, default 5. Disimpan di memori instance: pada serverless
  *  hitungan bisa ter-reset saat instance baru, jadi ini pengaman biaya kasar; batas keras tetap atur di console.anthropic.com. */
 const used = { day: "", n: 0 };
-export const dailyLimit = () => Math.max(0, parseInt(process.env.CLAUDE_DAILY_LIMIT ?? "30", 10) || 0);
+export const dailyLimit = () => Math.max(0, parseInt(process.env.CLAUDE_DAILY_LIMIT ?? "5", 10) || 0);
 export function takeBudget(): boolean {
   const day = new Date().toISOString().slice(0, 10);
   if (used.day !== day) { used.day = day; used.n = 0; }
