@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Dashboard Proyeksi Penjualan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F5F8}
+a{color:#1D4F91}
+a:hover{color:#10335F}
+button,select,input{font-family:inherit}
+.navlink{text-decoration:none;color:#5A6473;font-size:14px;font-weight:600;padding:8px 12px;border-radius:8px}
+.navlink:hover{background:#EEF1F6;color:#141B26}
+.navon{background:#E6ECF6;color:#141B26}
+summary{list-style:none;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+summary:focus-visible{outline:2px solid #24467C;outline-offset:2px;border-radius:6px}
+.chev{flex:none;transition:transform .15s}
+details[open] > summary .chev{transform:rotate(180deg)}
+.btnpdf{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;box-sizing:border-box}
+.btnpdf:hover{filter:brightness(0.94)}
+select{min-height:44px}
+</style>
+</helmet>
+<div style="min-height:100%;background:#F3F5F8;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#141B26">
+
+<!-- Header -->
+<div style="background:#FFFFFF;border-bottom:1px solid #E1E5EB">
+<div style="max-width:1280px;margin:0 auto;padding:10px 24px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px">
+<div style="display:flex;align-items:center;gap:10px">
+<div style="width:32px;height:32px;border-radius:8px;background:#24467C;display:flex;align-items:flex-end;justify-content:center;gap:3px;padding:7px 6px;box-sizing:border-box">
+<div style="width:4px;height:7px;background:#FFFFFF;border-radius:1px"></div>
+<div style="width:4px;height:12px;background:#FFFFFF;border-radius:1px"></div>
+<div style="width:4px;height:17px;background:#F2A65A;border-radius:1px"></div>
+</div>
+<div style="font-weight:800;font-size:16px;letter-spacing:-0.01em">Forecast Penjualan</div>
+<div style="font-size:12px;font-weight:600;color:#5A6473;background:#EEF1F6;border-radius:999px;padding:4px 10px">Shaistanaya City</div>
+</div>
+<nav style="display:flex;flex-wrap:wrap;gap:4px;flex-grow:1">
+<a class="navlink navon" href="Main.dc.html">Dashboard</a>
+<a class="navlink" href="Simulasi.dc.html">Simulasi</a>
+<a class="navlink" href="Laporan.dc.html">Laporan PDF</a>
+<a class="navlink" href="Data.dc.html">Data &amp; Integrasi</a>
+</nav>
+<div style="font-size:12px;color:#5A6473">Data diperbarui 8 Okt 2026, 07.00 WIB</div>
+</div>
+</div>
+
+<div style="max-width:1280px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:20px;box-sizing:border-box">
+
+<!-- Title row -->
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+<div>
+<h1 style="margin:0;font-size:28px;font-weight:800;letter-spacing:-0.02em">Proyeksi Penjualan</h1>
+<div style="margin-top:4px;font-size:14px;color:#5A6473;max-width:640px">Proyeksi dasar 12 bulan ke depan (Agu 2026 – Jul 2027) dari data UTJ dan akad. Garis putus-putus menandai awal proyeksi. Untuk skenario, pakai menu Simulasi.</div>
+</div>
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+<div style="font-size:12px;font-weight:700;color:#7A4A00;background:#FCEBD2;border-radius:999px;padding:6px 12px">Mockup · angka proyeksi ilustrasi</div>
+<div style="display:flex;background:#E6EAF0;border-radius:12px;padding:4px;gap:4px">
+<button type="button" onClick="{{ setBulanan }}" style="{{ btnBulanan }}">Bulanan</button>
+<button type="button" onClick="{{ setTahunan }}" style="{{ btnTahunan }}">Tahunan</button>
+</div>
+</div>
+</div>
+
+<!-- Filters -->
+<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:14px 16px">
+<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#5A6473">Periode
+<select style="min-width:170px;border:1px solid #CBD2DC;border-radius:10px;padding:0 10px;font-size:14px;color:#141B26;background:#FFFFFF"><option>Agu 2026 – Jul 2027</option><option>Jan – Des 2026</option><option>Jan – Des 2027</option></select></label>
+<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#5A6473">Cluster
+<select style="min-width:140px;border:1px solid #CBD2DC;border-radius:10px;padding:0 10px;font-size:14px;color:#141B26;background:#FFFFFF"><option>Semua cluster</option><option>Cluster</option><option>Ruko</option><option>Tanaka</option><option>Nayaka</option></select></label>
+<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#5A6473">Tipe rumah
+<select style="min-width:140px;border:1px solid #CBD2DC;border-radius:10px;padding:0 10px;font-size:14px;color:#141B26;background:#FFFFFF"><option>Semua tipe</option><option>Kanaya</option><option>Jenaya</option><option>Angeline</option><option>Darlene</option><option>Gwen</option></select></label>
+<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#5A6473">Tahap
+<select style="min-width:120px;border:1px solid #CBD2DC;border-radius:10px;padding:0 10px;font-size:14px;color:#141B26;background:#FFFFFF"><option>Semua tahap</option><option>Tahap 1</option><option>Tahap 2</option></select></label>
+<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#5A6473">Marketing / agent
+<select style="min-width:170px;border:1px solid #CBD2DC;border-radius:10px;padding:0 10px;font-size:14px;color:#141B26;background:#FFFFFF"><option>Semua</option><option>Inhouse</option><option>Team Ariyanti</option><option>Salesforce</option></select></label>
+<div style="flex-grow:1"></div>
+<button type="button" style="min-height:44px;border:1px solid #CBD2DC;background:#FFFFFF;border-radius:10px;padding:0 14px;font-size:14px;font-weight:600;color:#141B26;cursor:pointer">Reset filter</button>
+</div>
+
+<!-- Main grid -->
+<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
+
+<!-- Left column -->
+<div style="flex:999 1 640px;min-width:0;display:flex;flex-direction:column;gap:20px">
+
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px">
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;align-items:center">
+<div style="font-size:16px;font-weight:800">{{ chartTitle }}</div>
+<div style="display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:#5A6473;align-items:center">
+<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;background:#24467C;border-radius:2px"></span>UTJ aktual</span>
+<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;background:#E58A2B;border-radius:2px"></span>Akad aktual</span>
+<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;background:#C7D3E8;border:1.5px dashed #24467C;box-sizing:border-box;border-radius:2px"></span>Proyeksi</span>
+<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;background:#E3E8F0;border-radius:2px"></span>Rentang UTJ</span>
+<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;height:0;border-top:2.5px solid #2E8B6A"></span>Tren regresi (pembanding)</span>
+</div>
+</div>
+<div style="margin-top:8px;font-size:12px;color:#5A6473;line-height:1.5"><b style="color:#141B26">Metode proyeksi:</b> rata-rata 12 bulan terakhir (utama). Garis hijau adalah tren LinearRegression sebagai pembanding. Jika keduanya berjauhan, sistem memberi tanda bahwa arah penjualan mungkin berubah.</div>
+
+<div style="margin-top:18px;position:relative;height:240px;margin-left:34px">
+<sc-for list="{{ grid }}" as="g" hint-placeholder-count="5">
+<div style="{{ g.style }}"><span style="position:absolute;left:-34px;top:-8px;width:28px;text-align:right;font-size:11px;color:#5A6473;font-variant-numeric:tabular-nums">{{ g.label }}</span></div>
+</sc-for>
+<div style="position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:flex-end;gap:2px">
+<sc-for list="{{ cols }}" as="c" hint-placeholder-count="24">
+<div style="{{ c.colStyle }}">
+<div style="{{ c.rangeStyle }}"></div>
+<div style="{{ c.uStyle }}"></div>
+<div style="{{ c.aStyle }}"></div>
+<div style="{{ c.trendStyle }}"></div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="margin-left:34px;display:flex;gap:2px;margin-top:6px">
+<sc-for list="{{ cols }}" as="c" hint-placeholder-count="24">
+<div style="flex:1 1 0;min-width:0;text-align:center;font-size:10px;line-height:1.2;color:#5A6473">{{ c.label }}<div style="font-weight:700;color:#141B26;min-height:12px">{{ c.year }}</div></div>
+</sc-for>
+</div>
+</div>
+
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px">
+<div style="font-size:16px;font-weight:800;margin-bottom:12px">{{ tableTitle }}</div>
+<div style="overflow-x:auto">
+<table style="width:100%;min-width:560px;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums">
+<thead>
+<tr style="text-align:left;color:#5A6473;font-size:12px">
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">{{ colHead }}</th>
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">UTJ (rentang)</th>
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">Akad</th>
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">Penerimaan</th>
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">Catatan</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="6">
+<tr>
+<td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">{{ r.period }}</td>
+<td style="padding:10px;border-bottom:1px solid #EEF1F6">{{ r.utj }}</td>
+<td style="padding:10px;border-bottom:1px solid #EEF1F6">{{ r.akad }}</td>
+<td style="padding:10px;border-bottom:1px solid #EEF1F6">{{ r.rev }}</td>
+<td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473;font-size:13px">{{ r.note }}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</div>
+
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px">
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px"><div><div style="font-size:16px;font-weight:800">Funnel penjualan</div><div style="margin-top:2px;font-size:12px;color:#5A6473">Data aktual · semua UTJ sejak 2022</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:92px;flex:none;color:#141B26;font-weight:600">UTJ</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:100.0%;height:10px;background:#24467C;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">284</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:92px;flex:none;color:#141B26;font-weight:600">SPR &amp; PPJB</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:84.5%;height:10px;background:#3F63A0;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">240 · 84%</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:92px;flex:none;color:#141B26;font-weight:600">Akad</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:66.2%;height:10px;background:#E58A2B;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">188 · 66%</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:92px;flex:none;color:#141B26;font-weight:600">Batal</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:29.9%;height:10px;background:#8A93A1;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">85 · 30%</div></div><div style="font-size:12px;color:#5A6473">Persen dihitung dari jumlah UTJ. Sekitar 3 dari 10 UTJ berakhir batal.</div></div>
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px"><div><div style="font-size:16px;font-weight:800">Penjualan per tipe rumah</div><div style="margin-top:2px;font-size:12px;color:#5A6473">Data aktual · 6 tipe teratas, angka UTJ · akad</div></div><div style="display:flex;gap:14px;font-size:12px;color:#5A6473"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;background:#24467C;border-radius:2px"></span>UTJ</span><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;background:#E58A2B;border-radius:2px"></span>Akad</span></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:84px;flex:none;font-weight:600">Kanaya</div><div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="height:7px;background:#EEF1F6;border-radius:4px"><div style="width:100.0%;height:7px;background:#24467C;border-radius:4px"></div></div><div style="height:7px;background:#EEF1F6;border-radius:4px"><div style="width:67.7%;height:7px;background:#E58A2B;border-radius:4px"></div></div></div><div style="width:64px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">62 · 42</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:84px;flex:none;font-weight:600">Jenaya</div><div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="height:7px;background:#EEF1F6;border-radius:4px"><div style="width:93.5%;height:7px;background:#24467C;border-radius:4px"></div></div><div style="height:7px;background:#EEF1F6;border-radius:4px"><div style="width:69.4%;height:7px;background:#E58A2B;border-radius:4px"></div></div></div><div style="width:64px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">58 · 43</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:84px;flex:none;font-weight:600">Angeline</div><div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="height:7px;background:#EEF1F6;border-radius:4px"><div style="width:61.3%;height:7px;background:#24467C;border-radius:4px"></div></div><div style="height:7px;background:#EEF1F6;border-radius:4px"><div style="width:38.7%;height:7px;background:#E58A2B;border-radius:4px"></div></div></div><div style="width:64px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">38 · 24</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:84px;flex:none;font-weight:600">Darlene</div><div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="height:7px;background:#EEF1F6;border-radius:4px"><div style="width:53.2%;height:7px;background:#24467C;border-radius:4px"></div></div><div style="height:7px;background:#EEF1F6;border-radius:4px"><div style="width:35.5%;height:7px;background:#E58A2B;border-radius:4px"></div></div></div><div style="width:64px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">33 · 22</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:84px;flex:none;font-weight:600">Gwen</div><div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="height:7px;background:#EEF1F6;border-radius:4px"><div style="width:51.6%;height:7px;background:#24467C;border-radius:4px"></div></div><div style="height:7px;background:#EEF1F6;border-radius:4px"><div style="width:32.3%;height:7px;background:#E58A2B;border-radius:4px"></div></div></div><div style="width:64px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">32 · 20</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:84px;flex:none;font-weight:600">Ruko</div><div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:3px"><div style="height:7px;background:#EEF1F6;border-radius:4px"><div style="width:43.5%;height:7px;background:#24467C;border-radius:4px"></div></div><div style="height:7px;background:#EEF1F6;border-radius:4px"><div style="width:27.4%;height:7px;background:#E58A2B;border-radius:4px"></div></div></div><div style="width:64px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">27 · 17</div></div></div>
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px"><div><div style="font-size:16px;font-weight:800">Performa agent</div><div style="margin-top:2px;font-size:12px;color:#5A6473">Data aktual · lima agent dengan UTJ terbanyak</div></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums"><thead><tr style="color:#5A6473;font-size:12px;text-align:left"><th style="padding:6px;border-bottom:1px solid #E1E5EB;font-weight:700;">Agent</th><th style="padding:6px;border-bottom:1px solid #E1E5EB;font-weight:700;text-align:right">UTJ</th><th style="padding:6px;border-bottom:1px solid #E1E5EB;font-weight:700;text-align:right">Akad</th><th style="padding:6px;border-bottom:1px solid #E1E5EB;font-weight:700;text-align:right">Konversi</th></tr></thead><tbody><tr><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;font-weight:700">Inhouse</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">84</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">54</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right;font-weight:700">64%</td></tr><tr><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;font-weight:700">Team Ariyanti</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">37</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">34</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right;font-weight:700">92%</td></tr><tr><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;font-weight:700">BRCS</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">17</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">17</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right;font-weight:700">100%</td></tr><tr><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;font-weight:700">Staf</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">14</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">12</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right;font-weight:700">86%</td></tr><tr><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;font-weight:700">Capital21</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">8</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">7</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right;font-weight:700">88%</td></tr></tbody></table></div><div style="font-size:12px;color:#5A6473">Konversi = akad dibagi UTJ (UTJ yang masih berjalan ikut dihitung).</div></div>
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px"><div><div style="font-size:16px;font-weight:800">Sumber leads</div><div style="margin-top:2px;font-size:12px;color:#5A6473">Data aktual · Okt 2025 – Mei 2026</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:104px;flex:none;color:#141B26;font-weight:600">Instagram</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:100.0%;height:10px;background:#24467C;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">1.175</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:104px;flex:none;color:#141B26;font-weight:600">Facebook</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:93.7%;height:10px;background:#24467C;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">1.101</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:104px;flex:none;color:#141B26;font-weight:600">WhatsApp</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:38.8%;height:10px;background:#24467C;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">456</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:104px;flex:none;color:#141B26;font-weight:600">Iklan pribadi</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:32.4%;height:10px;background:#24467C;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">381</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:104px;flex:none;color:#141B26;font-weight:600">Iklan</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:18.4%;height:10px;background:#24467C;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">216</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:104px;flex:none;color:#141B26;font-weight:600">Meta Ads</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:6.2%;height:10px;background:#24467C;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">73</div></div><div style="font-size:12px;color:#5A6473">Dari leads yang berstatus: 678 prospect, 354 lost, 91 survey, 61 follow up, 22 closing.</div></div>
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px"><div><div style="font-size:16px;font-weight:800">Proses bank</div><div style="margin-top:2px;font-size:12px;color:#5A6473">Data aktual · 90 berkas, 50 approved, 19 reject</div></div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums"><thead><tr style="color:#5A6473;font-size:12px;text-align:left"><th style="padding:6px;border-bottom:1px solid #E1E5EB;font-weight:700;">Bank</th><th style="padding:6px;border-bottom:1px solid #E1E5EB;font-weight:700;text-align:right">Berkas</th><th style="padding:6px;border-bottom:1px solid #E1E5EB;font-weight:700;text-align:right">Approve</th><th style="padding:6px;border-bottom:1px solid #E1E5EB;font-weight:700;text-align:right">Durasi (hari)</th></tr></thead><tbody><tr><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;font-weight:700">BTN</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">23</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right;font-weight:700">65%</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">24,8</td></tr><tr><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;font-weight:700">BRI</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">26</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right;font-weight:700">42%</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">38,0</td></tr><tr><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;font-weight:700">BNI</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">14</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right;font-weight:700">57%</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">15,8</td></tr><tr><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;font-weight:700">Mandiri</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">13</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right;font-weight:700">46%</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">32,4</td></tr><tr><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;font-weight:700">BSN</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">10</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right;font-weight:700">70%</td><td style="padding:8px 6px;border-bottom:1px solid #EEF1F6;text-align:right">29,5</td></tr></tbody></table></div><div style="font-size:12px;color:#5A6473">BNI paling cepat, BRI paling lama dan paling sering reject.</div></div>
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px"><div><div style="font-size:16px;font-weight:800">Alasan batal</div><div style="margin-top:2px;font-size:12px;color:#5A6473">Data aktual · dari 32 batal yang tercatat alasannya</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:116px;flex:none;color:#141B26;font-weight:600">Batal sepihak</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:100.0%;height:10px;background:#8A93A1;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">16</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:116px;flex:none;color:#141B26;font-weight:600">Reject bank</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:68.8%;height:10px;background:#8A93A1;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">11</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:116px;flex:none;color:#141B26;font-weight:600">Tidak kooperatif</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:25.0%;height:10px;background:#8A93A1;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">4</div></div><div style="display:flex;align-items:center;gap:10px;font-size:13px"><div style="width:116px;flex:none;color:#141B26;font-weight:600">Pindah unit</div><div style="flex:1 1 0;min-width:0;height:10px;background:#EEF1F6;border-radius:5px"><div style="width:6.2%;height:10px;background:#8A93A1;border-radius:5px"></div></div><div style="width:78px;flex:none;text-align:right;font-variant-numeric:tabular-nums;font-weight:700">1</div></div><div style="font-size:12px;color:#5A6473">Alasan baru tercatat untuk sebagian batal. Melengkapinya akan mempertajam proyeksi akad.</div></div>
+</div>
+</div>
+
+<!-- Right column -->
+<div style="flex:1 1 320px;max-width:420px;min-width:0;display:flex;flex-direction:column;gap:20px">
+
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px">
+<div style="font-size:16px;font-weight:800">Mau coba skenario?</div>
+<div style="font-size:13px;color:#5A6473">Angka di halaman ini adalah proyeksi dasar dan tidak berubah. Untuk melihat dampak order bangun, harga, promo, dan variabel lain, buka menu Simulasi.</div>
+<a class="btnpdf" href="Simulasi.dc.html" style="background:#24467C;color:#FFFFFF">Buka Simulasi skenario</a>
+</div>
+
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px">
+<div style="font-size:16px;font-weight:800">Unduh laporan analisis</div>
+<div style="font-size:13px;color:#5A6473">Laporan lengkap seperti laporan keuangan, dengan pembahasan bahasa awam. Mengikuti filter yang sedang aktif.</div>
+<a class="btnpdf" href="Laporan.dc.html" style="background:#24467C;color:#FFFFFF">PDF Bulanan · Agu 2026</a>
+<a class="btnpdf" href="Laporan.dc.html" style="background:#FFFFFF;color:#24467C;border:1.5px solid #24467C">PDF Tahunan · 2026</a>
+</div>
+
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px">
+<div style="font-size: 16px; font-weight: 800; text-decoration-line: underline">Pipeline berjalan</div>
+<div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#5A6473">UTJ belum akad/batal</span><span style="font-weight:700">16 unit</span></div>
+<div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#5A6473">Akad kumulatif</span><span style="font-weight:700">188 unit</span></div>
+<div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#5A6473">Batal kumulatif</span><span style="font-weight:700">85 unit</span></div>
+<div style="font-size:12px;color:#5A6473">Akad diproyeksikan dari umur tiap UTJ dan peluang akad/batalnya.</div>
+</div>
+
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px">
+<div style="font-size:16px;font-weight:800">Konteks makro · Apr 2026</div>
+<div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#5A6473">BI Rate</span><span style="font-weight:700">4,75%</span></div>
+<div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#5A6473">IHSG</span><span style="font-weight:700">6.957</span></div>
+<div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#5A6473">Emas</span><span style="font-weight:700">US$ 4.724 / oz</span></div>
+<div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#5A6473">Inflasi</span><span style="font-weight:700">2,42%</span></div>
+<div style="font-size:12px;color:#5A6473">Dipakai sebagai konteks narasi laporan; belum masuk hitungan proyeksi.</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1560}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { mode: 'bulanan', units: 0, start: 1, harga: 0, promo: 0, leads: 0, event: 0, batal: 0, bank: 0, birate: 0, ihsg: 0, emas: 0, inflasi: 0 };
+  }
+  renderVals() {
+    const st = this.state;
+    const MON = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    const fmt1 = (x) => (Math.round(x * 10) / 10).toFixed(1).replace('.', ',');
+    const sgn = (x, u) => (x > 0 ? '+' : (x < 0 ? '−' : '')) + String(Math.abs(x)).replace('.', ',') + u;
+    const PRICE = 0.762;
+    const n = st.units;
+    const totalU = Math.round(n * 0.55);
+    const totalA = Math.round(n * 0.4);
+    const ready = 14 + st.start + 5;
+
+    // pengaruh variabel (asumsi ilustrasi)
+    const eff = -0.008 * st.harga + 0.02 * st.promo + 0.005 * st.leads + 0.03 * st.event
+      - 0.0004 * st.birate + 0.0015 * st.ihsg + 0.001 * st.emas - 0.03 * st.inflasi;
+    const mU = Math.max(0.2, 1 + eff);
+    const mA = mU * Math.max(0.2, 1 - 0.015 * st.batal - 0.003 * st.bank);
+
+    const actU = [7,4,4,8,12,9,5,3,11,11,1,10];
+    const actA = [2,2,4,4,8,6,4,6,6,3,6,6];
+    const fcU = [7,7,8,7,7,6,7,8,7,7,7,8];
+    const fcA = [6,6,5,5,5,4,5,5,5,5,5,5];
+
+    const eU = new Array(24).fill(0);
+    const eA = new Array(24).fill(0);
+    for (let k = 0; k < 6; k++) {
+      if (ready + k < 24) eU[ready + k] += totalU / 6;
+      if (ready + k + 1 < 24) eA[ready + k + 1] += totalA / 6;
+    }
+
+    const monthly = [];
+    for (let i = 0; i < 24; i++) {
+      const mi = (7 + i) % 12;
+      const yr = 2025 + Math.floor((7 + i) / 12);
+      const isF = i >= 12;
+      const base = isF ? fcU[i - 12] * mU : actU[i];
+      const baseA = isF ? fcA[i - 12] * mA : actA[i];
+      const spread = isF ? Math.round(3 + (i - 12) * 0.35) : 0;
+      monthly.push({
+        label: MON[mi], year: (mi === 0 || i === 0) ? String(yr) : '',
+        u: base + (isF ? eU[i] : 0), a: baseA + (isF ? eA[i] : 0),
+        isF, spread, first: i === 12, name: MON[mi] + ' ' + yr, idx: i
+      });
+    }
+    const yU = [53,53,49,79,85,88,90];
+    const yA = [12,60,34,45,62,66,70];
+    const ySp = [0,0,0,0,8,14,18];
+    const yearly = [];
+    for (let k = 0; k < 7; k++) {
+      const yr = 2022 + k;
+      const isF = yr >= 2026;
+      yearly.push({
+        label: String(yr), year: yr === 2026 ? 'proy.' : '',
+        u: (isF ? yU[k] * mU : yU[k]) + (yr === 2027 ? totalU : 0),
+        a: (isF ? yA[k] * mA : yA[k]) + (yr === 2027 ? totalA : 0),
+        isF, spread: ySp[k], first: yr === 2026, name: String(yr), idx: k
+      });
+    }
+    const isM = st.mode === 'bulanan';
+    const data = isM ? monthly : yearly;
+    const maxY = isM ? 16 : 100;
+    const H = 240;
+    const barW = isM ? 'width:36%;max-width:14px;' : 'width:34%;max-width:30px;';
+
+    // tren regresi linear (ilustrasi): garis lurus dari UTJ aktual 12 bulan, diteruskan ke depan
+    const nA = actU.length, mx = (nA - 1) / 2, my = actU.reduce((p, q) => p + q, 0) / nA;
+    let sxy = 0, sxx = 0;
+    actU.forEach((y, x) => { sxy += (x - mx) * (y - my); sxx += (x - mx) * (x - mx); });
+    const slope = sxy / sxx, icpt = my - slope * mx;
+    const trend = (i) => icpt + slope * i;
+
+    const cols = data.map((d) => {
+      const hu = Math.min(d.u, maxY) / maxY * H;
+      const ha = Math.min(d.a, maxY) / maxY * H;
+      const lo = Math.max(0, d.u - d.spread);
+      const hi = Math.min(maxY, d.u + d.spread);
+      const colStyle = 'flex:1 1 0;min-width:0;height:100%;position:relative;display:flex;align-items:flex-end;justify-content:center;gap:2px;' +
+        (d.first ? 'border-left:1.5px dashed #5A6473;' : '');
+      const rangeStyle = d.isF
+        ? 'position:absolute;left:1px;right:1px;bottom:' + ((lo / maxY) * H) + 'px;height:' + (Math.max(0, hi - lo) / maxY * H) + 'px;background:#E3E8F0;border-radius:3px;'
+        : 'display:none;';
+      const uStyle = 'position:relative;' + barW + 'height:' + hu + 'px;border-radius:2px 2px 0 0;box-sizing:border-box;' +
+        (d.isF ? 'background:#C7D3E8;border:1.5px dashed #24467C;border-bottom:0;' : 'background:#24467C;');
+      const aStyle = 'position:relative;' + barW + 'height:' + ha + 'px;border-radius:2px 2px 0 0;box-sizing:border-box;' +
+        (d.isF ? 'background:#F7D9B8;border:1.5px dashed #B8620F;border-bottom:0;' : 'background:#E58A2B;');
+      const tv = isM ? trend(d.idx) : null;
+      const trendStyle = (tv === null) ? 'display:none;' :
+        'position:absolute;left:0;right:0;bottom:' + (Math.min(Math.max(tv, 0), maxY) / maxY * H) + 'px;height:0;border-top:2.5px solid #2E8B6A;z-index:2;';
+      return { colStyle, rangeStyle, uStyle, aStyle, trendStyle, label: d.label, year: d.year };
+    });
+
+    const steps = isM ? [0,4,8,12,16] : [0,25,50,75,100];
+    const grid = steps.map((v) => ({
+      style: 'position:absolute;left:0;right:0;bottom:' + ((v / maxY) * H) + 'px;border-top:1px solid #EDF0F4;height:0;',
+      label: String(v)
+    }));
+
+    const f = monthly.slice(12);
+    const sumU = f.reduce((s, d) => s + d.u, 0);
+    const sumA = f.reduce((s, d) => s + d.a, 0);
+    const kU = Math.round(sumU), kA = Math.round(sumA);
+    const revNow = sumA * PRICE, revBase = 61 * PRICE;
+    const dlt = (x) => (x > 0 ? '+' : (x < 0 ? '−' : '±')) + Math.abs(x);
+
+    let rows;
+    if (isM) {
+      rows = f.slice(0, 6).map((d) => {
+        const lo = Math.max(0, Math.round(d.u - d.spread));
+        const hi = Math.round(d.u + d.spread);
+        let note = '';
+        if (d.idx === 12) note = 'Berdasar UTJ yang sedang berjalan';
+        if (n > 0 && d.idx === ready) note = 'Unit order bangun mulai siap dijual';
+        return { period: d.name, utj: Math.round(d.u) + ' (' + lo + '–' + hi + ')', akad: String(Math.round(d.a)),
+          rev: 'Rp ' + fmt1(d.a * PRICE) + ' M', note };
+      });
+    } else {
+      rows = yearly.slice(4).map((d) => ({
+        period: d.name, utj: Math.round(d.u) + ' (' + Math.round(d.u - d.spread) + '–' + Math.round(d.u + d.spread) + ')',
+        akad: String(Math.round(d.a)), rev: 'Rp ' + fmt1(d.a * PRICE) + ' M',
+        note: d.name === '2026' ? 'Jan–Jul aktual, Agu–Des proyeksi' : (d.name === '2027' && n > 0 ? 'Termasuk skenario order bangun' : '')
+      }));
+    }
+
+    const readyIdx = ready - 12;
+    const readyNames = ['Agu 2026','Sep 2026','Okt 2026','Nov 2026','Des 2026','Jan 2027','Feb 2027','Mar 2027','Apr 2027','Mei 2027','Jun 2027','Jul 2027'];
+    const on = 'border:0;cursor:pointer;min-height:40px;padding:0 18px;border-radius:9px;font-size:14px;font-weight:700;background:#FFFFFF;color:#141B26;box-shadow:0 1px 2px rgba(20,27,38,0.12);';
+    const off = 'border:0;cursor:pointer;min-height:40px;padding:0 18px;border-radius:9px;font-size:14px;font-weight:600;background:transparent;color:#5A6473;';
+
+    const mk = (key) => (e) => this.setState({ [key]: parseFloat(e.target.value) || 0 });
+    const lever = (key, label, min, max, step, unit) => ({
+      key, label, min, max, step, value: st[key], display: sgn(st[key], unit), onChange: mk(key)
+    });
+    const badgeBase = 'font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px;';
+    const B = {
+      sedang: { badge: 'Data sedang', badgeStyle: badgeBase + 'color:#7A4A00;background:#FCEBD2;' },
+      terbatas: { badge: 'Data terbatas', badgeStyle: badgeBase + 'color:#7A4A00;background:#FCEBD2;' },
+      kuat: { badge: 'Data kuat', badgeStyle: badgeBase + 'color:#176B3A;background:#E3F3E9;' },
+      lemah: { badge: 'Bukti lemah', badgeStyle: badgeBase + 'color:#8F1F23;background:#FBE4E4;' }
+    };
+    const groups = [
+      Object.assign({ title: 'Harga & promo', note: 'Dari histori pricelist dan kode promo per bulan.',
+        levers: [lever('harga', 'Perubahan harga', -10, 10, 1, '%'), lever('promo', 'Nilai promo (dari harga)', 0, 6, 1, '%')] }, B.sedang),
+      Object.assign({ title: 'Marketing', note: 'Data leads baru Okt 2025–Mei 2026 dan event mulai 2025, jadi pengaruhnya masih kasar.',
+        levers: [lever('leads', 'Perubahan jumlah leads', -30, 50, 5, '%'), lever('event', 'Tambahan event per bulan', 0, 6, 1, ' event')] }, B.terbatas),
+      Object.assign({ title: 'Pipeline & bank', note: 'Dari umur UTJ, peluang akad dan batal, serta durasi proses bank.',
+        levers: [lever('batal', 'Tingkat batal', -10, 10, 1, ' poin'), lever('bank', 'Lama proses bank', -15, 15, 5, ' hari')] }, B.kuat),
+      Object.assign({ title: 'Kondisi ekonomi', note: 'Korelasi bulanan dengan penjualan hanya sekitar 0,2, jadi anggap sebagai gambaran arah, bukan angka pasti.',
+        levers: [lever('birate', 'BI Rate', -100, 100, 25, ' bps'), lever('ihsg', 'IHSG', -20, 20, 5, '%'), lever('emas', 'Harga emas', -20, 20, 5, '%'), lever('inflasi', 'Inflasi', -2, 2, 0.5, ' poin')] }, B.lemah)
+    ].map((g) => { const c = g.levers.filter((l) => st[l.key] !== 0).length; return Object.assign(g, { hasChanged: c > 0, changedText: c + ' diubah' }); });
+    const keys = ['units','harga','promo','leads','event','batal','bank','birate','ihsg','emas','inflasi'];
+    const activeCount = keys.filter((k) => st[k] !== 0).length;
+
+    return {
+      units: n,
+      suplaiChanged: n > 0,
+      startStr: String(st.start),
+      onUnits: (e) => this.setState({ units: parseInt(e.target.value, 10) || 0 }),
+      onStart: (e) => this.setState({ start: parseInt(e.target.value, 10) || 0 }),
+      setBulanan: () => this.setState({ mode: 'bulanan' }),
+      setTahunan: () => this.setState({ mode: 'tahunan' }),
+      resetAll: () => this.setState({ units: 0, start: 1, harga: 0, promo: 0, leads: 0, event: 0, batal: 0, bank: 0, birate: 0, ihsg: 0, emas: 0, inflasi: 0 }),
+      btnBulanan: isM ? on : off,
+      btnTahunan: isM ? off : on,
+      chartTitle: isM ? 'UTJ dan akad per bulan · aktual vs proyeksi' : 'UTJ dan akad per tahun · aktual vs proyeksi',
+      tableTitle: isM ? 'Rincian proyeksi 6 bulan pertama' : 'Rincian proyeksi per tahun',
+      colHead: isM ? 'Bulan' : 'Tahun',
+      cols, grid, rows, groups,
+      readyLabel: n > 0 ? (readyNames[readyIdx] || 'Jul 2027') : '-',
+      resU: String(kU), resUD: dlt(kU - 86),
+      resA: String(kA), resAD: dlt(kA - 61),
+      resR: fmt1(revNow), resRD: (revNow - revBase >= 0 ? '+' : '−') + fmt1(Math.abs(revNow - revBase)) + ' M',
+      activeCount: String(activeCount)
+    };
+  }
+}
+</script>
+</body>
+</html>

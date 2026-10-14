@@ -1,0 +1,197 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Data.dc.html": {
+      "expand": "fill",
+      "h": 780,
+      "title": "4 · Data & Integrasi",
+      "w": 1100,
+      "x": 0,
+      "y": 1680
+    },
+    "Laporan.dc.html": {
+      "h": 1123,
+      "paper": "a4",
+      "title": "3 · Laporan hlm 1 (sampul)",
+      "w": 794,
+      "x": 1440,
+      "y": 0
+    },
+    "Laporan02.dc.html": {
+      "h": 1123,
+      "paper": "a4",
+      "title": "3 · Laporan hlm 2",
+      "w": 794,
+      "x": 2314,
+      "y": 0
+    },
+    "Laporan03.dc.html": {
+      "h": 1123,
+      "paper": "a4",
+      "title": "3 · Laporan hlm 3",
+      "w": 794,
+      "x": 3188,
+      "y": 0
+    },
+    "Laporan04.dc.html": {
+      "h": 1123,
+      "paper": "a4",
+      "title": "3 · Laporan hlm 4",
+      "w": 794,
+      "x": 4062,
+      "y": 0
+    },
+    "Laporan05.dc.html": {
+      "h": 1123,
+      "paper": "a4",
+      "title": "3 · Laporan hlm 5",
+      "w": 794,
+      "x": 4936,
+      "y": 0
+    },
+    "Laporan06.dc.html": {
+      "h": 1123,
+      "paper": "a4",
+      "title": "3 · Laporan hlm 6",
+      "w": 794,
+      "x": 5810,
+      "y": 0
+    },
+    "Laporan07.dc.html": {
+      "h": 1123,
+      "paper": "a4",
+      "title": "3 · Laporan hlm 7",
+      "w": 794,
+      "x": 1440,
+      "y": 1243
+    },
+    "Laporan08.dc.html": {
+      "h": 1123,
+      "paper": "a4",
+      "title": "3 · Laporan hlm 8",
+      "w": 794,
+      "x": 2314,
+      "y": 1243
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 1560,
+      "is_interactive": true,
+      "title": "1 · Dashboard Proyeksi (tetap)",
+      "w": 1360,
+      "x": 0,
+      "y": 0
+    },
+    "Laporan09.dc.html": {
+      "h": 1123,
+      "paper": "a4",
+      "title": "3 · Laporan hlm 9",
+      "w": 794,
+      "x": 3188,
+      "y": 1243
+    },
+    "Laporan10.dc.html": {
+      "h": 1123,
+      "paper": "a4",
+      "title": "3 · Laporan hlm 10",
+      "w": 794,
+      "x": 4062,
+      "y": 1243
+    },
+    "Simulasi.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "is_interactive": true,
+      "title": "2 · Simulasi Skenario",
+      "w": 1360,
+      "x": 0,
+      "y": 2640
+    },
+    "Laporan11.dc.html": {
+      "h": 1123,
+      "paper": "a4",
+      "title": "3 · Laporan hlm 11",
+      "w": 794,
+      "x": 4936,
+      "y": 1243
+    },
+    "Laporan12.dc.html": {
+      "h": 1123,
+      "paper": "a4",
+      "title": "3 · Laporan hlm 12",
+      "w": 794,
+      "x": 5810,
+      "y": 1243
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-08T05:20:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "f1": {
+      "fill": "blue",
+      "maxH": 150,
+      "text": "DASHBOARD (layar 1)\nProyeksi dasar UTJ, akad, penerimaan · tetap, tidak berubah oleh skenario · toggle Bulanan/Tahunan · filter · grafik dengan rentang\nMetode: rata-rata 12 bulan (utama) + garis tren regresi (pembanding)",
+      "w": 420,
+      "x": 0,
+      "y": -200
+    },
+    "f3": {
+      "fill": "green",
+      "maxH": 150,
+      "text": "LAPORAN PDF (layar 3)\n12 halaman: sampul, ringkasan, kinerja, proyeksi UTJ, akad, funnel, tipe, agent, bank & ekonomi, efektivitas marketing, tindakan marketing, rekomendasi · narasi Claude, angka dari mesin hitung",
+      "w": 420,
+      "x": 480,
+      "y": -200
+    },
+    "f4": {
+      "fill": "purple",
+      "maxH": 150,
+      "text": "DATA & INTEGRASI (layar 4)\nSinkron Google Sheets · sumber makro (IHSG, emas, BI Rate, inflasi, BPS) · status & kualitas data",
+      "w": 420,
+      "x": 960,
+      "y": -200
+    },
+    "judul": {
+      "kind": "title1",
+      "maxW": 4400,
+      "text": "Mapping fitur · Tools Forecasting Penjualan",
+      "w": 240,
+      "x": 0,
+      "y": -330
+    },
+    "f2": {
+      "fill": "yellow",
+      "maxH": 150,
+      "text": "SIMULASI SKENARIO (layar 2)\nMenu sendiri di sebelah Dashboard · what-if semua variabel (suplai/order bangun, harga, promo, marketing, pipeline, ekonomi) · grafik hasil vs proyeksi dasar",
+      "w": 420,
+      "x": 0,
+      "y": 2440
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Simulasi.dc.html",
+    "Laporan.dc.html",
+    "Laporan02.dc.html",
+    "Laporan03.dc.html",
+    "Laporan04.dc.html",
+    "Laporan05.dc.html",
+    "Laporan06.dc.html",
+    "Laporan07.dc.html",
+    "Laporan08.dc.html",
+    "Laporan09.dc.html",
+    "Laporan10.dc.html",
+    "Laporan11.dc.html",
+    "Laporan12.dc.html",
+    "Data.dc.html"
+  ],
+  "pages": [],
+  "title": "Mockup Dashboard Forecasting Penjualan"
+}

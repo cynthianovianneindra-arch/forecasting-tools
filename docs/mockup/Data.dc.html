@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Data dan Integrasi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F5F8}
+a{color:#1D4F91}
+a:hover{color:#10335F}
+button{font-family:inherit}
+.navlink{text-decoration:none;color:#5A6473;font-size:14px;font-weight:600;padding:8px 12px;border-radius:8px}
+.navlink:hover{background:#EEF1F6;color:#141B26}
+.navon{background:#E6ECF6;color:#141B26}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border-radius:10px;font-weight:700;font-size:14px;box-sizing:border-box;cursor:pointer;border:0}
+.btn:hover{filter:brightness(0.94)}
+</style>
+</helmet>
+<div style="min-height:100%;background:#F3F5F8;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#141B26">
+
+<div style="background:#FFFFFF;border-bottom:1px solid #E1E5EB">
+<div style="max-width:1100px;margin:0 auto;padding:10px 24px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px">
+<div style="display:flex;align-items:center;gap:10px">
+<div style="width:32px;height:32px;border-radius:8px;background:#24467C;display:flex;align-items:flex-end;justify-content:center;gap:3px;padding:7px 6px;box-sizing:border-box">
+<div style="width:4px;height:7px;background:#FFFFFF;border-radius:1px"></div>
+<div style="width:4px;height:12px;background:#FFFFFF;border-radius:1px"></div>
+<div style="width:4px;height:17px;background:#F2A65A;border-radius:1px"></div>
+</div>
+<div style="font-weight:800;font-size:16px;letter-spacing:-0.01em">Forecast Penjualan</div>
+</div>
+<nav style="display:flex;flex-wrap:wrap;gap:4px;flex-grow:1">
+<a class="navlink" href="Main.dc.html">Dashboard</a>
+<a class="navlink" href="Simulasi.dc.html">Simulasi</a>
+<a class="navlink" href="Laporan.dc.html">Laporan PDF</a>
+<a class="navlink navon" href="Data.dc.html">Data &amp; Integrasi</a>
+</nav>
+</div>
+</div>
+
+<div style="max-width:1100px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:20px;box-sizing:border-box">
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px">
+<div>
+<h1 style="margin:0;font-size:28px;font-weight:800;letter-spacing:-0.02em">Data &amp; Integrasi</h1>
+<div style="margin-top:4px;font-size:14px;color:#5A6473;max-width:640px">Sumber data yang dipakai proyeksi: Google Sheets internal dan indikator ekonomi dari sumber resmi.</div>
+</div>
+<button type="button" class="btn" style="background:#24467C;color:#FFFFFF">Sinkron semua sekarang</button>
+</div>
+
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px">
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin-bottom:12px">
+<div style="font-size:16px;font-weight:800">Data internal · Google Sheets</div>
+<div style="font-size:13px;color:#5A6473">Sinkron terakhir 8 Okt 2026, 07.00 WIB · otomatis setiap hari</div>
+</div>
+<div style="overflow-x:auto">
+<table style="width:100%;min-width:640px;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums">
+<thead>
+<tr style="text-align:left;color:#5A6473;font-size:12px">
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">Sheet</th>
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">Dipakai untuk</th>
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">Baris</th>
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">PENJUALAN</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">UTJ, SPR, pencairan, akad, batal, net price</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">289</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#176B3A;background:#E3F3E9;border-radius:999px;padding:4px 10px">✓ Tersambung</span></td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">LEADS</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">Leads per sumber dan status</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">±3.900</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#7A4A00;background:#FCEBD2;border-radius:999px;padding:4px 10px">! Hanya Okt 2025–Mei 2026</span></td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">PERFORMA MKT</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">Konversi per marketing dan agent</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">195</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#176B3A;background:#E3F3E9;border-radius:999px;padding:4px 10px">✓ Tersambung</span></td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">EVENT MARKETING</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">Biaya dan jadwal event</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">±500</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#7A4A00;background:#FCEBD2;border-radius:999px;padding:4px 10px">! Mulai 2025</span></td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">BANK AKAD</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">Durasi dan hasil proses bank</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">17</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#8F1F23;background:#FBE4E4;border-radius:999px;padding:4px 10px">✕ Ada error #VALUE!</span></td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">PROGRES BANGUN</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">Durasi bangun per tipe</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">±9.600</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#176B3A;background:#E3F3E9;border-radius:999px;padding:4px 10px">✓ Tersambung</span></td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">UNIT · PRICELIST</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">Stok unit, status, histori harga</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">±320 · ±570</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#176B3A;background:#E3F3E9;border-radius:999px;padding:4px 10px">✓ Tersambung</span></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px">
+<div style="font-size:16px;font-weight:800;margin-bottom:12px">Indikator ekonomi · diambil otomatis</div>
+<div style="overflow-x:auto">
+<table style="width:100%;min-width:640px;border-collapse:collapse;font-size:14px">
+<thead>
+<tr style="text-align:left;color:#5A6473;font-size:12px">
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">Indikator</th>
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">Sumber</th>
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">Frekuensi</th>
+<th style="padding:8px 10px;border-bottom:1px solid #E1E5EB;font-weight:700">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">IHSG</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">[API data pasar]</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">Harian</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#176B3A;background:#E3F3E9;border-radius:999px;padding:4px 10px">✓ Terbaru</span></td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">Emas (USD/oz)</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">[API data pasar]</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">Harian</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#176B3A;background:#E3F3E9;border-radius:999px;padding:4px 10px">✓ Terbaru</span></td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">BI Rate</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">Situs Bank Indonesia</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">Bulanan</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#176B3A;background:#E3F3E9;border-radius:999px;padding:4px 10px">✓ Terbaru</span></td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">Inflasi</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">BPS Web API</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">Bulanan</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#176B3A;background:#E3F3E9;border-radius:999px;padding:4px 10px">✓ Terbaru</span></td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">Pernikahan, kelahiran, UMR</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">BPS Web API</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">Tahunan</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#7A4A00;background:#FCEBD2;border-radius:999px;padding:4px 10px">! Data 2025</span></td></tr>
+<tr><td style="padding:10px;border-bottom:1px solid #EEF1F6;font-weight:700">Indeks harga properti</td><td style="padding:10px;border-bottom:1px solid #EEF1F6;color:#5A6473">[Bank Indonesia]</td><td style="padding:10px;border-bottom:1px solid #EEF1F6">Kuartalan</td><td style="padding:10px;border-bottom:1px solid #EEF1F6"><span style="font-size:12px;font-weight:700;color:#7A4A00;background:#FCEBD2;border-radius:999px;padding:4px 10px">! Sumber perlu dicek</span></td></tr>
+</tbody>
+</table>
+</div>
+<div style="margin-top:10px;font-size:12px;color:#5A6473">Jika sebuah sumber gagal diambil, proyeksi tetap jalan dengan data terakhir dan dashboard menampilkan peringatan.</div>
+</div>
+
+<div style="background:#FFFFFF;border:1px solid #E1E5EB;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px">
+<div style="font-size:16px;font-weight:800">Pengaturan perhitungan</div>
+<label style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:14px;min-height:44px">
+<span style="font-weight:700;min-width:200px">Batas tutup bulan</span>
+<select style="min-height:44px;border:1px solid #CBD2DC;border-radius:10px;padding:0 10px;font-size:14px;color:#141B26;background:#FFFFFF;font-family:inherit"><option>Tanggal 1 – akhir bulan (kalender)</option><option>Mengikuti Excel (sekitar tgl 29 – 28)</option></select>
+</label>
+<div style="font-size:12px;color:#5A6473">Rumus di Excel memakai jendela bulan yang bergeser sekitar 2 hari. Pilih agar angka tools sama dengan laporan lama kamu.</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":780}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
