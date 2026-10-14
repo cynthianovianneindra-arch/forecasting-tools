@@ -8,6 +8,7 @@ import { cards } from "@/lib/insights";
 
 const th = (...c: string[]) => <thead><tr>{c.map((x, i) => <th key={x} className={i ? "n" : ""}>{x}</th>)}</tr></thead>;
 
+export const dynamic = "force-dynamic";
 export default async function Page({ searchParams }: { searchParams: Promise<{ jenis?: string }> }) {
   const { jenis = "bulanan" } = await searchParams;
   const d = await getData();

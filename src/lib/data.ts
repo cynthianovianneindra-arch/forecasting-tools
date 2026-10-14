@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { loadMonthly, reconstructTxns } from "./demo";
 import { forecast, monthlySeries, Txn } from "./forecast";
+import { latestDataset, storeConfigured } from "./store";
 import { driveConfigured, fetchFromDrive } from "./drive";
 import { importPenjualan, ImportReport } from "./importExcel";
 import { applyFilter, cards, Filter, options } from "./insights";
@@ -11,11 +12,24 @@ export const EXCEL_PATH = path.join(process.cwd(), "data", "FORECASTING_UPDATE.x
 
 export async function getData(mode: "kalender" | "excel" = "kalender", filter: Filter = {}) {
   let txns: Txn[], monthly: { bulan: string; utj: number; akad: number }[];
-  let source: "excel" | "drive" | "demo" = "demo";
+  let source: "upload" | "excel" | "drive" | "demo" = "demo";
+  let uploadInfo: { filename: string; uploaded_at: string } | null = null;
+  let storeError: string | null = null;
   let driveInfo: { name: string; modifiedTime: string; fetchedAt: string } | null = null;
   let driveError: string | null = null;
   let report: ImportReport | null = null;
-  if (driveConfigured()) {
+  if (storeConfigured()) {
+    try {
+      const ds = await latestDataset();
+      if (ds) {
+        txns = ds.txns;
+        report = { txns, rows: ds.rows, utj: ds.utj, akad: ds.akad, batal: ds.batal, warnings: ds.warnings };
+        uploadInfo = { filename: ds.filename, uploaded_at: ds.uploaded_at };
+        source = "upload";
+      }
+    } catch (e) { storeError = e instanceof Error ? e.message : String(e); }
+  }
+  if (!report && driveConfigured()) {
     try {
       const f = await fetchFromDrive();
       report = await importPenjualan(f.buffer, mode);
@@ -48,6 +62,6 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
   const open = ft.filter((t) => !t.akad && !t.batal).length;
   const kartu = source === "demo" ? null : cards(applyFilter(txns, filter, false));
   const filtered = ft.length !== txns.length;
-  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, opts, kartu, filtered, nTxn: ft.length, txns };
+  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns };
 }
 export { f1, labelBulan, labelPanjang } from "./format";

@@ -33,3 +33,8 @@ Prioritas sumber: Drive, lalu `data/FORECASTING_UPDATE.xlsx`, lalu data demo. Be
 - Isi `ANTHROPIC_API_KEY` (Vercel env). Halaman Laporan memanggil Claude sekali per set angka (cache 1 jam); angka di teks divalidasi terhadap JSON, jika gagal memakai teks templat.
 - `CLAUDE_DAILY_LIMIT` (default 30 panggilan/hari, UTC) membatasi total panggilan; hitungan di memori instance, jadi pada serverless bisa ter-reset. Pasang juga batas pengeluaran bulanan di console.anthropic.com sebagai batas keras.
 - `/api/narasi` butuh `NARASI_TOKEN` (header `Authorization: Bearer ...`), maksimum 20.000 karakter masukan; tanpa token endpoint nonaktif.
+
+## Isi data lewat dashboard (unggah Excel)
+Menu Data & Integrasi punya form unggah `.xlsx`. File diparse di server (sheet PENJUALAN), lalu transaksi anonim disimpan di tabel Supabase `datasets` (RLS aktif tanpa policy; hanya service role yang bisa akses). Dashboard, Simulasi, dan Laporan memakai unggahan terbaru.
+Env yang dibutuhkan: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API; jangan dibagikan), `UPLOAD_TOKEN` (kata sandi unggah buatanmu). Batas file 4 MB (batas body fungsi Vercel).
+Urutan sumber data: unggahan Supabase, Drive, `data/*.xlsx`, data demo.
