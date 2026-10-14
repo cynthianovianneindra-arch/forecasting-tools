@@ -1,7 +1,9 @@
 node_modules
 .next
-data/
+# hanya folder data di akar (file Excel sumber); jangan mengabaikan src/app/data
+/data/
 *.xlsx
 .env*
+!.env.example
 next-env.d.ts
 *.tsbuildinfo
