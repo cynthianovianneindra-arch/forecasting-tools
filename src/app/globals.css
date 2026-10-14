@@ -46,7 +46,7 @@ label.sl{display:block;font-size:13px;margin:10px 0}label.sl input{width:100%;mi
 .rp-bar{display:block;width:44px;height:5px;border-radius:3px;background:linear-gradient(90deg,#536878,#8FA1AE);margin:10px 0 18px}
 .rp-foot{position:absolute;left:48px;right:48px;bottom:26px;font-size:10px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px}
 .rp h3{font-size:13px;font-weight:700;margin:18px 0 8px;color:var(--gold);text-transform:uppercase;letter-spacing:.04em}
-.rp table{font-size:12px}.rp th,.rp td{padding:6px 6px}
+.rp table{font-size:12px}.rp th,.rp td{padding:6px 6px}.rp table.compact th,.rp table.compact td{padding:4px 6px}
 .rp-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin:4px 0 8px}
 .rp-kpi{background:#F4F3F1;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:3px}
 .rp-kpi small{font-size:10.5px;color:var(--muted);font-weight:600}.rp-kpi b{white-space:nowrap;font-size:21px;font-weight:800;letter-spacing:-.02em;line-height:1.1}.rp-kpi span{font-size:10.5px;color:var(--muted)}

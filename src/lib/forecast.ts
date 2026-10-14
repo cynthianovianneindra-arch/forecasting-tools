@@ -131,7 +131,7 @@ export function pipelineAkadBatal(txns: Txn[], T: string, utjForecast: number[])
   }
   for (let j = 1; j <= h; j++) {
     let s = 1;
-    for (let k = 0; k <= h - j; k++) {
+    for (let k = 0; k <= h - j && k <= MAX_AGE; k++) {
       out[j + k - 1] += utjForecast[j - 1] * s * ha[k];
       outB[j + k - 1] += utjForecast[j - 1] * s * hb[k];
       s *= 1 - ha[k] - hb[k];
