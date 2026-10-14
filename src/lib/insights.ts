@@ -1,15 +1,15 @@
 import type { Txn } from "./forecast";
 
-export interface Filter { tipe?: string; agent?: string; marketing?: string; cluster?: string; tahap?: string; tahun?: string }
+export interface Filter { tipe?: string; agent?: string; marketing?: string; cluster?: string; tahap?: string; tahun?: string; bulan?: string }
 
 export function applyFilter(t: Txn[], f: Filter, forForecast: boolean): Txn[] {
   return t.filter((x) => (!f.tipe || x.tipe === f.tipe) && (!f.agent || x.agent === f.agent) && (!f.marketing || x.marketing === f.marketing) && (!f.cluster || x.cluster === f.cluster) && (!f.tahap || x.tahap === f.tahap)
-    && (forForecast || !f.tahun || x.utj.startsWith(f.tahun)));
+    && (forForecast || (f.bulan ? x.utj === f.bulan : !f.tahun || x.utj.startsWith(f.tahun))));
 }
 
 export function options(t: Txn[]) {
   const u = (k: "tipe" | "agent" | "marketing" | "cluster" | "tahap") => [...new Set(t.map((x) => x[k]).filter((v): v is string => !!v))].sort();
-  return { tipe: u("tipe"), agent: u("agent"), marketing: u("marketing"), cluster: u("cluster"), tahap: u("tahap"), tahun: [...new Set(t.map((x) => x.utj.slice(0, 4)))].sort() };
+  return { tipe: u("tipe"), agent: u("agent"), marketing: u("marketing"), cluster: u("cluster"), tahap: u("tahap"), tahun: [...new Set(t.map((x) => x.utj.slice(0, 4)))].sort(), bulan: [...new Set(t.map((x) => x.utj))].sort().reverse() };
 }
 
 const count = <T,>(items: T[], key: (x: T) => string | undefined) => {

@@ -1,5 +1,6 @@
 import { Nav, badge } from "@/components/Nav";
 import { getData } from "@/lib/data";
+import { ManualInput } from "@/components/ManualInput";
 import { ARTI_STATUS } from "@/lib/stock";
 import { listDatasets, storeConfigured } from "@/lib/store";
 
@@ -11,6 +12,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ o
   const total = d.monthly.reduce((s, m) => ({ u: s.u + m.utj, a: s.a + m.akad }), { u: 0, a: 0 });
   return (<><Nav active="/data" updated="Integrasi belum tersambung" /><main className="wrap stack"><h1>Data &amp; Integrasi</h1><p>{badge(d.source)}</p>
     {q.ok && <p className="ok">{q.ok}</p>}{q.err && <p className="err">{q.err}</p>}
+    {storeConfigured() && d.source !== "demo" && <ManualInput d={d} />}
     <div className="card"><h2>Isi data: unggah Excel</h2>
       <p className="muted">Unggah <b>FORECASTING UPDATE.xlsx</b> (sheet PENJUALAN). Hanya transaksi anonim yang disimpan (tanggal UTJ/akad/batal, tipe, agent, marketing, bank, harga); nama pembeli dan nomor telepon tidak dibaca. Data terbaru langsung dipakai Dashboard, Simulasi, dan Laporan.</p>
       {storeConfigured() ? (

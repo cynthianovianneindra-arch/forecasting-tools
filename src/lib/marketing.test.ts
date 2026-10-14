@@ -1,5 +1,5 @@
 import { it, expect } from "vitest";
-import { marketingInsights, pearson } from "./marketing";
+import { marketingInsights, pearson, filterMarketing } from "./marketing";
 const m = {
   leads: [
     { bulan: "2025-10", database: "OFFICE", asal: "IG", marketing: "A", status: "", n: 80, survey: 1 },
@@ -18,3 +18,8 @@ it("temuan deterministik", () => {
   expect(r.perBulan[2].biaya).toBe(50e6);
 });
 it("pearson", () => { expect(pearson([1, 2, 3], [2, 4, 6])).toBeCloseTo(1); expect(pearson([1, 2], [1, 2])).toBeNull(); });
+it("filter periode marketing", () => {
+  expect(filterMarketing(m, { bulan: "2025-11" }).leads).toHaveLength(1);
+  expect(filterMarketing(m, { tahun: "2025" }).events).toHaveLength(3);
+  expect(filterMarketing(m, {}).leads).toHaveLength(4);
+});

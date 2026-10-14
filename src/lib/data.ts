@@ -2,8 +2,9 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { loadMonthly, reconstructTxns } from "./demo";
 import { forecast, monthlySeries, Txn } from "./forecast";
-import { latestDataset, listMacroLive, LiveRowDb, storeConfigured } from "./store";
+import { latestDataset, listMacroLive, listMacroManual, LiveRowDb, MacroManualDb, storeConfigured } from "./store";
 import { mergeMacro } from "./macroLive";
+import { filterMarketing, marketingInsights } from "./marketing";
 import { driveConfigured, fetchFromDrive } from "./drive";
 import { importPenjualan, ImportReport } from "./importExcel";
 import { applyFilter, cards, Filter, options } from "./insights";
@@ -65,18 +66,23 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
   const open = ft.filter((t) => !t.akad && !t.batal).length;
   const kartu = source === "demo" ? null : cards(applyFilter(txns, filter, false));
   const filtered = ft.length !== txns.length;
+  const txPeriode = applyFilter(txns, filter, false);
+  const mk = report?.marketing && report.marketing.leads.length ? marketingInsights(filterMarketing(report.marketing, filter), txPeriode) : null;
   const stok = report?.units ? stockSummary(report.units.filter((u) => (!filter.cluster || u.cluster === filter.cluster) && (!filter.tahap || u.tahap === filter.tahap) && (!filter.tipe || u.tipe === filter.tipe))) : null;
   const stokHabis = stok ? stockoutMonth(f.rows.map((x) => x.utj), stok.open, 0, f.rows.map((x) => x.batal)) : null;
   const stokKurang = stok ? stockShortfall(f.rows.map((x) => x.utj), stok.open, f.rows.map((x) => x.batal)) : null;
   let live: LiveRowDb[] = [];
   try { live = await listMacroLive(); } catch { live = []; }
-  const macroGabung = report?.macro ? mergeMacro(report.macro, live) : null;
+  let manual: MacroManualDb[] = [];
+  try { manual = await listMacroManual(); } catch { manual = []; }
+  // urutan prioritas: input manual > data live > Excel
+  const macroGabung = report?.macro ? mergeMacro(mergeMacro(report.macro, live), manual) : null;
   const makro = macroGabung ? macroContext(macroGabung, utjMonthMap(txns)) : null;
   const liveStatus = (["ihsg", "emas", "inflasi", "birate"] as const).map((k) => {
     const rows = live.filter((x) => x.indikator === k);
     const last = rows[rows.length - 1];
     return { indikator: k, bulan: last?.bulan ?? null, nilai: last?.nilai ?? null, sumber: last?.sumber ?? null, diambil: rows.reduce((m, x) => (x.diambil > m ? x.diambil : m), "") || null };
   });
-  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null, stok, stokHabis, stokKurang, makro, units: report?.units ?? null, macroRows: macroGabung, liveStatus };
+  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null, stok, stokHabis, stokKurang, mk, makro, units: report?.units ?? null, macroRows: macroGabung, liveStatus, manualMacro: manual.slice(0, 10) };
 }
 export { f1, labelBulan, labelPanjang } from "./format";

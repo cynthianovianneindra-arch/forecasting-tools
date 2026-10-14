@@ -107,6 +107,7 @@ export function mergeMacro(excel: MacroRow[], live: { bulan: string; indikator: 
     const r = m.get(l.bulan) ?? { bulan: l.bulan, emas: null, ihsg: null, inflasi: null, ihpr: null, birate: null };
     if (l.indikator === "ihsg") r.ihsg = l.nilai; else if (l.indikator === "emas") r.emas = l.nilai;
     else if (l.indikator === "inflasi") r.inflasi = l.nilai / 100; else if (l.indikator === "birate") r.birate = l.nilai;
+    else if (l.indikator === "ihpr") r.ihpr = l.nilai;
     m.set(l.bulan, r);
   }
   return [...m.values()].sort((a, b) => a.bulan.localeCompare(b.bulan));

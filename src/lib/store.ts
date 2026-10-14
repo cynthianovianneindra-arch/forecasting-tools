@@ -47,3 +47,25 @@ export async function upsertMacroLive(rows: { bulan: string; indikator: string; 
   });
   if (!r.ok) throw new Error(`Gagal menyimpan data ekonomi (${r.status})`);
 }
+
+export interface MacroManualDb { bulan: string; indikator: string; nilai: number; diinput: string }
+
+export async function listMacroManual(): Promise<MacroManualDb[]> {
+  if (!storeConfigured()) return [];
+  const r = await fetch(`${url()}/rest/v1/macro_manual?select=*&order=diinput.desc&limit=500`, { headers: headers(), cache: "no-store" });
+  return r.ok ? r.json() : [];
+}
+
+export async function upsertMacroManual(row: { bulan: string; indikator: string; nilai: number }): Promise<void> {
+  const r = await fetch(`${url()}/rest/v1/macro_manual?on_conflict=bulan,indikator`, {
+    method: "POST", headers: { ...headers(), prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ ...row, diinput: new Date().toISOString() }),
+  });
+  if (!r.ok) throw new Error(`Gagal menyimpan data ekonomi manual (${r.status})`);
+}
+
+/** Hapus satu snapshot dataset (dipakai untuk mengurungkan input manual terakhir). */
+export async function deleteDataset(id: number): Promise<void> {
+  const r = await fetch(`${url()}/rest/v1/datasets?id=eq.${id}`, { method: "DELETE", headers: { ...headers(), prefer: "return=minimal" } });
+  if (!r.ok) throw new Error(`Gagal menghapus snapshot (${r.status})`);
+}

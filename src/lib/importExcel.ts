@@ -83,7 +83,7 @@ export async function importPenjualan(input: string | Buffer | ArrayBuffer, mode
     const banks = BANK_COLS.map((c) => ({ bank: normName(row.getCell(c).value), hari: num(row.getCell(c + 3).value), status: text(row.getCell(c + 4).value).toUpperCase() })).filter((x) => x.bank);
     const unitId = normName(row.getCell(2).value);
     txns.push({
-      utj: u.m, akad: a.m, batal: b.m, ...(unitId ? { unitId } : {}),
+      utj: u.m, akad: a.m, batal: b.m, ...(unitId ? { unit: unitId } : {}),
       spr: hasValue(row.getCell(C.spr).value),
       cair: cellToMonth(row.getCell(C.cair).value).m !== null,
       tipe: text(row.getCell(C.tipe).value) || undefined,
@@ -102,12 +102,12 @@ export async function importPenjualan(input: string | Buffer | ArrayBuffer, mode
     const byId = new Map(units.map((x) => [x.unit, x]));
     let miss = 0;
     for (const t of txns) {
-      const id = (t as Txn & { unitId?: string }).unitId; delete (t as Txn & { unitId?: string }).unitId;
+      const id = t.unit;
       const un = id ? byId.get(id) : undefined;
       if (un) { t.cluster = un.cluster; t.tahap = un.tahap; if (!t.tipe) t.tipe = un.tipe; } else miss++;
     }
     if (miss) warnings.push(`${miss} UTJ tidak ditemukan di sheet UNIT (cluster/tahap kosong)`);
-  } else for (const t of txns) delete (t as Txn & { unitId?: string }).unitId;
+  }
   return { units, macro, marketing, txns, rows, utj: txns.length, akad: txns.filter((t) => t.akad).length, batal: txns.filter((t) => t.batal).length, warnings };
 }
 
