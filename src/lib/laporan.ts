@@ -54,12 +54,12 @@ export function rekomendasiDari(i: RingkasInput): Rekomendasi[] {
   if (stok && stok.kurang && stok.kurang > 0) {
     const laku = new Map(k.byType.map((t) => [t.tipe, t.akad]));
     const kandidat = stockByType(stok).filter((t) => t.belum > 0).sort((a, b) => (laku.get(b.tipe) ?? 0) - (laku.get(a.tipe) ?? 0)).slice(0, 3);
-    r.push({ prioritas: "Tinggi", tindakan: `Rencanakan bangun minimal ${nf(stok.kurang)} unit dari unit yang belum dibangun (Close)${kandidat.length ? `, mulai dari tipe ${kandidat.map((t) => `${t.tipe} (${nf(laku.get(t.tipe) ?? 0)} akad sejauh ini)`).join(", ")}` : ""}.`, alasan: `Stok siap jual ${nf(stok.open)} unit diperkirakan habis di bulan ke-${stok.habis}.` });
+    r.push({ prioritas: "Tinggi", tindakan: `Rencanakan **bangun minimal ${nf(stok.kurang)} unit** dari unit yang belum dibangun (Close)${kandidat.length ? `, mulai dari tipe ${kandidat.map((t) => `${t.tipe} (${nf(laku.get(t.tipe) ?? 0)} akad sejauh ini)`).join(", ")}` : ""}.`, alasan: `Stok siap jual ${nf(stok.open)} unit diperkirakan habis di bulan ke-${stok.habis}.` });
   }
   const batalPct = k.funnel.utj ? Math.round((k.funnel.batal / k.funnel.utj) * 100) : 0;
   if (batalPct >= 25) {
     const alasan = k.alasan.rinci[0];
-    r.push({ prioritas: "Tinggi", tindakan: `Kurangi pembatalan${alasan ? `, mulai dari penyebab terbanyak (${alasan.alasan.toLowerCase()}, ${nf(alasan.jml)} kasus)` : ""}: cek kemampuan bank dan kelengkapan berkas sebelum menerima UTJ.`, alasan: `${batalPct}% UTJ berakhir batal (${nf(k.funnel.batal)} dari ${nf(k.funnel.utj)}).` });
+    r.push({ prioritas: "Tinggi", tindakan: `**Kurangi pembatalan**${alasan ? `, mulai dari penyebab terbanyak (${alasan.alasan.toLowerCase()}, ${nf(alasan.jml)} kasus)` : ""}: cek kemampuan bank dan kelengkapan berkas sebelum menerima UTJ.`, alasan: `${batalPct}% UTJ berakhir batal (${nf(k.funnel.batal)} dari ${nf(k.funnel.utj)}).` });
   }
   const bank = k.bank.filter((b) => b.berkas >= 10);
   if (bank.length >= 2) {
@@ -80,22 +80,22 @@ export function ringkasanDetail(i: RingkasInput): { judul: string; butir: string
   const out: { judul: string; butir: string[] }[] = [];
   out.push({ judul: "Perkiraan 12 bulan ke depan", butir: [
     `UTJ sekitar ${nf(tot.utj)} unit (kemungkinan besar antara ${nf(tot.lo)} dan ${nf(tot.hi)}), akad ${nf(tot.akad)} unit, uang masuk sekitar Rp ${nf(tot.pen, 1)} miliar.`,
-    `Dibanding 12 bulan terakhir (UTJ ${nf(l12.utj)}, akad ${nf(l12.akad)}): UTJ ${arah(dUtj)}, akad ${arah(dAkad)}.`,
+    `Dibanding 12 bulan terakhir (UTJ ${nf(l12.utj)}, akad ${nf(l12.akad)}): UTJ **${arah(dUtj)}**, akad **${arah(dAkad)}**.`,
     `Saat dicoba ke data lama, perkiraan UTJ rata-rata meleset ${nf(bt.utjMae13, 1)} unit per bulan dan perkiraan akad 3 bulan meleset ${nf(bt.akadMaeTotal3, 1)} unit.`,
   ] });
   out.push({ judul: "Penjualan sejauh ini", butir: [
-    `Dari ${nf(f.utj)} UTJ yang pernah masuk: ${nf(f.akad)} (${pf(f.akad)}%) jadi akad, ${nf(f.batal)} (${pf(f.batal)}%) batal, ${nf(f.cair)} sudah cair.`,
+    `Dari ${nf(f.utj)} UTJ yang pernah masuk: ${nf(f.akad)} (${pf(f.akad)}%) jadi akad, **${nf(f.batal)} (${pf(f.batal)}%) batal**, ${nf(f.cair)} sudah cair.`,
     k.byType.length ? `Tipe paling laku: ${k.byType.slice(0, 3).map((t) => `${t.tipe} (${nf(t.utj)} UTJ, ${nf(t.akad)} akad)`).join(", ")}.` : "",
     k.byAgent.length ? `Kanal terbanyak: ${k.byAgent.slice(0, 3).map((a) => `${a.agent} (${nf(a.utj)} UTJ, ${a.konversi}% jadi akad)`).join(", ")}.` : "",
     k.bank.length ? `Bank: ${k.bank.slice(0, 3).map((b) => `${b.bank} ${nf(b.berkas)} berkas, ${b.approve}% disetujui`).join("; ")}.` : "",
   ].filter(Boolean) });
   if (stok) out.push({ judul: "Stok rumah", butir: [
     `Siap dijual (Open): ${nf(stok.open)} unit dari total ${nf(stok.total)}. Belum dibangun (Close): ${nf(stok.belumDibangun)} unit.`,
-    stok.habis !== null && stok.kurang ? `Stok Open diperkirakan habis di bulan ke-${stok.habis} dan kurang sekitar ${nf(stok.kurang)} unit dalam 12 bulan. Perlu bangun unit baru.` : "Stok Open cukup untuk 12 bulan ke depan.",
+    stok.habis !== null && stok.kurang ? `Stok Open diperkirakan **habis di bulan ke-${stok.habis}** dan **kurang sekitar ${nf(stok.kurang)} unit** dalam 12 bulan. Perlu bangun unit baru.` : "Stok Open **cukup** untuk 12 bulan ke depan.",
   ] });
   if (mk) out.push({ judul: "Marketing", butir: [
     `Periode ${mk.stats.periode}: biaya event Rp ${nf(mk.stats.biayaJuta, 1)} juta, ${nf(mk.stats.leads)} leads, ${nf(mk.stats.utj)} UTJ. Rata-rata Rp ${mk.stats.biayaPerLeadRibu === null ? "-" : nf(mk.stats.biayaPerLeadRibu, 1)} ribu per lead dan Rp ${mk.stats.biayaPerUtjJuta === null ? "-" : nf(mk.stats.biayaPerUtjJuta, 1)} juta per UTJ.`,
-    `${nf(mk.stats.persenLeadsTanpaStatus, 1)}% leads belum diberi status, jadi sumber leads yang paling efektif sulit dinilai.`,
+    `**${nf(mk.stats.persenLeadsTanpaStatus, 1)}% leads belum diberi status**, jadi sumber leads yang paling efektif sulit dinilai.`,
     mk.findings.length ? `Temuan utama: ${mk.findings.slice(0, 3).map((x) => x.judul.toLowerCase()).join("; ")}.` : "",
   ].filter(Boolean) });
   if (makro) out.push({ judul: "Kondisi ekonomi", butir: [

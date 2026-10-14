@@ -8,8 +8,8 @@ export function ReportPage({ n, total, title, children }: { n: number; total: nu
     </section>
   );
 }
-// Sorot angka (beserta satuannya) dan kata kunci penting supaya mudah dipindai.
-const SOROT = /(Rp\s?[\d.,]+(?:\s?(?:miliar|juta|ribu))?|[+−]?\d[\d.,]*\s?(?:%|unit|UTJ|akad|bulan|hari|leads|poin|berkas)|\bhabis\b|\bkurang\b|\bnaik\b|\bturun\b|\bmeleset\b)/gi;
+// Sorot hanya bagian yang ditandai **seperti ini** (informasi paling penting); teks lain tidak diubah.
+const SOROT = /\*\*(.+?)\*\*/g;
 export function hl(t: React.ReactNode): React.ReactNode {
   if (typeof t === "string") return t.split(SOROT).map((p, i) => (i % 2 ? <mark key={i}>{p}</mark> : p));
   if (Array.isArray(t)) return t.map((x, i) => <span key={i}>{hl(x)}</span>);

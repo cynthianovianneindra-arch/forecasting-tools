@@ -127,7 +127,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
 
     {pg("Perkiraan 12 bulan ke depan", <>
       <Kpis><Kpi a l="UTJ 12 bln" v={tot.utj} s={`kemungkinan besar ${tot.lo}–${tot.hi}`} /><Kpi l="Akad 12 bln" v={tot.akad} /><Kpi l="Uang masuk" v={`Rp ${f1(tot.pen)} M`} /></Kpis>
-      <Note>Cara membaca rentang: angka besar ({tot.utj}) adalah perkiraan terbaik. Rentang {tot.lo}–{tot.hi} artinya 8 dari 10 kemungkinan, hasil sebenarnya ada di antara dua angka itu. Rentangnya lebar karena penjualan naik-turun tiap bulan.</Note>
+      <Note>{`Cara membaca rentang: angka besar (${tot.utj}) adalah perkiraan terbaik. Rentang ${tot.lo}–${tot.hi} artinya **8 dari 10 kemungkinan**, hasil sebenarnya ada di antara dua angka itu. Rentangnya lebar karena penjualan naik-turun tiap bulan.`}</Note>
       <Chart bars={bars} title="Proyeksi UTJ dan akad" />
       <table style={{ marginTop: 8 }}>{th("Bulan", "UTJ", "Rentang UTJ", "Akad", "Uang masuk (Rp M)")}<tbody>{r.map((x) => <tr key={x.bulan}><td>{labelPanjang(x.bulan)}</td><td className="n">{x.utjInt}</td><td className="n">{x.utjLoInt}–{x.utjHiInt}</td><td className="n">{x.akadInt}</td><td className="n">{f1(x.akadInt * net)}</td></tr>)}<tr><td><b>Total</b></td><td className="n"><b>{tot.utj}</b></td><td className="n"><b>{tot.lo}–{tot.hi}</b></td><td className="n"><b>{tot.akad}</b></td><td className="n"><b>{f1(tot.pen)}</b></td></tr></tbody></table>
       <Note>Saat dicoba ke data lama ({bt.origins} kali), perkiraan UTJ rata-rata meleset {f1(bt.utjMae13)} unit per bulan dan perkiraan akad 3 bulan meleset {f1(bt.akadMaeTotal3)} unit.</Note>
