@@ -46,5 +46,12 @@ Tabel `datasets` punya kolom `marketing` (jsonb); unggah ulang Excel agar data m
 
 ## Stok (sheet UNIT) dan data ekonomi
 - Impor membaca sheet UNIT (314 unit; status Sold/Open/Proses/Close/Margal) dan memasangkan tiap UTJ ke unitnya (284 dari 284 cocok), sehingga filter Cluster dan Tahap tersedia. Stok tersedia dijual = status **Open** (32 unit); definisi ini perlu dikonfirmasi pemilik (SPEC pertanyaan 3). Pada laju proyeksi (rata-rata 7,1 UTJ/bulan) stok Open habis di bulan ke-5; dashboard dan Simulasi menampilkan peringatan. Proyeksi dasar sengaja tidak dipotong stok (agar sama dengan backtest); peringatan menandai kebutuhan tambahan unit.
-- Data ekonomi dibaca dari sheet INSTRUMEN EKONOMI (emas, IHSG, inflasi, BI Rate; data s.d. Mei 2026). Korelasi bulanan dengan UTJ lemah (|r| < 0,3), hanya konteks. Pembaruan otomatis dari BPS, bi.go.id, dan Twelve Data **belum dibuat**: butuh API key dan verifikasi endpoint (SPEC bagian 7); saat ini data ekonomi hanya ikut diperbarui ketika Excel diunggah ulang.
+- Data ekonomi dibaca dari sheet INSTRUMEN EKONOMI (emas, IHSG, inflasi, BI Rate; data s.d. Mei 2026). Korelasi bulanan dengan UTJ lemah (|r| < 0,3), hanya konteks. Pembaruan otomatis (lihat bagian berikutnya) belum teruji terhadap situs asli.
 - Tabel `datasets` punya kolom `units` dan `macro`; unggah ulang Excel untuk mengisinya.
+
+## Pembaruan otomatis data ekonomi (tanpa API key berbayar)
+- **IHSG (^JKSE) dan emas (GC=F, USD/oz):** Yahoo Finance endpoint chart (tidak resmi, tanpa key). Parser diuji dengan contoh respons.
+- **Inflasi tahunan:** halaman bps.go.id (`BPS_INFLASI_URL`, default beranda). **BI Rate:** halaman bi.go.id (`BI_RATE_URL`). Teks halaman diekstrak Claude; hasil hanya diterima jika bulan valid, nilai wajar (0-20%), dan angkanya benar-benar muncul di teks halaman. Memakai kuota `CLAUDE_DAILY_LIMIT`.
+- Hasil disimpan di tabel Supabase `macro_live` dan menimpa bulan yang sama dari Excel. Sumber yang gagal tidak menimpa data terakhir; alasan gagal tampil di layar Data.
+- Pemicu: tombol "Sinkron data ekonomi sekarang" (butuh `UPLOAD_TOKEN`) dan Vercel Cron harian `/api/macro-sync` (butuh `CRON_SECRET`).
+- **Belum diuji dengan situs asli**: sandbox pengembangan tidak bisa menjangkau Yahoo, BPS, atau BI. URL BPS default (beranda) mungkin tidak memuat angka inflasi; isi `BPS_INFLASI_URL` dengan halaman yang memuatnya. Kegagalan akan tampil jelas di layar Data.

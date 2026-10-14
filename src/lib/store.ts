@@ -30,3 +30,20 @@ export async function saveDataset(filename: string, mode: string, rep: ImportRep
   });
   if (!r.ok) throw new Error(`Gagal menyimpan ke Supabase (${r.status})`);
 }
+
+export interface LiveRowDb { bulan: string; indikator: string; nilai: number; sumber: string; diambil: string }
+
+export async function listMacroLive(): Promise<LiveRowDb[]> {
+  if (!storeConfigured()) return [];
+  const r = await fetch(`${url()}/rest/v1/macro_live?select=*&order=bulan.asc&limit=2000`, { headers: headers(), cache: "no-store" });
+  return r.ok ? r.json() : [];
+}
+
+export async function upsertMacroLive(rows: { bulan: string; indikator: string; nilai: number; sumber: string }[]): Promise<void> {
+  if (!rows.length) return;
+  const r = await fetch(`${url()}/rest/v1/macro_live?on_conflict=bulan,indikator`, {
+    method: "POST", headers: { ...headers(), prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify(rows.map((x) => ({ ...x, diambil: new Date().toISOString() }))),
+  });
+  if (!r.ok) throw new Error(`Gagal menyimpan data ekonomi (${r.status})`);
+}

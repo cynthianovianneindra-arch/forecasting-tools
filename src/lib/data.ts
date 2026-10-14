@@ -2,7 +2,8 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { loadMonthly, reconstructTxns } from "./demo";
 import { forecast, monthlySeries, Txn } from "./forecast";
-import { latestDataset, storeConfigured } from "./store";
+import { latestDataset, listMacroLive, LiveRowDb, storeConfigured } from "./store";
+import { mergeMacro } from "./macroLive";
 import { driveConfigured, fetchFromDrive } from "./drive";
 import { importPenjualan, ImportReport } from "./importExcel";
 import { applyFilter, cards, Filter, options } from "./insights";
@@ -66,7 +67,15 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
   const filtered = ft.length !== txns.length;
   const stok = report?.units ? stockSummary(report.units.filter((u) => (!filter.cluster || u.cluster === filter.cluster) && (!filter.tahap || u.tahap === filter.tahap) && (!filter.tipe || u.tipe === filter.tipe))) : null;
   const stokHabis = stok ? stockoutMonth(f.rows.map((x) => x.utj), stok.open) : null;
-  const makro = report?.macro ? macroContext(report.macro, utjMonthMap(txns)) : null;
-  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null, stok, stokHabis, makro, units: report?.units ?? null, macroRows: report?.macro ?? null };
+  let live: LiveRowDb[] = [];
+  try { live = await listMacroLive(); } catch { live = []; }
+  const macroGabung = report?.macro ? mergeMacro(report.macro, live) : null;
+  const makro = macroGabung ? macroContext(macroGabung, utjMonthMap(txns)) : null;
+  const liveStatus = (["ihsg", "emas", "inflasi", "birate"] as const).map((k) => {
+    const rows = live.filter((x) => x.indikator === k);
+    const last = rows[rows.length - 1];
+    return { indikator: k, bulan: last?.bulan ?? null, nilai: last?.nilai ?? null, sumber: last?.sumber ?? null, diambil: rows.reduce((m, x) => (x.diambil > m ? x.diambil : m), "") || null };
+  });
+  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null, stok, stokHabis, makro, units: report?.units ?? null, macroRows: macroGabung, liveStatus };
 }
 export { f1, labelBulan, labelPanjang } from "./format";
