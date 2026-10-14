@@ -23,7 +23,7 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
       const ds = await latestDataset();
       if (ds) {
         txns = ds.txns;
-        report = { txns, rows: ds.rows, utj: ds.utj, akad: ds.akad, batal: ds.batal, warnings: ds.warnings };
+        report = { marketing: ds.marketing ?? undefined, txns, rows: ds.rows, utj: ds.utj, akad: ds.akad, batal: ds.batal, warnings: ds.warnings };
         uploadInfo = { filename: ds.filename, uploaded_at: ds.uploaded_at };
         source = "upload";
       }
@@ -62,6 +62,6 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
   const open = ft.filter((t) => !t.akad && !t.batal).length;
   const kartu = source === "demo" ? null : cards(applyFilter(txns, filter, false));
   const filtered = ft.length !== txns.length;
-  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns };
+  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null };
 }
 export { f1, labelBulan, labelPanjang } from "./format";

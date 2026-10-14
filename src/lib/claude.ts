@@ -29,10 +29,10 @@ export async function callClaude(system: string, user: string): Promise<string> 
   return (j.content?.[0]?.text as string) ?? "";
 }
 
-export const SECTIONS = ["ringkasan", "proyeksi", "funnel", "bank"] as const;
+export const SECTIONS = ["ringkasan", "proyeksi", "funnel", "bank", "marketing"] as const;
 export type Sections = Record<(typeof SECTIONS)[number], string>;
 
-const FORMAT = `Balas HANYA JSON dengan kunci ${SECTIONS.join(", ")} (masing-masing 2-3 kalimat): ringkasan = ringkasan manajemen; proyeksi = membaca proyeksi UTJ/akad beserta rentang; funnel = funnel dan pembatalan; bank = proses bank dan konteks ekonomi.`;
+const FORMAT = `Balas HANYA JSON dengan kunci ${SECTIONS.join(", ")} (masing-masing 2-3 kalimat): ringkasan = ringkasan manajemen; proyeksi = membaca proyeksi UTJ/akad beserta rentang; funnel = funnel dan pembatalan; bank = proses bank dan konteks ekonomi; marketing = efektivitas marketing dari data marketing (sebut bahwa pola awal dan bukan sebab-akibat, sampel pendek). Jika data marketing tidak ada, isi marketing dengan "Data marketing belum tersedia."`;
 
 const cache = new Map<string, { at: number; v: Sections | null }>();
 const TTL = 60 * 60 * 1000;

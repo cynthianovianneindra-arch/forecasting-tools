@@ -11,6 +11,7 @@ export interface Txn {
   agent?: string;
   marketing?: string;
   leads?: string;
+  database?: string;
   alasanBatal?: string;
   netPrice?: number; // rupiah
   banks?: BankCase[];

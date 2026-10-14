@@ -13,7 +13,7 @@ Web app proyeksi UTJ, akad, dan penerimaan. Spesifikasi: `docs/SPEC.md`; mockup:
 - **2. Dashboard:** grafik, rentang, toggle Bulanan/Tahunan, tabel, tanda tren menyimpang, filter (tipe, agent, marketing, periode untuk kartu) dan enam kartu data aktual. Nilai kartu cocok SPEC 6.2 (funnel 284/240/188/181, tipe, agent, persen approve bank, alasan batal). Belum: filter cluster/tahap (tidak ada di PENJUALAN), konteks makro, sumber leads dari sheet LEADS.
 - **3. What-if:** 11 variabel, garis dasar abu-abu, peringatan stok. Koefisien masih ilustrasi, stok = konstanta demo. Belum: simpan skenario.
 - **4. Sinkron Sheets + makro:** belum. Layar Data hanya kerangka + cek total 284/188.
-- **5. Laporan + narasi:** pratinjau cetak A4 (10 dari 12 halaman; hlm 10-11 menunggu data LEADS/EVENT); `/api/narasi` dengan validator angka (butuh `ANTHROPIC_API_KEY`).
+- **5. Laporan + narasi:** pratinjau cetak A4 (12 dari 12 halaman; hlm 10-11 dari sheet LEADS dan EVENT MARKETING); `/api/narasi` dengan validator angka (butuh `ANTHROPIC_API_KEY`).
 
 ## Data demo
 `fixtures/monthly_utj_akad.csv` hanya hitungan bulanan. Transaksi untuk pipeline direkonstruksi di
@@ -38,3 +38,8 @@ Prioritas sumber: Drive, lalu `data/FORECASTING_UPDATE.xlsx`, lalu data demo. Be
 Menu Data & Integrasi punya form unggah `.xlsx`. File diparse di server (sheet PENJUALAN), lalu transaksi anonim disimpan di tabel Supabase `datasets` (RLS aktif tanpa policy; hanya service role yang bisa akses). Dashboard, Simulasi, dan Laporan memakai unggahan terbaru.
 Env yang dibutuhkan: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API; jangan dibagikan), `UPLOAD_TOKEN` (kata sandi unggah buatanmu). Batas file 4 MB (batas body fungsi Vercel).
 Urutan sumber data: unggahan Supabase, Drive, `data/*.xlsx`, data demo.
+
+## Marketing (halaman 10-11)
+Impor membaca sheet LEADS (diagregasi per bulan/database/asal/marketing/status; kolom nama dan telepon tidak dibaca) dan EVENT MARKETING (biaya per kategori). Temuan dihitung aturan deterministik di `src/lib/marketing.ts`; Claude hanya merumuskan paragraf dari JSON. Diuji dengan file asli: biaya Rp 164,2 jt, 3.943 leads, 63 UTJ, Rp 41,6 rb/lead, Rp 2,6 jt/UTJ, korelasi biaya-leads -0,2 dan biaya-UTJ 0,33, Office 83% leads dengan 1,9% survey, status terisi per marketing sesuai SPEC.
+Selisih dari SPEC: leads tanpa status terbaca 69% (SPEC 56%, 2.200); batal non-inhouse 30% (SPEC 14%, penyebut berbeda: SPEC memakai 161 UTJ non-inhouse, di sini 200). Perlu dikonfirmasi definisinya.
+Tabel `datasets` punya kolom `marketing` (jsonb); unggah ulang Excel agar data marketing tersimpan.

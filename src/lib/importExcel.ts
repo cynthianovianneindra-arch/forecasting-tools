@@ -1,7 +1,13 @@
 import ExcelJS from "exceljs";
 import type { Txn } from "./forecast";
 
+/** Leads diagregasi (tanpa nama/telepon) dan biaya event; sumber: sheet LEADS dan EVENT MARKETING. */
+export interface LeadAgg { bulan: string; database: string; asal: string; marketing: string; status: string; n: number; survey: number }
+export interface EventCost { bulan: string; kategori: string; kegiatan: string; biaya: number }
+export interface MarketingData { leads: LeadAgg[]; events: EventCost[] }
+
 export interface ImportReport {
+  marketing?: MarketingData;
   txns: Txn[];
   rows: number;
   utj: number; akad: number; batal: number;
@@ -78,10 +84,40 @@ export async function importPenjualan(input: string | Buffer | ArrayBuffer, mode
       marketing: normName(row.getCell(C.marketing).value) || undefined,
       agent: normName(row.getCell(C.agent).value) || undefined,
       leads: text(row.getCell(C.leads).value) || undefined,
+      database: text(row.getCell(44).value) || undefined,
       alasanBatal: text(row.getCell(C.alasan).value) || undefined,
       netPrice: ((v) => (v !== null && v > 1e7 ? v : undefined))(num(row.getCell(14).value)),
       banks,
     });
   });
-  return { txns, rows, utj: txns.length, akad: txns.filter((t) => t.akad).length, batal: txns.filter((t) => t.batal).length, warnings };
+  const marketing = parseMarketing(wb);
+  return { marketing, txns, rows, utj: txns.length, akad: txns.filter((t) => t.akad).length, batal: txns.filter((t) => t.batal).length, warnings };
+}
+
+const val = (c: ExcelJS.Cell) => { const x = c.value; return x && typeof x === "object" && !(x instanceof Date) && "result" in x ? (x as { result: unknown }).result : x; };
+
+/** Baca LEADS (kolom B database, C asal, D tanggal, I marketing, M status, L tanggal survey) dan EVENT MARKETING (B tanggal, C kegiatan, D kategori, H biaya). Kolom nama dan telepon tidak dibaca. */
+export function parseMarketing(wb: ExcelJS.Workbook): MarketingData | undefined {
+  const L = wb.getWorksheet("LEADS"), E = wb.getWorksheet("EVENT MARKETING");
+  if (!L && !E) return undefined;
+  const agg = new Map<string, LeadAgg>();
+  if (L) for (let r = 4; r <= L.rowCount; r++) {
+    const row = L.getRow(r);
+    const bulan = cellToMonth(val(row.getCell(4))).m;
+    if (!bulan) continue;
+    const database = normName(val(row.getCell(2))) || "(KOSONG)", asal = normName(val(row.getCell(3))) || "(KOSONG)";
+    const marketing = normName(val(row.getCell(9))) || "(KOSONG)", status = normName(val(row.getCell(13)));
+    const k = [bulan, database, asal, marketing, status].join("|");
+    const e = agg.get(k) ?? { bulan, database, asal, marketing, status, n: 0, survey: 0 };
+    e.n++; if (cellToMonth(val(row.getCell(12))).m) e.survey++;
+    agg.set(k, e);
+  }
+  const events: EventCost[] = [];
+  if (E) for (let r = 5; r <= E.rowCount; r++) {
+    const row = E.getRow(r);
+    const bulan = cellToMonth(val(row.getCell(2))).m, biaya = num(val(row.getCell(8)));
+    if (!bulan || biaya === null || biaya <= 0) continue;
+    events.push({ bulan, kategori: text(val(row.getCell(4))) || "(lain)", kegiatan: text(val(row.getCell(3))), biaya });
+  }
+  return { leads: [...agg.values()], events };
 }

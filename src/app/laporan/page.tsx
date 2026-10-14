@@ -4,6 +4,7 @@ import { ReportPage, Note } from "@/components/ReportPage";
 import { getData, f1, labelBulan, labelPanjang } from "@/lib/data";
 import { avgNetPrice, priceByType, ringkasanTeks } from "@/lib/laporan";
 import { claudeConfigured, narasiLaporan } from "@/lib/claude";
+import { marketingInsights } from "@/lib/marketing";
 import { cards } from "@/lib/insights";
 
 const th = (...c: string[]) => <thead><tr>{c.map((x, i) => <th key={x} className={i ? "n" : ""}>{x}</th>)}</tr></thead>;
@@ -28,7 +29,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   for (const m of d.monthly) { const y = years.get(m.bulan.slice(0, 4)) ?? { utj: 0, akad: 0 }; y.utj += m.utj; y.akad += m.akad; years.set(m.bulan.slice(0, 4), y); }
   const ringkas = ringkasanTeks(tot, k, l12);
   const batalPct = pot(k.funnel.batal);
+  const mk = d.marketing && d.marketing.leads.length ? marketingInsights(d.marketing, txns) : null;
   const narasi = await narasiLaporan({
+    marketing: mk ? { ...mk.stats, kategori: mk.kategori.slice(0, 5), temuan: mk.findings.map((f) => ({ judul: f.judul, temuan: f.temuan, label: f.label })) } : null,
     periode: `${labelPanjang(r[0].bulan)} - ${labelPanjang(r[11].bulan)}`, jenis,
     proyeksi12Bulan: { utj: Math.round(tot.utj), utjRendah: Math.round(tot.lo), utjTinggi: Math.round(tot.hi), akad: Math.round(tot.akad), penerimaanMiliarRp: +tot.penerimaanM.toFixed(1) },
     duabelasBulanTerakhir: l12,
@@ -41,11 +44,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const harga = priceByType(txns);
 
   return (<><Nav active="/laporan" updated="Pratinjau laporan" />
-    <div className="wrap noprint"><p>{badge(d.source)}</p><p className="muted">Laporan {jenis}. Cetak ke PDF dari browser (Ctrl/Cmd+P, A4, tanpa margin). Halaman 10–11 (marketing) menunggu data LEADS dan EVENT MARKETING; narasi Claude: {claudeConfigured() ? (narasi ? "aktif" : "key ada, tetapi narasi gagal divalidasi; memakai teks templat") : "nonaktif (ANTHROPIC_API_KEY belum diset); memakai teks templat"}.</p></div>
+    <div className="wrap noprint"><p>{badge(d.source)}</p><p className="muted">Laporan {jenis}. Cetak ke PDF dari browser (Ctrl/Cmd+P, A4, tanpa margin). narasi Claude: {claudeConfigured() ? (narasi ? "aktif" : "key ada, tetapi narasi gagal divalidasi; memakai teks templat") : "nonaktif (ANTHROPIC_API_KEY belum diset); memakai teks templat"}.</p></div>
 
     <section className="page"><h1>Laporan Proyeksi Penjualan {jenis === "tahunan" ? "Tahunan" : "Bulanan"}</h1><p className="muted">Shaistanaya City · PT Neo Pudji Jaya · data s.d. {labelPanjang(d.end)}</p>
       <table><tbody><tr><td>UTJ 12 bulan ke depan</td><td className="n">{f1(tot.utj)} ({f1(tot.lo)}–{f1(tot.hi)})</td></tr><tr><td>Akad 12 bulan ke depan</td><td className="n">{f1(tot.akad)}</td></tr><tr><td>Penerimaan (Rp miliar)</td><td className="n">{f1(tot.penerimaanM)}</td></tr></tbody></table>
-      <h2 style={{ marginTop: 24 }}>Isi laporan</h2><ol className="muted"><li>Ringkasan manajemen</li><li>Kinerja 12 bulan terakhir</li><li>Proyeksi UTJ</li><li>Akad dan penerimaan</li><li>Funnel dan pembatalan</li><li>Tipe rumah dan harga</li><li>Agent dan sumber leads</li><li>Proses bank dan kondisi ekonomi</li><li>Efektivitas marketing (menunggu data)</li><li>Temuan marketing (menunggu data)</li><li>Skenario, cara angka dibuat, keterbatasan</li></ol></section>
+      <h2 style={{ marginTop: 24 }}>Isi laporan</h2><ol className="muted"><li>Ringkasan manajemen</li><li>Kinerja 12 bulan terakhir</li><li>Proyeksi UTJ</li><li>Akad dan penerimaan</li><li>Funnel dan pembatalan</li><li>Tipe rumah dan harga</li><li>Agent dan sumber leads</li><li>Proses bank dan kondisi ekonomi</li><li>Efektivitas marketing</li><li>Temuan dan tindakan marketing</li><li>Skenario, cara angka dibuat, keterbatasan</li></ol></section>
 
     <ReportPage n={2} title="Ringkasan manajemen">{narasi ? <><p>{narasi.ringkasan}</p><p className="muted" style={{ fontSize: 11 }}>Ditulis Claude dari angka mesin; setiap angka di teks sudah dicek ada di data.</p></> : ringkas.map((t) => <p key={t}>{t}</p>)}
       <Note>Penerimaan = akad × harga bersih rata-rata (Rp {f1(net)} miliar{real ? ", dari akad nyata" : ", angka SPEC"}). Jadwal penerimaan bertahap belum dimodelkan.</Note></ReportPage>
@@ -78,8 +81,18 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
     <ReportPage n={9} title="Proses bank dan kondisi ekonomi">{narasi && <p>{narasi.bank}</p>}<table>{th("Bank", "Berkas", "Approve", "Rata-rata hari")}<tbody>{k.bank.map((x) => <tr key={x.bank}><td>{x.bank}</td><td className="n">{x.berkas}</td><td className="n">{x.approve}%</td><td className="n">{x.hari === null ? "-" : f1(x.hari)}</td></tr>)}</tbody></table>
       <Note>Variabel ekonomi (IHSG, emas, inflasi, BI Rate) belum tersambung. Pada uji data historis, korelasinya dengan UTJ bulanan lemah (sekitar 0,2), sehingga hanya dipakai sebagai konteks, bukan penggerak proyeksi.</Note></ReportPage>
 
-    <ReportPage n={10} title="Efektivitas marketing"><Note>Menunggu impor sheet LEADS dan EVENT MARKETING (biaya, leads, UTJ per bulan).</Note></ReportPage>
-    <ReportPage n={11} title="Temuan dan tindakan marketing"><Note>Menunggu data marketing. Temuan akan dihitung oleh kode; Claude hanya merumuskan kalimat tindakan.</Note></ReportPage>
+    <ReportPage n={10} title="Efektivitas marketing">{!mk ? <Note>Data LEADS dan EVENT MARKETING belum ada di unggahan ini.</Note> : <>
+      {narasi && <p>{narasi.marketing}</p>}
+      <p className="muted">Periode {mk.stats.periode} ({mk.stats.jumlahBulan} bulan): biaya Rp {f1(mk.stats.biayaJuta)} juta, {mk.stats.leads} leads, {mk.stats.utj} UTJ. Rp {mk.stats.biayaPerLeadRibu === null ? "-" : f1(mk.stats.biayaPerLeadRibu)} ribu per lead dan Rp {mk.stats.biayaPerUtjJuta === null ? "-" : f1(mk.stats.biayaPerUtjJuta)} juta per UTJ.</p>
+      <table>{th("Bulan", "Biaya (Rp juta)", "Leads", "UTJ")}<tbody>{mk.perBulan.map((x) => <tr key={x.bulan}><td>{labelPanjang(x.bulan)}</td><td className="n">{f1(x.biaya / 1e6)}</td><td className="n">{x.leads}</td><td className="n">{x.utj}</td></tr>)}</tbody></table>
+      <h2 style={{ marginTop: 16 }}>Struktur biaya</h2><table>{th("Kategori", "Rp juta", "Porsi")}<tbody>{mk.kategori.map((x) => <tr key={x.kategori}><td>{x.kategori}</td><td className="n">{f1(x.biaya / 1e6)}</td><td className="n">{f1(x.porsi)}%</td></tr>)}</tbody></table>
+      <h2 style={{ marginTop: 16 }}>Porsi leads, survey, dan UTJ per sumber</h2><table>{th("Sumber (database)", "Porsi leads", "Survey per leads", "Porsi UTJ")}<tbody>{mk.sumber.map((x) => <tr key={x.database}><td>{x.database}</td><td className="n">{f1(x.porsiLeads)}%</td><td className="n">{f1(x.surveyPerLeads)}%</td><td className="n">{f1(x.porsiUtj)}%</td></tr>)}</tbody></table>
+      <Note>Biaya dan leads hanya ada untuk {mk.stats.jumlahBulan} bulan; korelasi biaya-leads {mk.stats.korelasiBiayaLeads ?? "-"} dan biaya-UTJ {mk.stats.korelasiBiayaUtj ?? "-"} adalah pola awal, bukan sebab-akibat. Porsi UTJ per sumber mencakup seluruh riwayat, jadi bandingkan porsi, bukan konversi. Instagram dan Facebook tidak dibedakan organik atau berbayar.</Note></>}</ReportPage>
+    <ReportPage n={11} title="Temuan dan tindakan marketing">{!mk ? <Note>Menunggu data marketing.</Note> : mk.findings.length === 0 ? <p>Tidak ada temuan yang melewati ambang aturan pada data ini.</p> : mk.findings.map((f, i) => (
+      <div key={f.id} style={{ border: "1px solid #E1E5EB", borderRadius: 10, padding: 12, marginBottom: 10 }}>
+        <b>{i + 1}. {f.judul}</b> <span className="muted" style={{ fontSize: 11 }}>· Prioritas {f.prioritas} · {f.label === "hipotesis" ? "hipotesis (sampel kecil)" : "dari data"}</span>
+        <p style={{ margin: "6px 0" }}><b>Temuan:</b> {f.temuan}</p><p style={{ margin: "6px 0" }}><b>Tindakan:</b> {f.tindakan}</p><p style={{ margin: "6px 0" }}><b>Ukuran berhasil:</b> {f.ukuran}</p></div>))}
+      <Note>Data yang perlu ditambahkan: kode kampanye atau organik-berbayar per lead, status wajib diisi, alasan batal wajib diisi, dan ID event agar biaya, leads, UTJ bisa dikaitkan.</Note></ReportPage>
 
     <ReportPage n={12} title="Skenario, cara angka dibuat, dan keterbatasan">
       <h2>Cara angka dibuat</h2><p>UTJ = rata-rata 12 bulan terakhir; akad = pipeline UTJ; rentang dari kuantil galat uji mundur ({bt.origins} titik uji, galat UTJ rata-rata {f1(bt.utjMae13)} unit/bulan).</p>
