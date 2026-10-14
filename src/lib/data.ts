@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { loadMonthly, reconstructTxns } from "./demo";
-import { forecast, monthlySeries, Txn } from "./forecast";
+import { forecast, monthlySeries, Txn, Metode } from "./forecast";
 import { latestDataset, listMacroLive, listMacroManual, LiveRowDb, MacroManualDb, storeConfigured } from "./store";
 import { mergeMacro } from "./macroLive";
 import { filterMarketing, marketingInsights } from "./marketing";
@@ -14,7 +14,7 @@ import { NET_PRICE_MILIAR } from "./whatif";
 
 export const EXCEL_PATH = path.join(process.cwd(), "data", "FORECASTING_UPDATE.xlsx");
 
-export async function getData(mode: "kalender" | "excel" = "kalender", filter: Filter = {}) {
+export async function getData(mode: "kalender" | "excel" = "kalender", filter: Filter = {}, metode: Metode = "es") {
   let txns: Txn[], monthly: { bulan: string; utj: number; akad: number }[];
   let source: "upload" | "excel" | "drive" | "demo" = "demo";
   let uploadInfo: { filename: string; uploaded_at: string } | null = null;
@@ -69,7 +69,7 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
     const u = monthlySeries(ft, "utj", fs, fe), a = monthlySeries(ft, "akad", fs, fe);
     monthly = u.months.map((b, i) => ({ bulan: b, utj: u.values[i], akad: a.values[i] }));
   }
-  const f = forecast(ft, fs, fe);
+  const f = forecast(ft, fs, fe, 12, metode);
   const open = ft.filter((t) => !t.akad && !t.batal).length;
   const kartu = source === "demo" ? null : cards(applyFilter(txns, filter, false));
   const filtered = ft.length !== txns.length;

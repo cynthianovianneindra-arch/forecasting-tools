@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loadMonthly, reconstructTxns } from "./demo";
-import { forecast, utjInterval, utjIntervalPendek, movingAverage, linearTrend, backtest, hazards, exponentialSmoothing, sesFit } from "./forecast";
+import { forecast, weightedMovingAverage, multipleLinearRegression, parseMetode, utjInterval, utjIntervalPendek, movingAverage, linearTrend, backtest, hazards, exponentialSmoothing, sesFit } from "./forecast";
 
 const rows = loadMonthly();
 const txns = reconstructTxns(rows);
@@ -81,4 +81,35 @@ it("proyeksi jauh (24 bulan) tetap berupa angka, bukan NaN", async () => {
   const f = forecast(reconstructTxns(m), m[0].bulan, m[m.length - 1].bulan, 36);
   expect(f.rows).toHaveLength(36);
   expect(f.rows.every((r) => Number.isFinite(r.akad) && Number.isFinite(r.batal) && Number.isFinite(r.utjInt))).toBe(true);
+});
+
+describe("tiga metode proyeksi UTJ", () => {
+  const flat = Array(24).fill(5);
+  it("WMA pada deret datar = nilai datar; bobot terbaru lebih besar", () => {
+    expect(weightedMovingAverage(flat, 3)).toEqual([5, 5, 5]);
+    const naik = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 10, 10, 10, 10, 10, 10];
+    expect(weightedMovingAverage(naik, 1)[0]).toBeGreaterThan(5);
+  });
+  it("MLR melanjutkan tren naik dan hasilnya terbatas serta tidak negatif", () => {
+    const y = Array.from({ length: 36 }, (_, i) => 2 + i * 0.3);
+    const f = multipleLinearRegression(y, 6, 0);
+    expect(f).toHaveLength(6);
+    expect(f.every((v) => Number.isFinite(v) && v >= 0)).toBe(true);
+    expect(f[5]).toBeGreaterThan(y[y.length - 1] * 0.8);
+  });
+  it("forecast dengan metode apa pun menghasilkan 12 baris berhingga dan ada perbandingan tiga metode", () => {
+    for (const m of ["es", "wma", "mlr"] as const) {
+      const f = forecast(txns, start, end, 12, m);
+      expect(f.rows).toHaveLength(12);
+      expect(f.rows.every((r) => Number.isFinite(r.utj) && Number.isFinite(r.akad))).toBe(true);
+      expect(f.metode).toBe(m);
+      expect(f.banding.baris).toHaveLength(3);
+      expect(["es", "wma", "mlr"]).toContain(f.banding.terbaik);
+      expect(f.bt.utjMae13).toBeCloseTo(f.banding.baris.find((b) => b.metode === m)!.utjMae13, 10);
+    }
+  });
+  it("parseMetode: nilai tidak dikenal memakai exponential smoothing", () => {
+    expect(parseMetode("xyz")).toBe("es");
+    expect(parseMetode("wma")).toBe("wma");
+  });
 });

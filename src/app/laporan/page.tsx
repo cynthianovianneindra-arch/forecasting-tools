@@ -2,7 +2,8 @@ import { Nav, badge } from "@/components/Nav";
 import { Chart } from "@/components/Chart";
 import { ReportPage, Note, Kpi, Kpis, Hl } from "@/components/ReportPage";
 import { getData, f1, labelBulan, labelPanjang } from "@/lib/data";
-import { forecast } from "@/lib/forecast";
+import { forecast, parseMetode, METODE_NAMA, METODE_PENJELASAN } from "@/lib/forecast";
+import { MetodeSelect } from "@/components/Metode";
 import { jendelaLaporan, daftarBulan, selisihBulan } from "@/lib/periode";
 import { tampilLabel } from "@/lib/format";
 import { stockByType, stockoutMonth, stockShortfall } from "@/lib/stock";
@@ -18,9 +19,10 @@ const th = (...c: string[]) => <thead><tr>{c.map((x, i) => <th key={x} className
 const NAMA_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
 export const dynamic = "force-dynamic";
-export default async function Page({ searchParams }: { searchParams: Promise<{ jenis?: string; s?: string; narasi?: string; bulan?: string; tahun?: string }> }) {
-  const { s: sRaw, narasi: buatNarasi, ...qp } = await searchParams;
-  const d = await getData();
+export default async function Page({ searchParams }: { searchParams: Promise<{ jenis?: string; s?: string; narasi?: string; bulan?: string; tahun?: string; metode?: string }> }) {
+  const { s: sRaw, narasi: buatNarasi, metode: metodeRaw, ...qp } = await searchParams;
+  const metode = parseMetode(metodeRaw);
+  const d = await getData("kalender", {}, metode);
   const txns = d.txns;
   const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
   const refData = referensiDari(d);
@@ -32,7 +34,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const w = jendelaLaporan(qp, d.end);
   const jenis = w.jenis;
   const hz = Math.max(0, Math.min(36, selisihBulan(d.end, w.sampai)));          // bulan proyeksi yang dibutuhkan dari data terakhir
-  const fr = hz > 12 ? forecast(txns, first, d.end, hz).rows : d.f.rows;       // baris proyeksi mulai bulan setelah data terakhir
+  const fr = hz > 12 ? forecast(txns, first, d.end, hz, metode).rows : d.f.rows;       // baris proyeksi mulai bulan setelah data terakhir
   const frMap = new Map(fr.map((x) => [x.bulan, x]));
   const aktualMap = new Map(d.monthly.map((m) => [m.bulan, m]));
   // Grafik: bulan laporan ditambah konteks sebelumnya sampai kira-kira 12 batang.
@@ -90,7 +92,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
 
   // Claude hanya dipanggil bila tombol "Buat narasi" ditekan (?narasi=1) dan belum ada narasi tersimpan untuk data dan rentang yang sama.
   const inputNarasi = {
-    periode: periodeProyeksi, jenis, dataSampai: labelPanjang(d.end), bulanAktual: aktualBulan, bulanPerkiraan: proyeksiBulan,
+    periode: periodeProyeksi, jenis, metodeUtj: METODE_NAMA[metode], dataSampai: labelPanjang(d.end), bulanAktual: aktualBulan, bulanPerkiraan: proyeksiBulan,
     hasilPeriode: { utj: tot.utj, utjRendah: tot.lo, utjTinggi: tot.hi, akad: tot.akad, penerimaanMiliarRp: +tot.pen.toFixed(1) },
     pembandingBulanTerakhir: { bulan: n, ...l12 },
     ujiMundur: { titik: bt.origins, galatUtjRataRata: +bt.utjMae13.toFixed(1), galatUtjRataRata12Bln: +bt.utjMae13Ma12.toFixed(1), galatAkadTotal3Bln: +bt.akadMaeTotal3.toFixed(1) },
@@ -104,7 +106,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
     peringatan: ["Korelasi bulanan variabel ekonomi dengan UTJ lemah; hanya konteks, bukan penggerak proyeksi", "Alasan batal baru tercatat sebagian", "Sampel per agent kecil", "UTJ dan akad dibulatkan ke bawah per bulan"],
   };
   const narasi = buatNarasi === "1" ? await narasiLaporan(inputNarasi) : await cariNarasi(inputNarasi);
-  const linkBuat = `/laporan?${new URLSearchParams({ jenis, bulan: w.bulan, tahun: w.tahun, ...(sRaw ? { s: sRaw } : {}), narasi: "1" }).toString()}`;
+  const linkBuat = `/laporan?${new URLSearchParams({ jenis, bulan: w.bulan, tahun: w.tahun, metode, ...(sRaw ? { s: sRaw } : {}), narasi: "1" }).toString()}`;
   const harga = priceByType(txDasar);
   const net2 = net.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const real = d.source !== "demo";
@@ -128,6 +130,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
           <select className="inp" name="bulan" defaultValue={w.bulan}>{NAMA_BULAN.map((nm, i) => <option key={nm} value={String(i + 1).padStart(2, "0")}>{nm}</option>)}</select></label>
         <label className="field">Tahun
           <select className="inp" name="tahun" defaultValue={w.tahun}>{tahunPilihan.map((y) => <option key={y} value={y}>{y}</option>)}</select></label>
+        <MetodeSelect metode={metode} terbaik={d.f.banding.terbaik} />
         {sRaw ? <input type="hidden" name="s" value={sRaw} /> : null}
         <button className="btn" type="submit">Terapkan</button>
         <p className="muted" style={{ fontSize: 12, flexBasis: "100%", margin: 0 }}>Bulanan = laporan satu bulan. Tahunan = 12 bulan berturut-turut mulai dari bulan dan tahun yang dipilih (pilih Januari untuk satu tahun kalender). Bulan yang sudah lewat memakai data nyata, bulan ke depan memakai proyeksi (sampai 36 bulan setelah data terakhir).</p>
@@ -142,7 +145,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       <div className="c-bottom"><h4>INFORMASI</h4>
         <div className="c-grid">
           <div><b>Tanggal cetak</b><br />{tanggal}</div><div><b>Data penjualan sampai</b><br />{labelPanjang(d.end)}</div>
-          <div><b>Cara hitung UTJ</b><br />Pola penjualan per bulan</div><div><b>Cara hitung akad</b><br />Dari UTJ yang sedang berjalan</div>
+          <div><b>Cara hitung UTJ</b><br />{METODE_NAMA[metode]}</div><div><b>Cara hitung akad</b><br />Dari UTJ yang sedang berjalan</div>
           <div><b>Sumber data</b><br />{real ? "Penjualan, unit, leads, event, ekonomi" : "Data demo"}</div><div><b>Pembulatan</b><br />UTJ dan akad dibulatkan ke bawah</div>
         </div></div></section>
 
@@ -246,7 +249,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       {narasi?.risiko && <p className="rp-quote"><Hl t={narasi.risiko} /></p>}
       <div className="rp-cols">
         <div><h3>Cara angka dibuat</h3><ul style={{ paddingLeft: 16, fontSize: 12 }}>
-          <li>UTJ: melihat pola UTJ per bulan, lalu dilanjutkan ke bulan-bulan ke depan (dibulatkan ke bawah). Bulan yang sudah lewat memakai data nyata.</li>
+          <li>UTJ: {METODE_NAMA[metode]}. {METODE_PENJELASAN[metode]} Hasilnya dibulatkan ke bawah; bulan yang sudah lewat memakai data nyata.</li>
           <li>Akad: dari UTJ yang sedang berjalan, dilihat berapa yang biasanya jadi akad atau batal.</li>
           <li>Rentang: dari seberapa jauh perkiraan meleset saat dicoba ke data lama ({bt.origins} kali).</li>
           <li>Uang masuk: akad × harga rata-rata.</li>
@@ -258,6 +261,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
           <li>Data marketing baru sejak Okt 2025.</li>
           <li>Alasan batal dan status leads baru sebagian terisi.</li>
           <li>Uang masuk memakai harga rata-rata, bukan jadwal bayar bertahap.</li></ul></div></div>
+      <h3>Metode mana yang paling mendekati?</h3>
+      <table>{th("Metode", "UTJ meleset / bulan", "Akad meleset (3 bln)")}<tbody>{d.f.banding.baris.map((b) => <tr key={b.metode} style={b.metode === metode ? { fontWeight: 700 } : undefined}><td>{METODE_NAMA[b.metode]}{b.metode === metode ? " (dipakai)" : ""}{b.metode === d.f.banding.terbaik ? " ★" : ""}</td><td className="n">{f1(b.utjMae13)} unit</td><td className="n">{f1(b.akadMaeTotal3)} unit</td></tr>)}</tbody></table>
+      <Note>{`Tiap metode dicoba meramal ke data lama (${bt.origins} kali). Makin kecil angka meleset, makin mendekati kenyataan. ★ = paling mendekati untuk UTJ: **${METODE_NAMA[d.f.banding.terbaik]}**. Selisih antarmetode kecil karena penjualan naik-turun tiap bulan.`}</Note>
       <h3>Langkah berikutnya</h3>
       <ul style={{ paddingLeft: 16, fontSize: 12 }}><li>Lengkapi alasan batal dan status leads.</li><li>Cocokkan angka skenario dengan data event, promo, dan harga setelah datanya cukup.</li><li>Rencanakan bangun unit Close supaya stok tidak menghambat penjualan.</li></ul></>)}
   </>);
