@@ -22,14 +22,17 @@ export function Simulasi({ rows, netPrice, acuan: ref, stokOpen, belumDibangunPe
   const [mode, setMode] = useState<"bulanan" | "total">("bulanan");
   const [f, setF] = useState<Record<string, string>>({});
   const set = (k: string, v: string) => setF((x) => ({ ...x, [k]: v }));
+  // Order bangun: pilih tipe dulu, baru jumlah unit. Satu baris per tipe.
+  const [bg, setBg] = useState<{ tipe: string; n: string }[]>([{ tipe: "", n: "0" }]);
+  const ubahBg = (i: number, patch: Partial<{ tipe: string; n: string }>) => setBg((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
   const s: Scenario = useMemo(() => ({
-    bangun: Object.fromEntries(belumDibangunPerTipe.map((t) => [t.tipe, Math.max(0, Math.floor(num(f["b:" + t.tipe] ?? "") ?? 0))]).filter(([, n]) => (n as number) > 0)),
+    bangun: Object.fromEntries(bg.map((r) => [r.tipe, Math.min(Math.max(0, Math.floor(num(r.n) ?? 0)), belumDibangunPerTipe.find((t) => t.tipe === r.tipe)?.n ?? 0)]).filter(([t, n]) => t && (n as number) > 0)),
     mulaiBangun: Math.floor(num(f.mulai ?? "") ?? 0),
     harga: num(f.harga ?? ""), promo: Math.max(0, num(f.promo ?? "") ?? 0), leads: num(f.leads ?? ""),
     event: Object.fromEntries(KATEGORI_EVENT.map((k) => [k, Math.max(0, Math.floor(num(f["e:" + k] ?? "") ?? 0))]).filter(([, n]) => (n as number) > 0)),
     birate: num(f.birate ?? ""), ihsg: num(f.ihsg ?? ""), emas: num(f.emas ?? ""), inflasi: num(f.inflasi ?? ""),
-  }), [f, belumDibangunPerTipe]);
+  }), [f, bg, belumDibangunPerTipe]);
 
   const stok = stokOpen ?? 0;
   const res = useMemo(() => applyScenario(rows, s, ref, stok, netPrice), [rows, s, ref, stok, netPrice]);
@@ -57,9 +60,26 @@ export function Simulasi({ rows, netPrice, acuan: ref, stokOpen, belumDibangunPe
           <div>
             <details open><summary>1. Order bangun per tipe</summary>
               <p className="muted" style={{ fontSize: 12 }}>Hanya dari unit berstatus Close (belum dibangun). Stok Open saat ini: {stok} unit.</p>
-              {belumDibangunPerTipe.length === 0 ? <p className="muted">Data unit belum ada; unggah Excel lengkap dengan sheet UNIT.</p> : belumDibangunPerTipe.map((x) => (
-                <label key={x.tipe} className="sl">{x.tipe} <span className="muted">(tersedia {x.n} unit)</span>
-                  <select style={inp} value={f["b:" + x.tipe] ?? "0"} onChange={(e) => set("b:" + x.tipe, e.target.value)}>{Array.from({ length: x.n + 1 }, (_, i) => <option key={i} value={i}>{i === 0 ? "0 (tidak dibangun)" : `${i} unit`}</option>)}</select></label>))}
+              {belumDibangunPerTipe.length === 0 ? <p className="muted">Data unit belum ada; unggah Excel lengkap dengan sheet UNIT.</p> : <>
+                {bg.map((r, i) => {
+                  const dipakai = new Set(bg.filter((_, j) => j !== i).map((x) => x.tipe));
+                  const tersedia = belumDibangunPerTipe.find((t) => t.tipe === r.tipe)?.n ?? 0;
+                  return (
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "end", margin: "10px 0" }}>
+                      <label className="sl" style={{ margin: 0 }}>Tipe rumah
+                        <select style={inp} value={r.tipe} onChange={(e) => ubahBg(i, { tipe: e.target.value, n: "0" })}>
+                          <option value="">Pilih tipe</option>
+                          {belumDibangunPerTipe.filter((t) => !dipakai.has(t.tipe)).map((t) => <option key={t.tipe} value={t.tipe}>{t.tipe} ({t.n})</option>)}
+                        </select></label>
+                      <label className="sl" style={{ margin: 0 }}>Jumlah unit
+                        <select style={inp} disabled={!r.tipe} value={r.n} onChange={(e) => ubahBg(i, { n: e.target.value })}>
+                          {!r.tipe ? <option value="0">Pilih tipe dulu</option> : Array.from({ length: tersedia + 1 }, (_, k) => <option key={k} value={k}>{k === 0 ? "0 (tidak dibangun)" : `${k} unit`}</option>)}
+                        </select></label>
+                      {bg.length > 1 && <button type="button" className="btn alt" style={{ minHeight: 44, padding: "0 14px" }} aria-label="Hapus baris" onClick={() => setBg((x) => x.filter((_, j) => j !== i))}>✕</button>}
+                    </div>);
+                })}
+                {bg.length < belumDibangunPerTipe.length && <button type="button" className="btn alt" onClick={() => setBg((x) => [...x, { tipe: "", n: "0" }])}>+ Tambah tipe lain</button>}
+              </>}
               <label className="sl">Bulan mulai bangun
                 <select style={inp} value={f.mulai ?? "0"} onChange={(e) => set("mulai", e.target.value)}>{rows.map((r, i) => <option key={r.bulan} value={i}>{labelPenuh(r.bulan)}</option>)}</select></label>
             </details>
