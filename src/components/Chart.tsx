@@ -23,8 +23,8 @@ export function Chart({ bars, title }: { bars: Bar[]; title: string }) {
     <div style={{ position: "relative" }}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title} style={{ width: "100%", height: "auto", touchAction: "manipulation" }}>
         <defs>
-          <pattern id="pu" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#8E959B" /><rect width="2" height="6" fill="#1A2127" opacity=".4" /></pattern>
-          <pattern id="pa" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#A9BBC8" /><rect width="2" height="6" fill="#536878" opacity=".5" /></pattern>
+          <pattern id="pu" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#59616A" /><rect width="2" height="6" fill="#0A0A0A" opacity=".35" /></pattern>
+          <pattern id="pa" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#C3D1DC" /><rect width="2" height="6" fill="#FFFFFF" opacity=".55" /></pattern>
         </defs>
         {ticks.map((t) => (<g key={t}><line x1={L} x2={W} y1={y(t)} y2={y(t)} stroke="#DEDDDB" strokeDasharray="4 4" /><text x={L - 6} y={y(t) + 4} fontSize="10" textAnchor="end" fill="#5B6670">{t}</text></g>))}
         {bars.map((b, i) => {
@@ -66,7 +66,7 @@ export function Legend({ trend, base }: { trend?: boolean; base?: boolean }) {
   const sw = (c: string) => <span style={{ display: "inline-block", width: 12, height: 12, background: c, borderRadius: 2, marginRight: 6, verticalAlign: "-1px" }} />;
   return (
     <div className="legend">
-      <span>{sw("#1A2127")}UTJ</span><span>{sw("#536878")}Akad</span><span>{sw("#8E959B")}{sw("#A9BBC8")}Proyeksi (warna lebih terang dari aktual)</span><span>{sw("#E8E8E6")}Rentang UTJ</span>
+      <span>{sw("#1A2127")}UTJ</span><span>{sw("#536878")}Akad</span><span>{sw("#59616A")}UTJ proyeksi</span><span>{sw("#C3D1DC")}Akad proyeksi</span><span>{sw("#E8E8E6")}Rentang UTJ</span>
       {trend && <span>{sw("#2B3640")}Garis tren (pembanding)</span>}
       {base && <span>{sw("#8A9AA7")}Proyeksi dasar</span>}
       <span style={{ marginLeft: "auto" }}>Arahkan kursor atau sentuh batang untuk melihat nilai</span>
