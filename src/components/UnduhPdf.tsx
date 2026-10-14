@@ -1,13 +1,27 @@
 "use client";
+import { useState } from "react";
 
-/** Membuka dialog cetak browser dengan nama file yang sudah terisi; pilih "Simpan sebagai PDF" (tujuan/destination). */
+/** Membuat PDF di server dari tampilan laporan yang sedang dibuka, lalu mengunduhnya otomatis. */
 export function UnduhPdf({ nama }: { nama: string }) {
-  const unduh = () => {
-    const judul = document.title;
-    document.title = nama;
-    const pulih = () => { document.title = judul; window.removeEventListener("afterprint", pulih); };
-    window.addEventListener("afterprint", pulih);
-    window.print();
+  const [sibuk, setSibuk] = useState(false);
+  const [galat, setGalat] = useState("");
+  const unduh = async () => {
+    setSibuk(true); setGalat("");
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      sp.set("nama", nama);
+      const r = await fetch(`/api/laporan/pdf?${sp.toString()}`);
+      if (!r.ok) throw new Error(((await r.json().catch(() => null)) as { error?: string } | null)?.error ?? `Gagal (${r.status})`);
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement("a");
+      a.href = url; a.download = `${nama}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (e) { setGalat(e instanceof Error ? e.message : "Gagal membuat PDF"); }
+    finally { setSibuk(false); }
   };
-  return <button className="btn" type="button" onClick={unduh}>Unduh PDF</button>;
+  return <>
+    <button className="btn" type="button" onClick={unduh} disabled={sibuk}>{sibuk ? "Membuat PDF…" : "Unduh PDF"}</button>
+    {galat ? <span className="muted" role="alert" style={{ color: "#B3261E", fontSize: 13 }}>{galat}</span> : null}
+  </>;
 }

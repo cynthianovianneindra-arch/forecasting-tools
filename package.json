@@ -10,9 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^153.0.0",
     "exceljs": "^4.4.0",
     "google-auth-library": "^11.3.0",
     "next": "^15.5.27",
+    "puppeteer-core": "^25.13.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
