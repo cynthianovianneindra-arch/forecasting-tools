@@ -33,6 +33,21 @@ export function htmlToText(html: string, max = 12000): string {
   return html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim().slice(0, max);
 }
 
+/** Ambil potongan teks di sekitar kata kunci (BI-Rate / inflasi) supaya menu navigasi situs tidak memenuhi jatah teks. */
+export function sekitarKataKunci(teks: string, indikator: "inflasi" | "birate", lebar = 700, max = 6000): string {
+  const re = indikator === "birate" ? /BI[\s-]*Rate|suku bunga acuan/gi : /inflasi|IHK/gi;
+  const spans: [number, number][] = [];
+  for (const m of teks.matchAll(re)) {
+    const a = Math.max(0, m.index! - lebar), b = Math.min(teks.length, m.index! + lebar);
+    const last = spans[spans.length - 1];
+    if (last && a <= last[1]) last[1] = b; else spans.push([a, b]);
+  }
+  // Utamakan potongan yang memuat angka persen/desimal (tabel data), bukan menu.
+  const punyaAngka = (t: string) => /\d+[.,]\d+/.test(t);
+  const potong = spans.map(([a, b]) => teks.slice(a, b)).sort((x, y) => Number(punyaAngka(y)) - Number(punyaAngka(x)));
+  return (potong.join(" ... ") || teks).slice(0, max);
+}
+
 const RENTANG: Record<"inflasi" | "birate", [number, number]> = { inflasi: [-5, 20], birate: [0, 20] };
 const angkaDiTeks = (teks: string, n: number) => [String(n), n.toFixed(1), n.toFixed(2), n.toFixed(2).replace(".", ","), n.toFixed(1).replace(".", ","), String(n).replace(".", ",")].some((v) => teks.includes(v));
 
@@ -42,15 +57,17 @@ const angkaDiTeks = (teks: string, n: number) => [String(n), n.toFixed(1), n.toF
  */
 export async function extractFromPage(teks: string, indikator: "inflasi" | "birate", call: (system: string, user: string) => Promise<string>): Promise<{ bulan: string; nilai: number }> {
   const apa = indikator === "inflasi" ? "inflasi tahunan (year on year, persen) terbaru" : "BI-Rate (persen) terbaru";
-  const out = await call(`Anda mengekstrak data dari teks halaman web. Balas HANYA JSON {"bulan":"YYYY-MM","nilai":<angka persen>} untuk ${apa}, atau {"bulan":null,"nilai":null} jika tidak ada. Jangan menebak atau menghitung; kutip angka persis dari teks.`, teks);
+  const potong = sekitarKataKunci(teks, indikator);
+  const out = await call(`Anda mengekstrak data dari teks halaman web. Tugas: cari ${apa}. Balasan Anda harus berupa SATU objek JSON saja, tanpa kalimat lain, tanpa markdown: {"bulan":"YYYY-MM","nilai":2.75} (nilai berupa angka dengan titik desimal). Jika angkanya tidak ada di teks, balas {"bulan":null,"nilai":null}. Jangan menebak atau menghitung; kutip angka persis dari teks.`, potong);
   const m = out.match(/\{[\s\S]*?\}/);
-  if (!m) throw new Error("Balasan Claude bukan JSON");
-  const j = JSON.parse(m[0]) as { bulan: string | null; nilai: number | null };
+  if (!m) throw new Error(`Balasan Claude bukan JSON (balasan: "${out.replace(/\s+/g, " ").slice(0, 120)}"; teks halaman ${teks.length} karakter, ${potong.length} dikirim, ada angka desimal: ${/\d+[.,]\d+/.test(potong) ? "ya" : "tidak"})`);
+  let j: { bulan: string | null; nilai: number | null };
+  try { j = JSON.parse(m[0].replace(/("nilai"\s*:\s*)(-?\d+),(\d+)/, "$1$2.$3")); } catch { throw new Error(`Balasan Claude bukan JSON valid ("${m[0].slice(0, 100)}")`); }
   if (!j.bulan || j.nilai === null || j.nilai === undefined) throw new Error("Angka tidak ditemukan di halaman");
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(j.bulan)) throw new Error(`Bulan tidak valid: ${j.bulan}`);
   const [lo, hi] = RENTANG[indikator];
   if (typeof j.nilai !== "number" || j.nilai < lo || j.nilai > hi) throw new Error(`Nilai di luar rentang wajar: ${j.nilai}`);
-  if (!angkaDiTeks(teks, j.nilai)) throw new Error(`Angka ${j.nilai} tidak ditemukan di teks halaman (kemungkinan halusinasi)`);
+  if (!angkaDiTeks(potong, j.nilai)) throw new Error(`Angka ${j.nilai} tidak ditemukan di teks halaman (kemungkinan halusinasi)`);
   return { bulan: j.bulan, nilai: j.nilai };
 }
 

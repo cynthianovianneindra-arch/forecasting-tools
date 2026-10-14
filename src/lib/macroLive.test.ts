@@ -1,5 +1,5 @@
 import { it, expect, vi } from "vitest";
-import { parseYahooMonthly, htmlToText, extractFromPage, mergeMacro, syncLive } from "./macroLive";
+import { sekitarKataKunci, parseYahooMonthly, htmlToText, extractFromPage, mergeMacro, syncLive } from "./macroLive";
 
 const yahoo = (closes: (number | null)[]) => ({ chart: { result: [{ timestamp: closes.map((_, i) => Date.UTC(2026, i, 1) / 1000), indicators: { quote: [{ close: closes }] } }] } });
 
@@ -56,4 +56,14 @@ it("syncLive: inflasi/birate yang dilewati tidak memanggil Claude", async () => 
   const { hasil } = await syncLive({ fetch: f as unknown as typeof fetch, call, lewati: new Set(["inflasi", "birate"]) });
   expect(call).not.toHaveBeenCalled();
   expect(hasil.filter((h) => h.indikator === "inflasi" || h.indikator === "birate").every((h) => h.ok && /dilewati/.test(h.sumber))).toBe(true);
+});
+it("sekitarKataKunci mengutamakan potongan berangka dan membuang menu", () => {
+  const menu = "Beranda Tentang BI Profil Kontak ".repeat(300);
+  const teks = `${menu} Data BI-Rate: 16 September 2026 | 4,75 % ${menu}`;
+  const p = sekitarKataKunci(teks, "birate");
+  expect(p).toContain("4,75");
+  expect(p.length).toBeLessThanOrEqual(6000);
+});
+it("balasan bukan JSON memuat cuplikan balasan untuk diagnosis", async () => {
+  await expect(extractFromPage("BI-Rate 4,75", "birate", async () => "Maaf, saya tidak menemukan data.")).rejects.toThrow(/Maaf, saya tidak menemukan/);
 });
