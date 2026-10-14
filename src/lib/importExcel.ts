@@ -79,6 +79,7 @@ export async function importPenjualan(input: string | Buffer | ArrayBuffer, mode
       agent: normName(row.getCell(C.agent).value) || undefined,
       leads: text(row.getCell(C.leads).value) || undefined,
       alasanBatal: text(row.getCell(C.alasan).value) || undefined,
+      netPrice: ((v) => (v !== null && v > 1e7 ? v : undefined))(num(row.getCell(14).value)),
       banks,
     });
   });

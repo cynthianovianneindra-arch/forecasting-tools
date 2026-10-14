@@ -48,6 +48,6 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
   const open = ft.filter((t) => !t.akad && !t.batal).length;
   const kartu = source === "demo" ? null : cards(applyFilter(txns, filter, false));
   const filtered = ft.length !== txns.length;
-  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, opts, kartu, filtered, nTxn: ft.length };
+  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, opts, kartu, filtered, nTxn: ft.length, txns };
 }
 export { f1, labelBulan, labelPanjang } from "./format";

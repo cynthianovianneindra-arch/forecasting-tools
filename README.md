@@ -13,7 +13,7 @@ Web app proyeksi UTJ, akad, dan penerimaan. Spesifikasi: `docs/SPEC.md`; mockup:
 - **2. Dashboard:** grafik, rentang, toggle Bulanan/Tahunan, tabel, tanda tren menyimpang, filter (tipe, agent, marketing, periode untuk kartu) dan enam kartu data aktual. Nilai kartu cocok SPEC 6.2 (funnel 284/240/188/181, tipe, agent, persen approve bank, alasan batal). Belum: filter cluster/tahap (tidak ada di PENJUALAN), konteks makro, sumber leads dari sheet LEADS.
 - **3. What-if:** 11 variabel, garis dasar abu-abu, peringatan stok. Koefisien masih ilustrasi, stok = konstanta demo. Belum: simpan skenario.
 - **4. Sinkron Sheets + makro:** belum. Layar Data hanya kerangka + cek total 284/188.
-- **5. Laporan + narasi:** pratinjau cetak A4 (2 dari 12 halaman); `/api/narasi` dengan validator angka (butuh `ANTHROPIC_API_KEY`).
+- **5. Laporan + narasi:** pratinjau cetak A4 (10 dari 12 halaman; hlm 10-11 menunggu data LEADS/EVENT); `/api/narasi` dengan validator angka (butuh `ANTHROPIC_API_KEY`).
 
 ## Data demo
 `fixtures/monthly_utj_akad.csv` hanya hitungan bulanan. Transaksi untuk pipeline direkonstruksi di
