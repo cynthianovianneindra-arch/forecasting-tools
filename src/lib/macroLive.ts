@@ -68,7 +68,59 @@ export async function extractFromPage(teks: string, indikator: "inflasi" | "bira
   const [lo, hi] = RENTANG[indikator];
   if (typeof j.nilai !== "number" || j.nilai < lo || j.nilai > hi) throw new Error(`Nilai di luar rentang wajar: ${j.nilai}`);
   if (!angkaDiTeks(potong, j.nilai)) throw new Error(`Angka ${j.nilai} tidak ditemukan di teks halaman (kemungkinan halusinasi)`);
+  if (!berdekatan(potong, j.bulan, j.nilai)) throw new Error(`Angka ${j.nilai} tidak ditemukan berdekatan dengan bulan ${j.bulan} di teks halaman (bulan dan angka tidak terbukti terkait)`);
   return { bulan: j.bulan, nilai: j.nilai };
+}
+
+const NAMA_BULAN = "Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember|January|February|March|May|June|July|August|October|December|Jan|Feb|Mar|Apr|Jun|Jul|Agu|Agt|Aug|Sept|Sep|Okt|Oct|Nov|Des|Dec";
+const NO_BULAN: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, mei: 5, may: 5, jun: 6, jul: 7, agu: 8, agt: 8, aug: 8, sep: 9, okt: 10, oct: 10, nov: 11, des: 12, dec: 12 };
+const noBulan = (nama: string) => NO_BULAN[nama.slice(0, 3).toLowerCase()];
+const angkaId = (t: string) => Number(t.replace(",", "."));
+
+/**
+ * Pembacaan tabel tanpa Claude: baris "[tgl] Bulan Tahun  nilai %" dari halaman statistik BI; ambil baris dengan tanggal terbaru.
+ * Null bila pola tidak ditemukan (lalu dipakai Claude sebagai cadangan). Untuk inflasi, halaman yang memuat data bulanan (MtM) dilewati
+ * agar tidak salah mengambil inflasi bulanan.
+ */
+export function bacaTabelDeterministik(teks: string, indikator: "inflasi" | "birate"): { bulan: string; nilai: number } | null {
+  if (indikator === "inflasi" && /\b(mtm|month[\s-]*to[\s-]*month|bulanan)\b/i.test(teks)) return null;
+  const re = new RegExp(`\\b(?:(\\d{1,2})\\s+)?(${NAMA_BULAN})\\b[\\s,.-]*(\\d{4})\\b[^\\d]{0,8}(\\d{1,2}[.,]\\d{1,2})\\s*%?`, "gi");
+  let best: { key: number; bulan: string; nilai: number } | null = null;
+  for (const m of teks.matchAll(re)) {
+    const bln = noBulan(m[2]), th = Number(m[3]), nilai = angkaId(m[4]);
+    if (!bln || th < 2000 || th > 2100) continue;
+    const [lo, hi] = RENTANG[indikator];
+    if (nilai < lo || nilai > hi) continue;
+    const key = th * 10000 + bln * 100 + (m[1] ? Number(m[1]) : 0);
+    if (!best || key > best.key) best = { key, bulan: `${th}-${String(bln).padStart(2, "0")}`, nilai };
+  }
+  return best ? { bulan: best.bulan, nilai: best.nilai } : null;
+}
+
+/** Angka harus muncul berdekatan (±200 karakter) dengan nama bulan dan tahun yang dilaporkan, bukan sekadar ada di halaman. */
+export function berdekatan(teks: string, bulan: string, nilai: number, jarak = 200): boolean {
+  const [th, bl] = bulan.split("-");
+  const bentuk = [String(nilai), nilai.toFixed(1), nilai.toFixed(2), nilai.toFixed(2).replace(".", ","), nilai.toFixed(1).replace(".", ","), String(nilai).replace(".", ",")];
+  const reBulan = new RegExp(`\\b(${NAMA_BULAN})\\b[\\s,.-]*${th}\\b`, "gi");
+  const posBulan: number[] = [];
+  for (const m of teks.matchAll(reBulan)) if (noBulan(m[1]) === Number(bl)) posBulan.push(m.index!);
+  if (!posBulan.length) return false;
+  return bentuk.some((v) => { let i = teks.indexOf(v); while (i >= 0) { if (posBulan.some((p) => Math.abs(p - i) <= jarak)) return true; i = teks.indexOf(v, i + 1); } return false; });
+}
+
+const LONJAKAN_MAKS: Record<"inflasi" | "birate", number> = { inflasi: 2, birate: 1 };
+
+/** Tolak nilai baru yang melonjak jauh dari nilai tersimpan terakhir; tidak disimpan otomatis, perlu dicek dan diisi manual bila benar. */
+export function jagaLonjakan(rows: LiveRow[], hasil: SyncResult[], sebelumnya: { bulan: string; indikator: string; nilai: number }[]): { rows: LiveRow[]; hasil: SyncResult[] } {
+  const tolak = new Set<LiveIndikator>();
+  const hasilBaru = hasil.map((h) => {
+    if ((h.indikator !== "inflasi" && h.indikator !== "birate") || !h.ok || h.nilai === undefined) return h;
+    const prev = sebelumnya.filter((x) => x.indikator === h.indikator).sort((a, b) => b.bulan.localeCompare(a.bulan))[0];
+    if (!prev || Math.abs(h.nilai - prev.nilai) <= LONJAKAN_MAKS[h.indikator]) return h;
+    tolak.add(h.indikator);
+    return { ...h, ok: false, error: `Lonjakan dari ${prev.nilai} (${prev.bulan}) ke ${h.nilai} (${h.bulan}) melebihi ${LONJAKAN_MAKS[h.indikator]} poin; tidak disimpan otomatis. Periksa sumber, lalu isi manual di bawah bila benar.` };
+  });
+  return { rows: rows.filter((r) => !tolak.has(r.indikator)), hasil: hasilBaru };
 }
 
 export const BPS_URL = () => process.env.BPS_INFLASI_URL ?? "https://www.bps.go.id/id";
@@ -105,11 +157,16 @@ export async function syncLive(deps: { fetch?: typeof fetch; call?: (system: str
     let berhasil = false;
     for (const [url, sumber] of urls) {
       try {
-        if (!deps.call && !process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY belum diset (dibutuhkan untuk membaca halaman)");
-        const call = deps.call ?? ((sys: string, usr: string) => import("./claude").then((m) => m.callClaude(sys, usr, "sync")));
-        const v = await extractFromPage(await fetchPage(url, f), ind, call);
-        rows.push({ bulan: v.bulan, indikator: ind, nilai: v.nilai, sumber });
-        hasil.push({ indikator: ind, ok: true, bulan: v.bulan, nilai: v.nilai, sumber });
+        const halaman = await fetchPage(url, f);
+        let v = bacaTabelDeterministik(halaman, ind), cara = "";
+        if (!v) {
+          // Format tabel tidak dikenali: cadangan memakai Claude (dengan penjaga angka dan bulan).
+          if (!deps.call && !process.env.ANTHROPIC_API_KEY) throw new Error("Tabel tidak terbaca dan ANTHROPIC_API_KEY belum diset (dibutuhkan sebagai cadangan)");
+          const call = deps.call ?? ((sys: string, usr: string) => import("./claude").then((m) => m.callClaude(sys, usr, "sync")));
+          v = await extractFromPage(halaman, ind, call); cara = " [dibaca Claude]";
+        }
+        rows.push({ bulan: v.bulan, indikator: ind, nilai: v.nilai, sumber: sumber + cara });
+        hasil.push({ indikator: ind, ok: true, bulan: v.bulan, nilai: v.nilai, sumber: sumber + cara });
         berhasil = true;
         break;
       } catch (e) { galat.push(`${sumber}: ${e instanceof Error ? e.message : String(e)}`); }

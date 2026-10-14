@@ -1,5 +1,5 @@
 import { it, expect, vi } from "vitest";
-import { sekitarKataKunci, parseYahooMonthly, htmlToText, extractFromPage, mergeMacro, syncLive } from "./macroLive";
+import { bacaTabelDeterministik, berdekatan, jagaLonjakan, sekitarKataKunci, parseYahooMonthly, htmlToText, extractFromPage, mergeMacro, syncLive } from "./macroLive";
 
 const yahoo = (closes: (number | null)[]) => ({ chart: { result: [{ timestamp: closes.map((_, i) => Date.UTC(2026, i, 1) / 1000), indicators: { quote: [{ close: closes }] } }] } });
 
@@ -29,10 +29,10 @@ it("inflasi: BPS 403 -> cadangan halaman BI dipakai", async () => {
     const url = String(u);
     if (url.includes("yahoo")) return new Response(JSON.stringify(yahoo([100])));
     if (url.includes("bps.go.id")) return new Response("forbidden", { status: 403 });
-    return new Response("<p>Inflasi IHK tahunan 2,42 persen</p>");
+    return new Response("<p>Inflasi IHK tahunan September 2026 sebesar 2,42 persen</p>");
   });
   const { hasil } = await syncLive({ fetch: f as unknown as typeof fetch, call: async () => '{"bulan":"2026-09","nilai":2.42}' });
-  expect(hasil.find((h) => h.indikator === "inflasi")).toMatchObject({ ok: true, nilai: 2.42, sumber: "bi.go.id (data inflasi)" });
+  expect(hasil.find((h) => h.indikator === "inflasi")).toMatchObject({ ok: true, nilai: 2.42, sumber: "bi.go.id (data inflasi) [dibaca Claude]" });
 });
 it("inflasi: semua sumber gagal -> galat gabungan, sumber lain tetap jalan", async () => {
   const f = vi.fn(async (u: RequestInfo | URL) => String(u).includes("yahoo") ? new Response(JSON.stringify(yahoo([100]))) : new Response("x", { status: 403 }));
@@ -43,7 +43,7 @@ it("inflasi: semua sumber gagal -> galat gabungan, sumber lain tetap jalan", asy
   expect(hasil.find((h) => h.indikator === "ihsg")?.ok).toBe(true);
 });
 it("syncLive: satu sumber gagal tidak menghentikan yang lain", async () => {
-  const f = vi.fn(async (u: RequestInfo | URL) => String(u).includes("yahoo") ? (String(u).includes("JKSE") ? new Response(JSON.stringify(yahoo([7000, 7100]))) : new Response("x", { status: 429 })) : new Response("<p>BI-Rate 5,25 persen</p>"));
+  const f = vi.fn(async (u: RequestInfo | URL) => String(u).includes("yahoo") ? (String(u).includes("JKSE") ? new Response(JSON.stringify(yahoo([7000, 7100]))) : new Response("x", { status: 429 })) : new Response("<p>BI-Rate September 2026 sebesar 5,25 persen</p>"));
   const { rows, hasil } = await syncLive({ fetch: f as unknown as typeof fetch, call: async () => '{"bulan":"2026-09","nilai":5.25}' });
   expect(hasil.find((h) => h.indikator === "ihsg")?.ok).toBe(true);
   expect(hasil.find((h) => h.indikator === "emas")).toMatchObject({ ok: false });
@@ -66,4 +66,33 @@ it("sekitarKataKunci mengutamakan potongan berangka dan membuang menu", () => {
 });
 it("balasan bukan JSON memuat cuplikan balasan untuk diagnosis", async () => {
   await expect(extractFromPage("BI-Rate 4,75", "birate", async () => "Maaf, saya tidak menemukan data.")).rejects.toThrow(/Maaf, saya tidak menemukan/);
+});
+it("tabel BI-Rate dibaca tanpa Claude: ambil tanggal terbaru", () => {
+  const teks = "Menu Beranda BI-Rate Tanggal BI-Rate 16 Juli 2026 4,75 % 18 Agustus 2026 5,00 % 16 September 2026 4,75 % Lainnya";
+  expect(bacaTabelDeterministik(teks, "birate")).toEqual({ bulan: "2026-09", nilai: 4.75 });
+});
+it("tabel inflasi YoY dibaca; halaman yang memuat MtM tidak ditebak", () => {
+  expect(bacaTabelDeterministik("Data Inflasi Agustus 2026 2,31 % September 2026 2,42 %", "inflasi")).toEqual({ bulan: "2026-09", nilai: 2.42 });
+  expect(bacaTabelDeterministik("Inflasi MtM September 2026 0,12 %", "inflasi")).toBeNull();
+});
+it("tidak ada pola -> null (cadangan Claude)", () => {
+  expect(bacaTabelDeterministik("halaman kosong tanpa tabel", "birate")).toBeNull();
+});
+it("berdekatan: angka harus dekat bulan yang dilaporkan", () => {
+  const teks = "September 2026 inflasi 2,42 persen " + "x ".repeat(400) + " tarif 4,75 persen";
+  expect(berdekatan(teks, "2026-09", 2.42)).toBe(true);
+  expect(berdekatan(teks, "2026-09", 4.75)).toBe(false);
+  expect(berdekatan(teks, "2026-08", 2.42)).toBe(false);
+});
+it("ekstraksi Claude ditolak bila angka tidak berdekatan dengan bulan", async () => {
+  const teks = "Inflasi tahunan September 2026 sebesar 2,10 persen. " + "x ".repeat(150) + " lain-lain 2,42";
+  await expect(extractFromPage(teks, "inflasi", async () => '{"bulan":"2026-09","nilai":2.42}')).rejects.toThrow(/berdekatan|terkait/);
+});
+it("jagaLonjakan menolak lonjakan besar dan menahan penyimpanan", () => {
+  const rows = [{ bulan: "2026-09", indikator: "birate" as const, nilai: 9.5, sumber: "bi.go.id" }, { bulan: "2026-09", indikator: "ihsg" as const, nilai: 7000, sumber: "Yahoo" }];
+  const hasil = [{ indikator: "birate" as const, ok: true, bulan: "2026-09", nilai: 9.5, sumber: "bi.go.id" }, { indikator: "ihsg" as const, ok: true, bulan: "2026-09", nilai: 7000, sumber: "Yahoo" }];
+  const r = jagaLonjakan(rows, hasil, [{ bulan: "2026-08", indikator: "birate", nilai: 4.75 }]);
+  expect(r.rows.map((x) => x.indikator)).toEqual(["ihsg"]);
+  expect(r.hasil.find((h) => h.indikator === "birate")).toMatchObject({ ok: false });
+  expect(jagaLonjakan(rows, hasil, [{ bulan: "2026-08", indikator: "birate", nilai: 9.0 }]).rows).toHaveLength(2);
 });

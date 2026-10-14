@@ -89,3 +89,9 @@ Saat Dari/Sampai bulan dipilih, deret UTJ untuk exponential smoothing dibatasi k
 create table if not exists narasi_cache (hash text primary key, narasi jsonb not null, dibuat timestamptz not null default now());
 alter table narasi_cache enable row level security;
 ```
+
+## Validasi sinkron BI Rate dan inflasi
+1. Tabel halaman BI dibaca dengan aturan kode lebih dulu (baris "tanggal/bulan tahun nilai %", diambil yang terbaru). Claude hanya cadangan bila format halaman tidak dikenali; sumber yang dibaca Claude diberi tanda `[dibaca Claude]`.
+2. Untuk hasil Claude: angka harus ada di teks halaman dan berdekatan (±200 karakter) dengan bulan dan tahun yang dilaporkan.
+3. Lonjakan lebih dari 1 poin (BI Rate) atau 2 poin (inflasi) terhadap nilai tersimpan terakhir tidak disimpan otomatis; layar Data menampilkan peringatan dan nilainya diisi manual bila benar.
+4. Input manual selalu menimpa data sinkron.
