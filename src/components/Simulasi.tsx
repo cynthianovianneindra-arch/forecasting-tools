@@ -7,7 +7,7 @@ import { analisisSkenario } from "@/lib/analisis";
 import { applyScenario, changedCount, EMPTY, KATEGORI_EVENT, Referensi, scenarioQuery, Scenario, turunan } from "@/lib/whatif";
 import type { ForecastRow } from "@/lib/forecast";
 
-const inp = { minHeight: 44, borderRadius: 8, border: "1px solid #E1E5EB", padding: "0 8px", fontSize: 14, width: "100%" } as const;
+const inp = { minHeight: 44, borderRadius: 14, border: "1px solid #EDE7DE", background: "#F4F0E9", padding: "0 12px", fontSize: 14, width: "100%" } as const;
 const num = (v: string): number | null => { const n = Number(v.replace(",", ".")); return v.trim() === "" || !isFinite(n) ? null : n; };
 const fmt = (n: number | null, d = 0) => (n === null ? "-" : n.toLocaleString("id-ID", { maximumFractionDigits: d }));
 const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);

@@ -1,7 +1,7 @@
 export function ReportPage({ n, total, title, children }: { n: number; total: number; title: string; children: React.ReactNode }) {
   return (
     <section className="page">
-      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid #24467C", paddingBottom: 8, marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid #44624F", paddingBottom: 8, marginBottom: 16 }}>
         <h2 style={{ fontSize: 20, margin: 0 }}>{title}</h2><span className="muted" style={{ fontSize: 12 }}>Hlm {n} / {total}</span>
       </div>
       {children}
@@ -9,4 +9,4 @@ export function ReportPage({ n, total, title, children }: { n: number; total: nu
     </section>
   );
 }
-export const Note = ({ children }: { children: React.ReactNode }) => <p style={{ background: "#FCEBD2", color: "#7A4A00", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>{children}</p>;
+export const Note = ({ children }: { children: React.ReactNode }) => <p style={{ background: "#FBEBD3", color: "#7A4A00", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>{children}</p>;
