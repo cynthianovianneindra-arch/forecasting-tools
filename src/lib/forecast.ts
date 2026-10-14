@@ -1,9 +1,20 @@
 // Mesin forecast: fungsi murni & deterministik. Semua angka dihitung di sini, bukan oleh Claude.
 
+export interface BankCase { bank: string; hari: number | null; status: string }
 export interface Txn {
   utj: string; // 'YYYY-MM'
   akad?: string | null;
   batal?: string | null;
+  spr?: boolean;
+  cair?: boolean;
+  tipe?: string;
+  agent?: string;
+  marketing?: string;
+  leads?: string;
+  database?: string;
+  alasanBatal?: string;
+  netPrice?: number; // rupiah
+  banks?: BankCase[];
 }
 
 export const MAX_AGE = 18;

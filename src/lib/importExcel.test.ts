@@ -18,5 +18,5 @@ it("impor workbook sintetis", async () => {
   const buf = await wb.xlsx.writeBuffer();
   const r = await importPenjualan(buf as ArrayBuffer);
   expect(r).toMatchObject({ utj: 2, akad: 1, batal: 1 });
-  expect(r.txns[0]).toEqual({ utj: "2024-01", akad: "2024-03", batal: null });
+  expect(r.txns[0]).toMatchObject({ utj: "2024-01", akad: "2024-03", batal: null });
 });
