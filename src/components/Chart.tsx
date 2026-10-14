@@ -23,25 +23,25 @@ export function Chart({ bars, title }: { bars: Bar[]; title: string }) {
     <div style={{ position: "relative" }}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title} style={{ width: "100%", height: "auto", touchAction: "manipulation" }}>
         <defs>
-          <pattern id="pu" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#D3DFD6" /><rect width="2" height="6" fill="#44624F" opacity=".35" /></pattern>
-          <pattern id="pa" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#F8E2C8" /><rect width="2" height="6" fill="#C06F1B" opacity=".35" /></pattern>
+          <pattern id="pu" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#C9D0DA" /><rect width="2" height="6" fill="#1A293F" opacity=".35" /></pattern>
+          <pattern id="pa" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#E7DBBE" /><rect width="2" height="6" fill="#6E5830" opacity=".35" /></pattern>
         </defs>
-        {ticks.map((t) => (<g key={t}><line x1={L} x2={W} y1={y(t)} y2={y(t)} stroke="#EDE7DE" strokeDasharray="4 4" /><text x={L - 6} y={y(t) + 4} fontSize="10" textAnchor="end" fill="#7C756C">{t}</text></g>))}
+        {ticks.map((t) => (<g key={t}><line x1={L} x2={W} y1={y(t)} y2={y(t)} stroke="#E3E7EC" strokeDasharray="4 4" /><text x={L - 6} y={y(t) + 4} fontSize="10" textAnchor="end" fill="#5E6672">{t}</text></g>))}
         {bars.map((b, i) => {
           const cx = L + gw * i + gw / 2;
           return (
             <g key={b.label + i}>
-              {hover === i && <rect x={cx - gw / 2} width={gw} y={T} height={H - B - T} fill="#44624F" opacity=".07" />}
-              {b.proj && b.lo !== undefined && b.hi !== undefined && <rect x={cx - gw / 2 + 1} width={gw - 2} y={y(b.hi)} height={Math.max(1, y(b.lo) - y(b.hi))} fill="#EFEAE0" />}
-              <rect x={cx - bw - 1} width={bw} y={y(b.utj)} height={H - B - y(b.utj)} rx="3" fill={b.proj ? "url(#pu)" : "#44624F"} stroke={b.proj ? "#44624F" : "none"} strokeDasharray={b.proj ? "3 2" : undefined} />
-              <rect x={cx + 1} width={bw} y={y(b.akad)} height={H - B - y(b.akad)} rx="3" fill={b.proj ? "url(#pa)" : "#E8913A"} stroke={b.proj ? "#C06F1B" : "none"} strokeDasharray={b.proj ? "3 2" : undefined} />
-              {b.showLabel !== false && <text x={cx} y={H - 10} fontSize="10" textAnchor="middle" fill="#7C756C">{b.label}</text>}
+              {hover === i && <rect x={cx - gw / 2} width={gw} y={T} height={H - B - T} fill="#1A293F" opacity=".07" />}
+              {b.proj && b.lo !== undefined && b.hi !== undefined && <rect x={cx - gw / 2 + 1} width={gw - 2} y={y(b.hi)} height={Math.max(1, y(b.lo) - y(b.hi))} fill="#E6E9EE" />}
+              <rect x={cx - bw - 1} width={bw} y={y(b.utj)} height={H - B - y(b.utj)} rx="3" fill={b.proj ? "url(#pu)" : "#1A293F"} stroke={b.proj ? "#1A293F" : "none"} strokeDasharray={b.proj ? "3 2" : undefined} />
+              <rect x={cx + 1} width={bw} y={y(b.akad)} height={H - B - y(b.akad)} rx="3" fill={b.proj ? "url(#pa)" : "#896F3D"} stroke={b.proj ? "#6E5830" : "none"} strokeDasharray={b.proj ? "3 2" : undefined} />
+              {b.showLabel !== false && <text x={cx} y={H - 10} fontSize="10" textAnchor="middle" fill="#5E6672">{b.label}</text>}
             </g>
           );
         })}
-        {firstProj > 0 && <line x1={L + gw * firstProj} x2={L + gw * firstProj} y1={T} y2={H - B} stroke="#2A2826" strokeDasharray="4 3" />}
-        {trendPts && <polyline points={trendPts} fill="none" stroke="#2A2826" strokeWidth="2" />}
-        {basePts && <polyline points={basePts} fill="none" stroke="#A39B90" strokeWidth="2" strokeDasharray="5 3" />}
+        {firstProj > 0 && <line x1={L + gw * firstProj} x2={L + gw * firstProj} y1={T} y2={H - B} stroke="#404751" strokeDasharray="4 3" />}
+        {trendPts && <polyline points={trendPts} fill="none" stroke="#404751" strokeWidth="2" />}
+        {basePts && <polyline points={basePts} fill="none" stroke="#8B93A0" strokeWidth="2" strokeDasharray="5 3" />}
         {/* area sentuh per bulan (transparan) */}
         {bars.map((b, i) => (
           <rect key={"h" + i} x={L + gw * i} width={gw} y={0} height={H - B + 14} fill="transparent" style={{ cursor: "pointer" }}
@@ -50,12 +50,12 @@ export function Chart({ bars, title }: { bars: Bar[]; title: string }) {
         ))}
       </svg>
       {hb && (
-        <div role="status" style={{ position: "absolute", top: 4, [kiri ? "left" : "right"]: 8, background: "#2A2826", color: "#fff", borderRadius: 14, padding: "10px 14px", fontSize: 12, boxShadow: "0 8px 24px rgba(40,30,20,.25)", pointerEvents: "none", minWidth: 150 }}>
+        <div role="status" style={{ position: "absolute", top: 4, [kiri ? "left" : "right"]: 8, background: "#102134", color: "#fff", borderRadius: 14, padding: "10px 14px", fontSize: 12, boxShadow: "0 8px 24px rgba(40,30,20,.25)", pointerEvents: "none", minWidth: 150 }}>
           <b>{hb.full ?? hb.label}</b> <span style={{ opacity: .7 }}>· {hb.proj ? "proyeksi" : "aktual"}</span>
-          <div><span style={{ color: "#44624F" }}>■</span> UTJ: <b>{nilai(hb.utj, hb.proj)}</b>{hb.proj && hb.lo !== undefined && hb.hi !== undefined ? ` (rentang ${bulat(hb.lo)}–${bulat(hb.hi)})` : ""}</div>
-          <div><span style={{ color: "#E8913A" }}>■</span> Akad: <b>{Math.floor(hb.akad + 1e-9)}</b>{hb.proj ? " (dibulatkan ke bawah)" : ""}</div>
-          {hb.trend !== undefined && <div><span style={{ color: "#2A2826" }}>■</span> Garis tren: {bulat(hb.trend)}</div>}
-          {hb.baseUtj !== undefined && <div><span style={{ color: "#A39B90" }}>■</span> UTJ dasar: {bulat(hb.baseUtj)}</div>}
+          <div><span style={{ color: "#1A293F" }}>■</span> UTJ: <b>{nilai(hb.utj, hb.proj)}</b>{hb.proj && hb.lo !== undefined && hb.hi !== undefined ? ` (rentang ${bulat(hb.lo)}–${bulat(hb.hi)})` : ""}</div>
+          <div><span style={{ color: "#896F3D" }}>■</span> Akad: <b>{Math.floor(hb.akad + 1e-9)}</b>{hb.proj ? " (dibulatkan ke bawah)" : ""}</div>
+          {hb.trend !== undefined && <div><span style={{ color: "#404751" }}>■</span> Garis tren: {bulat(hb.trend)}</div>}
+          {hb.baseUtj !== undefined && <div><span style={{ color: "#8B93A0" }}>■</span> UTJ dasar: {bulat(hb.baseUtj)}</div>}
         </div>
       )}
     </div>
@@ -66,9 +66,9 @@ export function Legend({ trend, base }: { trend?: boolean; base?: boolean }) {
   const sw = (c: string) => <span style={{ display: "inline-block", width: 12, height: 12, background: c, borderRadius: 2, marginRight: 6, verticalAlign: "-1px" }} />;
   return (
     <div className="legend">
-      <span>{sw("#44624F")}UTJ</span><span>{sw("#E8913A")}Akad</span><span>{sw("#D3DFD6")}Proyeksi (terang)</span><span>{sw("#EFEAE0")}Rentang UTJ</span>
-      {trend && <span>{sw("#2A2826")}Garis tren (pembanding)</span>}
-      {base && <span>{sw("#A39B90")}Proyeksi dasar</span>}
+      <span>{sw("#1A293F")}UTJ</span><span>{sw("#896F3D")}Akad</span><span>{sw("#C9D0DA")}Proyeksi (terang)</span><span>{sw("#E6E9EE")}Rentang UTJ</span>
+      {trend && <span>{sw("#404751")}Garis tren (pembanding)</span>}
+      {base && <span>{sw("#8B93A0")}Proyeksi dasar</span>}
       <span style={{ marginLeft: "auto" }}>Arahkan kursor atau sentuh batang untuk melihat nilai</span>
     </div>
   );

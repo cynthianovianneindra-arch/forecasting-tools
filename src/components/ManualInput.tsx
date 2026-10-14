@@ -3,10 +3,10 @@ import { labelPenuh } from "@/lib/format";
 import type { getData } from "@/lib/data";
 
 type D = Awaited<ReturnType<typeof getData>>;
-const inp = { minHeight: 44, borderRadius: 14, border: "1px solid #EDE7DE", background: "#F4F0E9", padding: "0 12px", fontSize: 14, minWidth: 140 } as const;
+const inp = { minHeight: 44, borderRadius: 14, border: "1px solid #E3E7EC", background: "#F0F2F5", padding: "0 12px", fontSize: 14, minWidth: 140 } as const;
 
 function F({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label style={{ fontSize: 12, color: "#7C756C", display: "flex", flexDirection: "column", gap: 4 }}>{label}{children}</label>;
+  return <label style={{ fontSize: 12, color: "#5E6672", display: "flex", flexDirection: "column", gap: 4 }}>{label}{children}</label>;
 }
 function Form({ jenis, judul, children, ket }: { jenis: string; judul: string; children: React.ReactNode; ket?: string }) {
   return (
