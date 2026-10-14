@@ -35,7 +35,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const batalPct = pot(k.funnel.batal);
   const mk = d.marketing && d.marketing.leads.length ? marketingInsights(d.marketing, txns) : null;
   const narasi = await narasiLaporan({
-    stok: d.stok ? { unitOpen: d.stok.open, totalUnit: d.stok.total, bulanStokHabis: d.stokHabis } : null,
+    stok: d.stok ? { unitOpen: d.stok.open, unitBelumDibangun: d.stok.belumDibangun, totalUnit: d.stok.total, bulanStokHabis: d.stokHabis, kekuranganUnit: d.stokKurang } : null,
     ekonomi: d.makro ? d.makro.map((m) => ({ indikator: m.indikator, korelasiDenganUtj: m.korelasi, bulanTerakhir: m.terakhir })) : null,
     marketing: mk ? { ...mk.stats, kategori: mk.kategori.slice(0, 5), temuan: mk.findings.map((f) => ({ judul: f.judul, temuan: f.temuan, label: f.label })) } : null,
     periode: `${labelPanjang(r[0].bulan)} - ${labelPanjang(r[11].bulan)}`, jenis,
@@ -70,7 +70,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
 
     <ReportPage n={5} title="Akad dan penerimaan"><p>Akad diproyeksikan dari UTJ yang sedang berjalan ({d.open} UTJ belum akad atau batal) ditambah UTJ baru, memakai peluang akad dan batal per umur UTJ dari data historis.</p>
       <table>{th("Bulan", "Akad", "Penerimaan (Rp M)")}<tbody>{r.map((x) => <tr key={x.bulan}><td>{labelPanjang(x.bulan)}</td><td className="n">{f1(x.akad)}</td><td className="n">{f1(x.akad * net)}</td></tr>)}</tbody></table>
-      {d.stok && <Note>Stok Open saat ini {d.stok.open} unit dari {d.stok.total}. {d.stokHabis !== null ? `Pada laju proyeksi, stok habis di bulan ke-${d.stokHabis}; proyeksi di atas mengasumsikan unit tersedia sehingga perlu tambahan unit (order bangun) atau pelepasan unit berstatus lain.` : "Stok cukup untuk seluruh 12 bulan proyeksi."}</Note>}
+      {d.stok && <Note>Stok Open saat ini {d.stok.open} unit dari {d.stok.total}. {d.stokHabis !== null ? `Pada laju proyeksi (UTJ dikurangi batal), stok habis di bulan ke-${d.stokHabis} dan kurang sekitar ${d.stokKurang} unit dalam 12 bulan; ${d.stok.belumDibangun} unit berstatus Close (belum dibangun) bisa dijual setelah dibangun. Proyeksi di atas mengasumsikan unit tersedia.` : "Stok cukup untuk seluruh 12 bulan proyeksi."}</Note>}
       <p className="muted">Uji mundur (26 titik): galat total akad 3 bulan {f1(bt.akadMaeTotal3)} unit, dibanding {f1(bt.akadMaeMa12)} unit bila memakai rata-rata 12 bulan.</p></ReportPage>
 
     <ReportPage n={6} title="Funnel penjualan dan pembatalan">{narasi && <p>{narasi.funnel}</p>}<table>{th("Tahap", "Jumlah", "% dari UTJ")}<tbody>
@@ -114,6 +114,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
         <Note>Skenario memakai koefisien ilustrasi yang belum dikalibrasi dari data; baca sebagai gambaran arah, bukan ramalan. Pengaruh variabel ekonomi lemah pada data historis. Proyeksi dasar di halaman lain tidak berubah.</Note></>}
       <h2 style={{ marginTop: 16 }}>Cara angka dibuat</h2><p>UTJ = rata-rata 12 bulan terakhir; akad = pipeline UTJ; rentang dari kuantil galat uji mundur ({bt.origins} titik uji, galat UTJ rata-rata {f1(bt.utjMae13)} unit/bulan).</p>
       <h2>Keterbatasan</h2><ul><li>Penjualan berfluktuasi; satu angka tidak menjamin hasil.</li><li>Variabel ekonomi hanya konteks.</li><li>Skenario di menu Simulasi memakai koefisien ilustrasi dan belum dikalibrasi.</li><li>Penerimaan memakai harga bersih rata-rata, bukan jadwal termin.</li></ul>
-      <h2>Langkah berikutnya</h2><ul><li>Lengkapi alasan batal dan status leads di sumber data.</li><li>Kalibrasi koefisien skenario dari data; sambungkan pembaruan otomatis data ekonomi (BPS, BI, Twelve Data).</li><li>Konfirmasi definisi stok tersedia dijual (Open saja, atau termasuk Margal/Close).</li></ul></ReportPage>
+      <h2>Langkah berikutnya</h2><ul><li>Lengkapi alasan batal dan status leads di sumber data.</li><li>Kalibrasi koefisien skenario dari data; sambungkan pembaruan otomatis data ekonomi (BPS, BI, Twelve Data).</li><li>Rencanakan order bangun dari unit Close agar stok tidak menjadi pembatas penjualan.</li></ul></ReportPage>
   </>);
 }

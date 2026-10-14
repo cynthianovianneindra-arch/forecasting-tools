@@ -41,11 +41,11 @@ export function applyScenario(base: ForecastRow[], s: Scenario, stok: number = S
       if (ready + k + 1 < base.length) extraAkad[ready + k + 1] += (s.units * 0.4) / 6;
     }
   }
-  let cum = 0;
+  let cum = 0; // pemakaian unit bersih = UTJ - batal (batal ikut skala UTJ)
   const rows = base.map((b, i) => {
     const utj = b.utj * utjMul + extraUtj[i];
     const akad = b.akad * akadMul * (1 + (utjMul - 1) * 0.5) + extraAkad[i];
-    cum += utj;
+    cum += utj - (b.batal ?? 0) * utjMul;
     return { bulan: b.bulan, utj, akad, penerimaan: akad * NET_PRICE_MILIAR };
   });
   return { rows, stockWarning: cum > stok + s.units };

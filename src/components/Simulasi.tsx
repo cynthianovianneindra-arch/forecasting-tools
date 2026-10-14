@@ -5,8 +5,8 @@ import { f1, labelBulan } from "@/lib/format";
 import Link from "next/link";
 import { EMPTY, Scenario, VARS, applyScenario, changedCount, scenarioQuery } from "@/lib/whatif";
 
-interface Row { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; trend: number }
-export function Simulasi({ rows, netPrice, stok }: { rows: Row[]; netPrice: number; stok?: number }) {
+interface Row { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; batal: number; trend: number }
+export function Simulasi({ rows, netPrice, stok, belumDibangun, kekurangan }: { rows: Row[]; netPrice: number; stok?: number; belumDibangun?: number; kekurangan?: number | null }) {
   const [s, setS] = useState<Scenario>(EMPTY);
   const [mode, setMode] = useState<"bulanan" | "tahunan">("bulanan");
   const { rows: sc, stockWarning } = useMemo(() => applyScenario(rows, s, stok), [rows, s, stok]);
@@ -32,9 +32,10 @@ export function Simulasi({ rows, netPrice, stok }: { rows: Row[]; netPrice: numb
             {stockWarning && <p className="err">Peringatan: UTJ skenario melebihi stok unit yang tersedia dijual ({stok === undefined ? "stok demo" : `stok Open ${stok} unit + unit dibangun`}).</p>}</div>
           <div>{groups.map((g, i) => (
             <details key={g} open={i === 0}><summary>{g}</summary>
+              {i === 0 && belumDibangun !== undefined && <p className="muted" style={{ fontSize: 12 }}>Unit belum dibangun (status Close): <b>{belumDibangun}</b>, batas atas order bangun.{kekurangan ? ` Pada proyeksi dasar, stok Open kurang sekitar ${kekurangan} unit dalam 12 bulan (UTJ dikurangi batal).` : " Stok Open cukup untuk 12 bulan pada proyeksi dasar."}</p>}
               {VARS.filter((v) => v.group === g).map((v) => (
                 <label className="sl" key={v.key}>{v.label}: <b>{s[v.key]} {v.unit}</b>
-                  <input type="range" min={v.min} max={v.max} step={v.step} value={s[v.key]} onChange={(e) => setS({ ...s, [v.key]: +e.target.value })} /></label>))}
+                  <input type="range" min={v.min} max={v.key === "units" && belumDibangun !== undefined ? Math.min(v.max, belumDibangun) : v.max} step={v.step} value={s[v.key]} onChange={(e) => setS({ ...s, [v.key]: +e.target.value })} /></label>))}
             </details>))}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button className="btn alt" onClick={() => setS(EMPTY)}>Reset skenario</button>
