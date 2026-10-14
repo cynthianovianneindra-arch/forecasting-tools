@@ -95,7 +95,7 @@ mark{background:#C9D6E0;color:inherit;font-weight:700;padding:0 1px;border-radiu
   .navitem:hover{background:rgba(255,255,255,.1);color:#fff}
   .wrap{padding-left:16px;padding-right:16px}.topbar{padding:10px 16px}h1{font-size:23px}
 }
-@media print{.side,.topbar,.noprint,.navtoggle{display:none}body,body:has(.navtoggle:checked){background:#fff;padding:0}.page{border-radius:0;box-shadow:none;margin:0;page-break-after:always}@page{size:A4;margin:0}}
+@media print{.side,.topbar,.noprint,.navtoggle{display:none}body,body:has(.navtoggle:checked){background:#fff;padding:0}.page{border-radius:0;box-shadow:none;margin:0;min-height:0;height:1122px;overflow:hidden;page-break-after:always}.page:last-of-type{page-break-after:auto}@page{size:A4;margin:0}}
 
 body:has(.login){padding-left:0;background:#101316;background-image:none;color:#F1F0EE}
 .login{min-height:100vh;display:grid;grid-template-columns:minmax(320px,44%) 1fr;gap:0;padding:12px}
