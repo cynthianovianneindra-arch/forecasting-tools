@@ -1,54 +1,110 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Chart, Legend } from "./Chart";
-import { f1, labelBulan } from "@/lib/format";
 import Link from "next/link";
-import { EMPTY, Scenario, VARS, applyScenario, changedCount, scenarioQuery } from "@/lib/whatif";
+import { Chart, Legend } from "./Chart";
+import { f1, labelBulan, labelPenuh } from "@/lib/format";
+import { analisisSkenario } from "@/lib/analisis";
+import { applyScenario, changedCount, EMPTY, KATEGORI_EVENT, Referensi, scenarioQuery, Scenario, turunan } from "@/lib/whatif";
+import type { ForecastRow } from "@/lib/forecast";
 
-interface Row { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; akadInt: number; batal: number; trend: number }
-export function Simulasi({ rows, netPrice, stok, belumDibangun, kekurangan, perTipe }: { rows: Row[]; netPrice: number; stok?: number; belumDibangun?: number; kekurangan?: number | null; perTipe?: { tipe: string; open: number; belum: number }[] }) {
-  const [s, setS] = useState<Scenario>(EMPTY);
-  const [mode, setMode] = useState<"bulanan" | "tahunan">("bulanan");
-  const { rows: sc, stockWarning } = useMemo(() => applyScenario(rows, s, stok), [rows, s, stok]);
-  const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
-  const fl = (v: number) => Math.floor(v + 1e-9);
-  const bU = sum(rows.map((r) => r.utj)), bA = sum(rows.map((r) => r.akadInt));
-  const sU = sum(sc.map((r) => r.utj)), sA = sum(sc.map((r) => fl(r.akad)));
+const inp = { minHeight: 44, borderRadius: 8, border: "1px solid #E1E5EB", padding: "0 8px", fontSize: 14, width: "100%" } as const;
+const num = (v: string): number | null => { const n = Number(v.replace(",", ".")); return v.trim() === "" || !isFinite(n) ? null : n; };
+const fmt = (n: number | null, d = 0) => (n === null ? "-" : n.toLocaleString("id-ID", { maximumFractionDigits: d }));
+const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
+
+interface Props {
+  rows: ForecastRow[]; netPrice: number; acuan: Referensi; stokOpen?: number;
+  belumDibangunPerTipe: { tipe: string; n: number }[]; korelasiEkonomi?: number | null;
+}
+
+/** Simulasi skenario: semua variabel diisi manual (tanpa slider). UTJ dan akad ditampilkan bulat (dibulatkan ke bawah). */
+export function Simulasi({ rows, netPrice, acuan: ref, stokOpen, belumDibangunPerTipe, korelasiEkonomi }: Props) {
+  const [mode, setMode] = useState<"bulanan" | "total">("bulanan");
+  const [f, setF] = useState<Record<string, string>>({});
+  const set = (k: string, v: string) => setF((x) => ({ ...x, [k]: v }));
+
+  const s: Scenario = useMemo(() => ({
+    bangun: Object.fromEntries(belumDibangunPerTipe.map((t) => [t.tipe, Math.max(0, Math.floor(num(f["b:" + t.tipe] ?? "") ?? 0))]).filter(([, n]) => (n as number) > 0)),
+    mulaiBangun: Math.floor(num(f.mulai ?? "") ?? 0),
+    harga: num(f.harga ?? ""), promo: Math.max(0, num(f.promo ?? "") ?? 0), leads: num(f.leads ?? ""),
+    event: Object.fromEntries(KATEGORI_EVENT.map((k) => [k, Math.max(0, Math.floor(num(f["e:" + k] ?? "") ?? 0))]).filter(([, n]) => (n as number) > 0)),
+    birate: num(f.birate ?? ""), ihsg: num(f.ihsg ?? ""), emas: num(f.emas ?? ""), inflasi: num(f.inflasi ?? ""),
+  }), [f, belumDibangunPerTipe]);
+
+  const stok = stokOpen ?? 0;
+  const res = useMemo(() => applyScenario(rows, s, ref, stok, netPrice), [rows, s, ref, stok, netPrice]);
+  const analisis = useMemo(() => analisisSkenario({ base: rows, s, ref, stokOpen: stok, belumDibangunPerTipe, netPriceMiliar: netPrice, korelasiEkonomi }), [rows, s, ref, stok, belumDibangunPerTipe, netPrice, korelasiEkonomi]);
+  const t = turunan(s, ref);
+  const { utjBase: bU, utjScn: sU, akadBase: bA, akadScn: sA, penBase, penScn } = analisis.totals;
+  const d = (a: number, b: number) => `${a - b >= 0 ? "+" : ""}${f1(a - b).replace(",0", "")}`;
   const bars = mode === "bulanan"
-    ? sc.map((r, i) => ({ label: labelBulan(r.bulan), utj: r.utj, akad: fl(r.akad), proj: true, baseUtj: rows[i].utj }))
-    : [{ label: "12 bln", utj: sU, akad: sA, proj: true, baseUtj: bU }];
-  const groups = [...new Set(VARS.map((v) => v.group))];
-  const d = (a: number, b: number) => `${a - b >= 0 ? "+" : ""}${f1(a - b)}`;
+    ? res.rows.map((r, i) => ({ label: labelBulan(r.bulan), full: labelPenuh(r.bulan), showLabel: [1, 4, 7, 10].includes(+r.bulan.slice(5)), utj: r.utjInt, akad: r.akadInt, proj: true, baseUtj: rows[i].utjInt }))
+    : [{ label: "12 bln", full: "Total 12 bulan", utj: sU, akad: sA, proj: true, baseUtj: bU }];
+  const nDiubah = changedCount(s);
+
   return (
     <div className="stack">
-      <div><h1>Simulasi Skenario</h1><p className="muted">Proyeksi dasar di Dashboard tidak berubah. Koefisien di sini masih ilustrasi (SPEC 4.1) dan belum terkalibrasi; pengaruh variabel ekonomi lemah pada data historis.</p></div>
+      <div><h1>Simulasi Skenario</h1><p className="muted">Isi variabel secara manual; kosongkan yang tidak ingin diubah. Proyeksi dasar di Dashboard tidak berubah. UTJ dan akad dibulatkan ke bawah. Koefisien masih ilustrasi (belum dikalibrasi dari data).</p></div>
       <div className="grid2">
         <div className="stack">
           <div className="card"><h2>Hasil skenario · 12 bulan</h2>
             <table className="mini"><tbody>
-              <tr><td>UTJ</td><td className="n">{f1(sU)} ({d(sU, bU)})</td></tr>
-              <tr><td>Akad</td><td className="n">{sA} ({sA - bA >= 0 ? "+" : ""}{sA - bA})</td></tr>
-              <tr><td>Penerimaan (Rp miliar)</td><td className="n">{f1(sA * netPrice)} ({d(sA * netPrice, bA * netPrice)})</td></tr>
-              <tr><td>Variabel diubah</td><td className="n">{changedCount(s)}</td></tr></tbody></table>
-            {stockWarning && <p className="err">Peringatan: UTJ skenario melebihi stok unit yang tersedia dijual ({stok === undefined ? "stok demo" : `stok Open ${stok} unit + unit dibangun`}).</p>}</div>
-          <div>{groups.map((g, i) => (
-            <details key={g} open={i === 0}><summary>{g}</summary>
-              {i === 0 && belumDibangun !== undefined && <p className="muted" style={{ fontSize: 12 }}>Unit belum dibangun (status Close): <b>{belumDibangun}</b>, batas atas order bangun.{kekurangan ? ` Pada proyeksi dasar, stok Open kurang sekitar ${kekurangan} unit dalam 12 bulan (UTJ dikurangi batal).` : " Stok Open cukup untuk 12 bulan pada proyeksi dasar."}{perTipe && perTipe.length > 0 && <span> Belum dibangun per tipe: {perTipe.filter((x) => x.belum > 0).map((x) => `${x.tipe} ${x.belum}`).join(", ")}.</span>}</p>}
-              {VARS.filter((v) => v.group === g).map((v) => (
-                <label className="sl" key={v.key}>{v.label}: <b>{s[v.key]} {v.unit}</b>
-                  <input type="range" min={v.min} max={v.key === "units" && belumDibangun !== undefined ? Math.min(v.max, belumDibangun) : v.max} step={v.step} value={s[v.key]} onChange={(e) => setS({ ...s, [v.key]: +e.target.value })} /></label>))}
-            </details>))}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="btn alt" onClick={() => setS(EMPTY)}>Reset skenario</button>
-              {changedCount(s) > 0 && <Link className="btn" href={`/laporan?jenis=bulanan&s=${scenarioQuery(s)}`}>Cetak skenario di laporan</Link>}
-            </div></div>
+              <tr><td>UTJ</td><td className="n">{sU} ({d(sU, bU)})</td></tr>
+              <tr><td>Akad</td><td className="n">{sA} ({d(sA, bA)})</td></tr>
+              <tr><td>Penerimaan (Rp miliar)</td><td className="n">{f1(penScn)} ({d(penScn, penBase)})</td></tr>
+              <tr><td>Variabel diubah</td><td className="n">{nDiubah}</td></tr></tbody></table>
+            {res.stockWarning && <p className="err">Peringatan: kebutuhan unit melebihi stok tersedia (stok Open {stok} unit + unit order bangun).</p>}</div>
+          <div>
+            <details open><summary>1. Order bangun per tipe</summary>
+              <p className="muted" style={{ fontSize: 12 }}>Hanya dari unit berstatus Close (belum dibangun). Stok Open saat ini: {stok} unit.</p>
+              {belumDibangunPerTipe.length === 0 ? <p className="muted">Data unit belum ada; unggah Excel lengkap dengan sheet UNIT.</p> : belumDibangunPerTipe.map((x) => (
+                <label key={x.tipe} className="sl">{x.tipe} <span className="muted">(tersedia {x.n} unit)</span>
+                  <input style={inp} type="number" min={0} max={x.n} step={1} inputMode="numeric" value={f["b:" + x.tipe] ?? ""} onChange={(e) => set("b:" + x.tipe, e.target.value)} placeholder="0" /></label>))}
+              <label className="sl">Bulan mulai bangun
+                <select style={inp} value={f.mulai ?? "0"} onChange={(e) => set("mulai", e.target.value)}>{rows.map((r, i) => <option key={r.bulan} value={i}>{labelPenuh(r.bulan)}</option>)}</select></label>
+            </details>
+            <details><summary>2. Harga & promo</summary>
+              <label className="sl">Harga jual rata-rata (Rp juta) <span className="muted">acuan {fmt(ref.harga)}</span>
+                <input style={inp} type="number" step="any" inputMode="decimal" value={f.harga ?? ""} onChange={(e) => set("harga", e.target.value)} placeholder={fmt(ref.harga)} /></label>
+              <label className="sl">Nilai promo (Rp juta per unit)
+                <input style={inp} type="number" step="any" min={0} inputMode="decimal" value={f.promo ?? ""} onChange={(e) => set("promo", e.target.value)} placeholder="0" /></label>
+              {(s.harga !== null || s.promo > 0) && <p className="muted" style={{ fontSize: 12 }}>Setara perubahan harga {t.hargaPct >= 0 ? "+" : ""}{fmt(t.hargaPct, 1)}% dan promo {fmt(t.promoPct, 1)}% dari harga.</p>}
+            </details>
+            <details><summary>3. Marketing & event</summary>
+              <label className="sl">Leads per bulan <span className="muted">acuan {fmt(ref.leadsBulanan)}</span>
+                <input style={inp} type="number" step={1} min={0} inputMode="numeric" value={f.leads ?? ""} onChange={(e) => set("leads", e.target.value)} placeholder={fmt(ref.leadsBulanan)} /></label>
+              <p style={{ fontSize: 13, fontWeight: 700, margin: "10px 0 0" }}>Jumlah event per bulan</p>
+              {KATEGORI_EVENT.map((k) => (
+                <label key={k} className="sl">{k}
+                  <input style={inp} type="number" step={1} min={0} inputMode="numeric" value={f["e:" + k] ?? ""} onChange={(e) => set("e:" + k, e.target.value)} placeholder="0" /></label>))}
+            </details>
+            <details><summary>4. Kondisi ekonomi (isi manual)</summary>
+              <p className="muted" style={{ fontSize: 12 }}>Isi nilai yang diasumsikan; kolom menampilkan nilai terakhir sebagai acuan.</p>
+              {([["birate", "BI Rate (%)", ref.birate, 2], ["ihsg", "IHSG", ref.ihsg, 0], ["emas", "Harga emas (USD/oz)", ref.emas, 0], ["inflasi", "Inflasi tahunan (%)", ref.inflasi, 2]] as const).map(([k, label, acuan, dec]) => (
+                <label key={k} className="sl">{label} <span className="muted">acuan {fmt(acuan, dec)}</span>
+                  <input style={inp} type="number" step="any" inputMode="decimal" value={f[k] ?? ""} onChange={(e) => set(k, e.target.value)} placeholder={fmt(acuan, dec)} /></label>))}
+            </details>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <button className="btn alt" onClick={() => setF({})}>Reset skenario</button>
+              {nDiubah > 0 && <Link className="btn" href={`/laporan?jenis=bulanan&s=${scenarioQuery(s)}`}>Cetak skenario di laporan</Link>}
+            </div>
+          </div>
         </div>
         <div className="stack">
           <div className="card" style={{ display: "flex", justifyContent: "space-between" }}><h2>Hasil skenario</h2>
-            <div className="seg">{(["bulanan", "tahunan"] as const).map((m) => <button key={m} className={mode === m ? "on" : ""} onClick={() => setMode(m)}>{m === "bulanan" ? "Bulanan" : "Total 12 bln"}</button>)}</div></div>
+            <div className="seg">{(["bulanan", "total"] as const).map((m) => <button key={m} className={mode === m ? "on" : ""} onClick={() => setMode(m)}>{m === "bulanan" ? "Bulanan" : "Total 12 bln"}</button>)}</div></div>
           <div className="card"><Chart bars={bars} title="Grafik hasil skenario" /><Legend base /></div>
           <div className="card"><table><thead><tr><th>Periode</th><th className="n">UTJ</th><th className="n">Akad</th><th className="n">Penerimaan (Rp M)</th></tr></thead>
-            <tbody>{sc.map((r) => <tr key={r.bulan}><td>{labelBulan(r.bulan)}</td><td className="n">{f1(r.utj)}</td><td className="n">{fl(r.akad)}</td><td className="n">{f1(fl(r.akad) * netPrice)}</td></tr>)}</tbody></table></div>
+            <tbody>{res.rows.map((r, i) => <tr key={r.bulan}><td>{labelPenuh(r.bulan)}</td><td className="n">{r.utjInt} <span className="muted">(dasar {rows[i].utjInt})</span></td><td className="n">{r.akadInt}</td><td className="n">{f1(r.penerimaan)}</td></tr>)}</tbody></table></div>
+          <div className="card"><h2>Analisis skenario</h2>
+            {analisis.ringkasan.map((x) => <p key={x} style={{ margin: "6px 0" }}>{x}</p>)}
+            {nDiubah > 0 && <>
+              <table style={{ marginTop: 8 }}><thead><tr><th>Kelompok variabel</th><th className="n">Pengaruh pada UTJ 12 bulan</th></tr></thead>
+                <tbody>{analisis.kontribusi.map((k) => <tr key={k.kelompok}><td>{k.kelompok}</td><td className="n">{k.selisihUtj > 0 ? "+" : ""}{k.selisihUtj}</td></tr>)}</tbody></table>
+              <h2 style={{ marginTop: 12 }}>Stok</h2><p style={{ margin: "6px 0" }}>{analisis.stok}</p></>}
+            <h2 style={{ marginTop: 12 }}>Catatan dan keterbatasan</h2>
+            <ul style={{ margin: "6px 0", paddingLeft: 20 }}>{analisis.peringatan.map((x) => <li key={x} style={{ fontSize: 13 }}>{x}</li>)}</ul>
+          </div>
         </div>
       </div>
     </div>

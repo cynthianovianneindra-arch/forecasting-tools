@@ -204,7 +204,10 @@ export function utjInterval(point: number, horizon: number, errsByH: number[][])
   return { lo, hi };
 }
 
-export interface ForecastRow { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; akadInt: number; batal: number; trend: number }
+export const fl = (v: number) => Math.floor(v + 1e-9);
+
+/** utj/utjLo/utjHi mentah dipakai untuk perhitungan; *Int = dibulatkan ke bawah untuk tampilan (UTJ dan akad adalah cacah unit). */
+export interface ForecastRow { bulan: string; utj: number; utjInt: number; utjLo: number; utjHi: number; utjLoInt: number; utjHiInt: number; akad: number; akadInt: number; batal: number; trend: number }
 
 export function forecast(txns: Txn[], start: string, end: string, H = 12): { rows: ForecastRow[]; bt: BacktestResult; trendDivergent: boolean } {
   const u = monthlySeries(txns, "utj", start, end);
@@ -215,7 +218,7 @@ export function forecast(txns: Txn[], start: string, end: string, H = 12): { row
   const bt = backtest(txns, start, end);
   const rows = base.map((p, i) => {
     const { lo, hi } = utjInterval(p, i + 1, bt.errorsByHorizon);
-    return { bulan: addMonths(end, i + 1), utj: p, utjLo: lo, utjHi: hi, akad: akad[i], akadInt: Math.floor(akad[i] + 1e-9), batal: pj.batal[i], trend: trend[i] };
+    return { bulan: addMonths(end, i + 1), utj: p, utjInt: fl(p), utjLo: lo, utjHi: hi, utjLoInt: fl(lo), utjHiInt: fl(hi), akad: akad[i], akadInt: fl(akad[i]), batal: pj.batal[i], trend: trend[i] };
   });
   const bs = mean(base), ts = mean(trend);
   return { rows, bt, trendDivergent: Math.abs(ts - bs) / Math.max(bs, 1) > 0.25 };

@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { f1 } from "@/lib/format";
 
 export interface Bar { label: string; full?: string; showLabel?: boolean; utj: number; akad: number; proj: boolean; lo?: number; hi?: number; baseUtj?: number; trend?: number }
 
@@ -18,7 +17,8 @@ export function Chart({ bars, title }: { bars: Bar[]; title: string }) {
   const basePts = bars.map((b, i) => (b.baseUtj !== undefined ? `${L + gw * i + gw / 2},${y(b.baseUtj)}` : "")).filter(Boolean).join(" ");
   const hb = hover !== null ? bars[hover] : null;
   const kiri = hover !== null && hover > bars.length / 2; // tooltip di sisi berlawanan agar tidak menutupi batang
-  const nilai = (v: number, proj: boolean) => (proj ? f1(v) : String(Math.round(v)));
+  const bulat = (v: number) => String(Math.floor(v + 1e-9));
+  const nilai = (v: number, proj: boolean) => (proj ? bulat(v) : String(Math.round(v)));
   return (
     <div style={{ position: "relative" }}>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title} style={{ width: "100%", height: "auto", touchAction: "manipulation" }}>
@@ -52,10 +52,10 @@ export function Chart({ bars, title }: { bars: Bar[]; title: string }) {
       {hb && (
         <div role="status" style={{ position: "absolute", top: 4, [kiri ? "left" : "right"]: 8, background: "#fff", border: "1px solid #E1E5EB", borderRadius: 10, padding: "8px 12px", fontSize: 12, boxShadow: "0 4px 14px rgba(20,27,38,.12)", pointerEvents: "none", minWidth: 150 }}>
           <b>{hb.full ?? hb.label}</b> <span className="muted">· {hb.proj ? "proyeksi" : "aktual"}</span>
-          <div><span style={{ color: "#24467C" }}>■</span> UTJ: <b>{nilai(hb.utj, hb.proj)}</b>{hb.proj && hb.lo !== undefined && hb.hi !== undefined ? ` (rentang ${f1(hb.lo)}–${f1(hb.hi)})` : ""}</div>
+          <div><span style={{ color: "#24467C" }}>■</span> UTJ: <b>{nilai(hb.utj, hb.proj)}</b>{hb.proj && hb.lo !== undefined && hb.hi !== undefined ? ` (rentang ${bulat(hb.lo)}–${bulat(hb.hi)})` : ""}</div>
           <div><span style={{ color: "#E58A2B" }}>■</span> Akad: <b>{Math.floor(hb.akad + 1e-9)}</b>{hb.proj ? " (dibulatkan ke bawah)" : ""}</div>
-          {hb.trend !== undefined && <div><span style={{ color: "#176B3A" }}>■</span> Garis tren: {f1(hb.trend)}</div>}
-          {hb.baseUtj !== undefined && <div><span style={{ color: "#8A93A1" }}>■</span> UTJ dasar: {f1(hb.baseUtj)}</div>}
+          {hb.trend !== undefined && <div><span style={{ color: "#176B3A" }}>■</span> Garis tren: {bulat(hb.trend)}</div>}
+          {hb.baseUtj !== undefined && <div><span style={{ color: "#8A93A1" }}>■</span> UTJ dasar: {bulat(hb.baseUtj)}</div>}
         </div>
       )}
     </div>
