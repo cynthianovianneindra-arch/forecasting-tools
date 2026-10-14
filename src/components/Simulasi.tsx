@@ -59,7 +59,7 @@ export function Simulasi({ rows, netPrice, acuan: ref, stokOpen, belumDibangunPe
               <p className="muted" style={{ fontSize: 12 }}>Hanya dari unit berstatus Close (belum dibangun). Stok Open saat ini: {stok} unit.</p>
               {belumDibangunPerTipe.length === 0 ? <p className="muted">Data unit belum ada; unggah Excel lengkap dengan sheet UNIT.</p> : belumDibangunPerTipe.map((x) => (
                 <label key={x.tipe} className="sl">{x.tipe} <span className="muted">(tersedia {x.n} unit)</span>
-                  <input style={inp} type="number" min={0} max={x.n} step={1} inputMode="numeric" value={f["b:" + x.tipe] ?? ""} onChange={(e) => set("b:" + x.tipe, e.target.value)} placeholder="0" /></label>))}
+                  <select style={inp} value={f["b:" + x.tipe] ?? "0"} onChange={(e) => set("b:" + x.tipe, e.target.value)}>{Array.from({ length: x.n + 1 }, (_, i) => <option key={i} value={i}>{i === 0 ? "0 (tidak dibangun)" : `${i} unit`}</option>)}</select></label>))}
               <label className="sl">Bulan mulai bangun
                 <select style={inp} value={f.mulai ?? "0"} onChange={(e) => set("mulai", e.target.value)}>{rows.map((r, i) => <option key={r.bulan} value={i}>{labelPenuh(r.bulan)}</option>)}</select></label>
             </details>
@@ -76,7 +76,7 @@ export function Simulasi({ rows, netPrice, acuan: ref, stokOpen, belumDibangunPe
               <p style={{ fontSize: 13, fontWeight: 700, margin: "10px 0 0" }}>Jumlah event per bulan</p>
               {KATEGORI_EVENT.map((k) => (
                 <label key={k} className="sl">{k}
-                  <input style={inp} type="number" step={1} min={0} inputMode="numeric" value={f["e:" + k] ?? ""} onChange={(e) => set("e:" + k, e.target.value)} placeholder="0" /></label>))}
+                  <select style={inp} value={f["e:" + k] ?? "0"} onChange={(e) => set("e:" + k, e.target.value)}>{Array.from({ length: 11 }, (_, i) => <option key={i} value={i}>{i === 0 ? "0 (tidak ada)" : `${i} event`}</option>)}</select></label>))}
             </details>
             <details><summary>4. Kondisi ekonomi (isi manual)</summary>
               <p className="muted" style={{ fontSize: 12 }}>Isi nilai yang diasumsikan; kolom menampilkan nilai terakhir sebagai acuan.</p>
