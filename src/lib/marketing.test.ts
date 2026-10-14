@@ -20,6 +20,9 @@ it("temuan deterministik", () => {
 it("pearson", () => { expect(pearson([1, 2, 3], [2, 4, 6])).toBeCloseTo(1); expect(pearson([1, 2], [1, 2])).toBeNull(); });
 it("filter periode marketing", () => {
   expect(filterMarketing(m, { bulan: "2025-11" }).leads).toHaveLength(1);
+  expect(filterMarketing(m, { dari: "2025-10", sampai: "2025-11" }).leads).toHaveLength(3);
+  expect(filterMarketing(m, { dari: "2025-12" }).events).toHaveLength(1);
+  expect(filterMarketing(m, { sampai: "2025-10" }).events).toHaveLength(1);
   expect(filterMarketing(m, { tahun: "2025" }).events).toHaveLength(3);
   expect(filterMarketing(m, {}).leads).toHaveLength(4);
 });
