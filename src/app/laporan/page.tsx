@@ -3,6 +3,7 @@ import { Chart } from "@/components/Chart";
 import { ReportPage, Note } from "@/components/ReportPage";
 import { getData, f1, labelBulan, labelPanjang } from "@/lib/data";
 import { avgNetPrice, priceByType, ringkasanTeks } from "@/lib/laporan";
+import { applyScenario, describeScenario, parseScenario } from "@/lib/whatif";
 import { claudeConfigured, narasiLaporan } from "@/lib/claude";
 import { marketingInsights } from "@/lib/marketing";
 import { cards } from "@/lib/insights";
@@ -10,8 +11,8 @@ import { cards } from "@/lib/insights";
 const th = (...c: string[]) => <thead><tr>{c.map((x, i) => <th key={x} className={i ? "n" : ""}>{x}</th>)}</tr></thead>;
 
 export const dynamic = "force-dynamic";
-export default async function Page({ searchParams }: { searchParams: Promise<{ jenis?: string }> }) {
-  const { jenis = "bulanan" } = await searchParams;
+export default async function Page({ searchParams }: { searchParams: Promise<{ jenis?: string; s?: string }> }) {
+  const { jenis = "bulanan", s: sRaw } = await searchParams;
   const d = await getData();
   const txns = d.txns;
   const real = d.source !== "demo";
@@ -27,6 +28,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const q = [0, 1, 2, 3].map((i) => ({ q: `Kuartal ${i + 1} (${labelPanjang(r[i * 3].bulan)} – ${labelPanjang(r[i * 3 + 2].bulan)})`, utj: sum(r.slice(i * 3, i * 3 + 3).map((x) => x.utj)), akad: sum(r.slice(i * 3, i * 3 + 3).map((x) => x.akad)) }));
   const years = new Map<string, { utj: number; akad: number }>();
   for (const m of d.monthly) { const y = years.get(m.bulan.slice(0, 4)) ?? { utj: 0, akad: 0 }; y.utj += m.utj; y.akad += m.akad; years.set(m.bulan.slice(0, 4), y); }
+  const skenario = parseScenario(sRaw);
+  const sk = skenario ? applyScenario(r, skenario) : null;
+  const skTot = sk ? { utj: sum(sk.rows.map((x) => x.utj)), akad: sum(sk.rows.map((x) => x.akad)), pen: sum(sk.rows.map((x) => x.penerimaan)) } : null;
   const ringkas = ringkasanTeks(tot, k, l12);
   const batalPct = pot(k.funnel.batal);
   const mk = d.marketing && d.marketing.leads.length ? marketingInsights(d.marketing, txns) : null;
@@ -95,8 +99,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       <Note>Data yang perlu ditambahkan: kode kampanye atau organik-berbayar per lead, status wajib diisi, alasan batal wajib diisi, dan ID event agar biaya, leads, UTJ bisa dikaitkan.</Note></ReportPage>
 
     <ReportPage n={12} title="Skenario, cara angka dibuat, dan keterbatasan">
-      <h2>Cara angka dibuat</h2><p>UTJ = rata-rata 12 bulan terakhir; akad = pipeline UTJ; rentang dari kuantil galat uji mundur ({bt.origins} titik uji, galat UTJ rata-rata {f1(bt.utjMae13)} unit/bulan).</p>
-      <h2>Keterbatasan</h2><ul><li>Penjualan berfluktuasi; satu angka tidak menjamin hasil.</li><li>Variabel ekonomi hanya konteks.</li><li>Skenario di menu Simulasi memakai koefisien ilustrasi dan belum ikut dicetak.</li><li>Penerimaan memakai harga bersih rata-rata, bukan jadwal termin.</li></ul>
-      <h2>Langkah berikutnya</h2><ul><li>Lengkapi alasan batal dan status leads di sumber data.</li><li>Impor LEADS, EVENT MARKETING, UNIT; sambungkan data ekonomi.</li></ul></ReportPage>
+      <h2>Skenario what-if</h2>
+      {!skenario || !sk || !skTot ? <p className="muted">Tidak ada skenario yang dipilih. Buat di menu Simulasi lalu pilih "Cetak skenario di laporan".</p> : <>
+        <table>{th("Variabel diubah", "Nilai")}<tbody>{describeScenario(skenario).map((x) => <tr key={x.label}><td>{x.label}</td><td className="n">{x.nilai}</td></tr>)}</tbody></table>
+        <table style={{ marginTop: 8 }}>{th("12 bulan", "Dasar", "Skenario", "Selisih")}<tbody>
+          <tr><td>UTJ</td><td className="n">{f1(tot.utj)}</td><td className="n">{f1(skTot.utj)}</td><td className="n">{f1(skTot.utj - tot.utj)}</td></tr>
+          <tr><td>Akad</td><td className="n">{f1(tot.akad)}</td><td className="n">{f1(skTot.akad)}</td><td className="n">{f1(skTot.akad - tot.akad)}</td></tr>
+          <tr><td>Penerimaan (Rp M)</td><td className="n">{f1(tot.penerimaanM)}</td><td className="n">{f1(skTot.pen)}</td><td className="n">{f1(skTot.pen - tot.penerimaanM)}</td></tr></tbody></table>
+        {sk.stockWarning && <Note>Peringatan: UTJ skenario melebihi stok unit yang tersedia dijual.</Note>}
+        <Note>Skenario memakai koefisien ilustrasi yang belum dikalibrasi dari data; baca sebagai gambaran arah, bukan ramalan. Pengaruh variabel ekonomi lemah pada data historis. Proyeksi dasar di halaman lain tidak berubah.</Note></>}
+      <h2 style={{ marginTop: 16 }}>Cara angka dibuat</h2><p>UTJ = rata-rata 12 bulan terakhir; akad = pipeline UTJ; rentang dari kuantil galat uji mundur ({bt.origins} titik uji, galat UTJ rata-rata {f1(bt.utjMae13)} unit/bulan).</p>
+      <h2>Keterbatasan</h2><ul><li>Penjualan berfluktuasi; satu angka tidak menjamin hasil.</li><li>Variabel ekonomi hanya konteks.</li><li>Skenario di menu Simulasi memakai koefisien ilustrasi dan belum dikalibrasi.</li><li>Penerimaan memakai harga bersih rata-rata, bukan jadwal termin.</li></ul>
+      <h2>Langkah berikutnya</h2><ul><li>Lengkapi alasan batal dan status leads di sumber data.</li><li>Impor sheet UNIT (stok nyata) dan sambungkan data ekonomi; kalibrasi koefisien skenario dari data.</li></ul></ReportPage>
   </>);
 }

@@ -2,7 +2,8 @@
 import { useMemo, useState } from "react";
 import { Chart, Legend } from "./Chart";
 import { f1, labelBulan } from "@/lib/format";
-import { EMPTY, Scenario, VARS, applyScenario, changedCount } from "@/lib/whatif";
+import Link from "next/link";
+import { EMPTY, Scenario, VARS, applyScenario, changedCount, scenarioQuery } from "@/lib/whatif";
 
 interface Row { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; trend: number }
 export function Simulasi({ rows, netPrice }: { rows: Row[]; netPrice: number }) {
@@ -35,7 +36,10 @@ export function Simulasi({ rows, netPrice }: { rows: Row[]; netPrice: number }) 
                 <label className="sl" key={v.key}>{v.label}: <b>{s[v.key]} {v.unit}</b>
                   <input type="range" min={v.min} max={v.max} step={v.step} value={s[v.key]} onChange={(e) => setS({ ...s, [v.key]: +e.target.value })} /></label>))}
             </details>))}
-            <button className="btn alt" onClick={() => setS(EMPTY)}>Reset skenario</button></div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="btn alt" onClick={() => setS(EMPTY)}>Reset skenario</button>
+              {changedCount(s) > 0 && <Link className="btn" href={`/laporan?jenis=bulanan&s=${scenarioQuery(s)}`}>Cetak skenario di laporan</Link>}
+            </div></div>
         </div>
         <div className="stack">
           <div className="card" style={{ display: "flex", justifyContent: "space-between" }}><h2>Hasil skenario</h2>

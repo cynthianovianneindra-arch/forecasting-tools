@@ -51,3 +51,19 @@ export function applyScenario(base: ForecastRow[], s: Scenario): { rows: Scenari
   return { rows, stockWarning: cum > STOK_DEMO };
 }
 export { addMonths };
+
+/** Skenario dari query string (?s=JSON). Nilai di luar rentang slider dipotong; kunci tak dikenal diabaikan. */
+export function parseScenario(raw: string | undefined): Scenario | null {
+  if (!raw) return null;
+  try {
+    const j = JSON.parse(raw) as Record<string, unknown>;
+    const out = { ...EMPTY };
+    for (const v of VARS) {
+      const x = Number(j[v.key]);
+      if (isFinite(x)) out[v.key] = Math.min(v.max, Math.max(v.min, x));
+    }
+    return changedCount(out) > 0 ? out : null;
+  } catch { return null; }
+}
+export const scenarioQuery = (s: Scenario) => encodeURIComponent(JSON.stringify(Object.fromEntries(Object.entries(s).filter(([k, v]) => v !== 0 || k === "startMonthOffset" && s.units > 0))));
+export const describeScenario = (s: Scenario) => VARS.filter((v) => v.key !== "startMonthOffset" && s[v.key] !== 0).map((v) => ({ label: v.label, nilai: `${s[v.key] > 0 && v.min < 0 ? "+" : ""}${s[v.key]} ${v.unit}`.trim() }));
