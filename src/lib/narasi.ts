@@ -20,7 +20,7 @@ export function unknownNumbers(text: string, input: unknown): string[] {
 }
 
 export const SYSTEM_PROMPT = `Anda menulis pembahasan laporan penjualan properti untuk manajemen non-teknis, dalam bahasa Indonesia yang mudah dipahami (gunakan "tidak", bukan "ga").
-Aturan: hanya kutip angka yang ada di JSON; jangan menghitung ulang atau menebak angka; sebut ketidakpastian dan batas data; untuk variabel ekonomi sebut bahwa pengaruhnya lemah pada data historis; hindari klaim sebab-akibat yang tidak didukung data. Sampel kecil disebut hipotesis.`;
+Aturan: hanya kutip angka yang ada di JSON; jangan menghitung ulang atau menebak angka; sebut ketidakpastian dan batas data; untuk variabel ekonomi sebut bahwa pengaruhnya lemah pada data historis; hindari klaim sebab-akibat yang tidak didukung data. Sampel kecil disebut hipotesis. Pembaca malas membaca dan bukan orang teknis: pakai kalimat pendek dan bahasa sehari-hari, jelaskan dengan contoh sederhana, hindari istilah teknis (misalnya exponential smoothing, galat, korelasi, pipeline), dan langsung ke inti.`;
 
 export async function tulisNarasi(input: unknown, call: (system: string, user: string) => Promise<string>, maxTry = 3) {
   let bad: string[] = [];
