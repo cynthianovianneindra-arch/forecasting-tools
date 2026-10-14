@@ -5,6 +5,7 @@ export interface LiveRow { bulan: string; indikator: LiveIndikator; nilai: numbe
 export interface SyncResult { indikator: LiveIndikator; ok: boolean; bulan?: string; nilai?: number; error?: string; sumber: string }
 
 const UA = "Mozilla/5.0 (compatible; forecasting-tools/1.0)";
+const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 const bulanDari = (epoch: number) => new Date(epoch * 1000).toISOString().slice(0, 7);
 
 /** Respons Yahoo Finance v8 chart (interval 1mo) -> penutupan per bulan. Bulan berjalan memakai harga terakhir. */
@@ -54,10 +55,11 @@ export async function extractFromPage(teks: string, indikator: "inflasi" | "bira
 }
 
 export const BPS_URL = () => process.env.BPS_INFLASI_URL ?? "https://www.bps.go.id/id";
+export const BI_INFLASI_URL = () => process.env.BI_INFLASI_URL ?? "https://www.bi.go.id/id/statistik/indikator/data-inflasi.aspx";
 export const BI_URL = () => process.env.BI_RATE_URL ?? "https://www.bi.go.id/id/statistik/indikator/BI-Rate.aspx";
 
 export async function fetchPage(url: string, f: typeof fetch = fetch): Promise<string> {
-  const r = await f(url, { headers: { "user-agent": UA, "accept-language": "id,en;q=0.8" }, cache: "no-store" });
+  const r = await f(url, { headers: { "user-agent": BROWSER_UA, accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", "accept-language": "id-ID,id;q=0.9,en;q=0.8" }, cache: "no-store" });
   if (!r.ok) throw new Error(`${new URL(url).host}: HTTP ${r.status}`);
   return htmlToText(await r.text());
 }
@@ -74,14 +76,26 @@ export async function syncLive(deps: { fetch?: typeof fetch; call?: (system: str
       hasil.push({ indikator: y.indikator, ok: true, bulan: last.bulan, nilai: last.nilai, sumber: "Yahoo Finance" });
     } catch (e) { hasil.push({ indikator: y.indikator, ok: false, error: e instanceof Error ? e.message : String(e), sumber: "Yahoo Finance" }); }
   }
-  for (const [ind, url, sumber] of [["inflasi", BPS_URL(), "bps.go.id"], ["birate", BI_URL(), "bi.go.id"]] as const) {
-    try {
-      if (!deps.call && !process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY belum diset (dibutuhkan untuk membaca halaman)");
-      const call = deps.call ?? (await import("./claude")).callClaude;
-      const v = await extractFromPage(await fetchPage(url, f), ind, call);
-      rows.push({ bulan: v.bulan, indikator: ind, nilai: v.nilai, sumber });
-      hasil.push({ indikator: ind, ok: true, bulan: v.bulan, nilai: v.nilai, sumber });
-    } catch (e) { hasil.push({ indikator: ind, ok: false, error: e instanceof Error ? e.message : String(e), sumber }); }
+  // Inflasi: BPS dulu, cadangan halaman Data Inflasi Bank Indonesia (BPS sering memblokir akses otomatis, HTTP 403).
+  const sumberList: { ind: "inflasi" | "birate"; urls: [string, string][] }[] = [
+    { ind: "inflasi", urls: [[BPS_URL(), "bps.go.id"], [BI_INFLASI_URL(), "bi.go.id (data inflasi)"]] },
+    { ind: "birate", urls: [[BI_URL(), "bi.go.id"]] },
+  ];
+  for (const { ind, urls } of sumberList) {
+    const galat: string[] = [];
+    let berhasil = false;
+    for (const [url, sumber] of urls) {
+      try {
+        if (!deps.call && !process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY belum diset (dibutuhkan untuk membaca halaman)");
+        const call = deps.call ?? (await import("./claude")).callClaude;
+        const v = await extractFromPage(await fetchPage(url, f), ind, call);
+        rows.push({ bulan: v.bulan, indikator: ind, nilai: v.nilai, sumber });
+        hasil.push({ indikator: ind, ok: true, bulan: v.bulan, nilai: v.nilai, sumber });
+        berhasil = true;
+        break;
+      } catch (e) { galat.push(`${sumber}: ${e instanceof Error ? e.message : String(e)}`); }
+    }
+    if (!berhasil) hasil.push({ indikator: ind, ok: false, error: galat.join(" | "), sumber: urls.map((u) => u[1]).join(" / ") });
   }
   return { rows, hasil };
 }
