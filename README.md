@@ -36,7 +36,7 @@ Prioritas sumber: Drive, lalu `data/FORECASTING_UPDATE.xlsx`, lalu data demo. Be
 
 ## Isi data lewat dashboard (unggah Excel)
 Menu Data & Integrasi punya form unggah `.xlsx`. File diparse di server (sheet PENJUALAN), lalu transaksi anonim disimpan di tabel Supabase `datasets` (RLS aktif tanpa policy; hanya service role yang bisa akses). Dashboard, Simulasi, dan Laporan memakai unggahan terbaru.
-Env yang dibutuhkan: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API; jangan dibagikan), `UPLOAD_TOKEN` (kata sandi unggah buatanmu). Batas file 4 MB (batas body fungsi Vercel).
+Env yang dibutuhkan: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API; jangan dibagikan), `UPLOAD_TOKEN` (tidak dipakai lagi sejak ada login; kata sandi unggah lama buatanmu). Batas file 4 MB (batas body fungsi Vercel).
 Urutan sumber data: unggahan Supabase, Drive, `data/*.xlsx`, data demo.
 
 ## Marketing (halaman 10-11)
@@ -53,7 +53,7 @@ Tabel `datasets` punya kolom `marketing` (jsonb); unggah ulang Excel agar data m
 - **IHSG (^JKSE) dan emas (GC=F, USD/oz):** Yahoo Finance endpoint chart (tidak resmi, tanpa key). Parser diuji dengan contoh respons.
 - **Inflasi tahunan:** halaman bps.go.id (`BPS_INFLASI_URL`, default beranda). **BI Rate:** halaman bi.go.id (`BI_RATE_URL`). Teks halaman diekstrak Claude; hasil hanya diterima jika bulan valid, nilai wajar (0-20%), dan angkanya benar-benar muncul di teks halaman. Memakai kuota terpisah `CLAUDE_SYNC_DAILY_LIMIT` (default 10/hari), tidak mengurangi jatah laporan.
 - Hasil disimpan di tabel Supabase `macro_live` dan menimpa bulan yang sama dari Excel. Sumber yang gagal tidak menimpa data terakhir; alasan gagal tampil di layar Data.
-- Pemicu: tombol "Sinkron data ekonomi sekarang" (butuh `UPLOAD_TOKEN`) dan Vercel Cron harian `/api/macro-sync` (butuh `CRON_SECRET`).
+- Pemicu: tombol "Sinkron data ekonomi sekarang" (hanya admin yang sudah login) dan Vercel Cron harian `/api/macro-sync` (butuh `CRON_SECRET`).
 - **Hasil uji pertama di produksi:** Yahoo (IHSG, emas) berhasil; bps.go.id menjawab HTTP 403 (memblokir akses otomatis), sehingga inflasi kini memakai cadangan halaman Data Inflasi bi.go.id (`BI_INFLASI_URL`); BI Rate gagal karena ANTHROPIC_API_KEY ditolak (401). Isi ulang key yang valid.
 - **Belum diuji dengan situs asli**: sandbox pengembangan tidak bisa menjangkau Yahoo, BPS, atau BI. URL BPS default (beranda) mungkin tidak memuat angka inflasi; isi `BPS_INFLASI_URL` dengan halaman yang memuatnya. Kegagalan akan tampil jelas di layar Data.
 
@@ -65,7 +65,7 @@ Peringatan stok memakai pemakaian bersih = UTJ dikurangi batal (UTJ batal mengem
 - **Metode UTJ: exponential smoothing** (level, alpha dicari di 0,05-0,30 dari galat satu langkah). Uji mundur 26 titik: galat UTJ 1-3 bulan **3,16** (rata-rata 12 bulan 3,24). Akibatnya level UTJ turun (6,3/bulan dari 7,1) dan galat total akad 3 bulan dari pipeline menjadi **3,15** (sebelumnya 2,95 dengan masukan rata-rata 12 bulan; pembanding rata-rata 6 bulan 4,13).
 - **Akad dibulatkan ke bawah** per bulan di dashboard, laporan, dan Simulasi; total dan penerimaan memakai angka yang sudah dibulatkan (jumlah 12 bulan bisa lebih kecil dari jumlah angka mentah).
 - Dashboard: filter Periode per tahun dan per bulan; grafik bisa disentuh/diarahkan untuk melihat bulan dan nilainya; label sumbu tiap 3 bulan; kartu Skenario dan Pipeline berjalan dihapus; analisa hasil integrasi (stok per tipe, konteks ekonomi, efektivitas marketing, sumber leads, struktur biaya, temuan dan tindakan) tampil langsung di dashboard dan ikut filter periode.
-- **Input data manual** (menu Data & Integrasi, butuh `UPLOAD_TOKEN`): UTJ baru, status transaksi (akad/batal), biaya event, leads (agregat), unit (status/tipe/tahap/cluster), dan data ekonomi (IHSG, emas, inflasi, BI Rate, IHPR). Setiap input menjadi snapshot dataset baru di Supabase (bisa diurungkan satu per satu); data ekonomi manual disimpan di tabel `macro_manual` dan mengalahkan data otomatis dan Excel untuk bulan yang sama. ID unit kini ikut tersimpan: **unggah ulang Excel sekali** agar fitur ubah status transaksi aktif.
+- **Input data manual** (menu Data & Integrasi, hanya admin yang sudah login): UTJ baru, status transaksi (akad/batal), biaya event, leads (agregat), unit (status/tipe/tahap/cluster), dan data ekonomi (IHSG, emas, inflasi, BI Rate, IHPR). Setiap input menjadi snapshot dataset baru di Supabase (bisa diurungkan satu per satu); data ekonomi manual disimpan di tabel `macro_manual` dan mengalahkan data otomatis dan Excel untuk bulan yang sama. ID unit kini ikut tersimpan: **unggah ulang Excel sekali** agar fitur ubah status transaksi aktif.
 - Diuji end-to-end dengan server PostgREST tiruan lokal (unggah, semua jenis input, penolakan input salah, urungkan, filter bulan, tooltip).
 
 ## Filter periode berupa rentang bulan
@@ -110,3 +110,24 @@ Dropdown **Metode proyeksi** ada di Dashboard, Simulasi, dan Laporan (`?metode=e
 Akad dan batal tetap dihitung dari pipeline UTJ memakai UTJ hasil metode terpilih; rentang kemungkinan memakai galat uji mundur metode itu sendiri.
 
 **Mana yang paling mendekati** ditentukan uji mundur yang sama untuk ketiganya (asal pertama setelah 24 bulan, ramal 3 bulan): metode dengan galat UTJ rata-rata terkecil diberi tanda ★; galat akad 3 bulan ditampilkan berdampingan. Perbandingan tampil di Dashboard dan halaman terakhir Laporan.
+
+## Login dan pengguna
+Semua halaman dan API wajib login (kecuali halaman /login). Cron Vercel dan API narasi memakai header `Authorization: Bearer ...` masing-masing.
+- **Env wajib di Vercel (Production):** `SESSION_SECRET` (acak, minimal 32 karakter; tanpa ini semua halaman terkunci), `ADMIN_EMAIL`, `ADMIN_PASSWORD` (akun admin cadangan/pertama, tidak disimpan di database; ganti lewat env).
+- **Peran:** *admin* (unggah Excel, input manual, sinkron, buat narasi Claude, kelola pengguna) dan *pengguna* (lihat Dashboard, Simulasi, Laporan; hanya baca). `UPLOAD_TOKEN` tidak lagi dipakai (digantikan login admin).
+- **Pengguna lain:** menu **Pengguna** (admin) menambah akun, mengubah peran, menonaktifkan, dan mereset kata sandi. Akun disimpan di tabel Supabase `app_users` (kata sandi berupa hash scrypt). Buat tabelnya sekali di SQL Editor:
+```sql
+create table if not exists app_users (
+  id bigserial primary key,
+  email text not null unique,
+  nama text not null default '',
+  peran text not null default 'viewer' check (peran in ('admin','viewer')),
+  password_hash text not null,
+  aktif boolean not null default true,
+  dibuat timestamptz not null default now(),
+  login_terakhir timestamptz
+);
+alter table app_users enable row level security;
+```
+- **Keamanan:** cookie sesi bertanda tangan HMAC, HttpOnly, SameSite=Lax, Secure di produksi, berlaku 12 jam; 5 kali gagal login per email dan IP mengunci 15 menit (hitungan di memori instance); tindakan admin memeriksa ulang ke database bahwa akun masih aktif dan admin.
+- **Lupa kata sandi:** admin mereset di menu Pengguna; akun admin cadangan diganti lewat `ADMIN_PASSWORD`.

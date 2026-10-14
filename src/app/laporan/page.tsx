@@ -4,6 +4,7 @@ import { ReportPage, Note, Kpi, Kpis, Hl } from "@/components/ReportPage";
 import { getData, f1, labelBulan, labelPanjang } from "@/lib/data";
 import { forecast, parseMetode, METODE_NAMA, METODE_PENJELASAN } from "@/lib/forecast";
 import { MetodeSelect } from "@/components/Metode";
+import { sesiSaatIni } from "@/lib/auth";
 import { jendelaLaporan, daftarBulan, selisihBulan } from "@/lib/periode";
 import { tampilLabel } from "@/lib/format";
 import { stockByType, stockoutMonth, stockShortfall } from "@/lib/stock";
@@ -21,6 +22,7 @@ const NAMA_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Jul
 export const dynamic = "force-dynamic";
 export default async function Page({ searchParams }: { searchParams: Promise<{ jenis?: string; s?: string; narasi?: string; bulan?: string; tahun?: string; metode?: string }> }) {
   const { s: sRaw, narasi: buatNarasi, metode: metodeRaw, ...qp } = await searchParams;
+  const admin = (await sesiSaatIni())?.rl === "admin";
   const metode = parseMetode(metodeRaw);
   const d = await getData("kalender", {}, metode);
   const txns = d.txns;
@@ -105,7 +107,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
     ringkasanMesin: detail, rekomendasiMesin: rekom,
     peringatan: ["Korelasi bulanan variabel ekonomi dengan UTJ lemah; hanya konteks, bukan penggerak proyeksi", "Alasan batal baru tercatat sebagian", "Sampel per agent kecil", "UTJ dan akad dibulatkan ke bawah per bulan"],
   };
-  const narasi = buatNarasi === "1" ? await narasiLaporan(inputNarasi) : await cariNarasi(inputNarasi);
+  const narasi = buatNarasi === "1" && admin ? await narasiLaporan(inputNarasi) : await cariNarasi(inputNarasi);
   const linkBuat = `/laporan?${new URLSearchParams({ jenis, bulan: w.bulan, tahun: w.tahun, metode, ...(sRaw ? { s: sRaw } : {}), narasi: "1" }).toString()}`;
   const harga = priceByType(txDasar);
   const net2 = net.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -136,7 +138,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
         <p className="muted" style={{ fontSize: 12, flexBasis: "100%", margin: 0 }}>Bulanan = laporan satu bulan. Tahunan = 12 bulan berturut-turut mulai dari bulan dan tahun yang dipilih (pilih Januari untuk satu tahun kalender). Bulan yang sudah lewat memakai data nyata, bulan ke depan memakai proyeksi (sampai 36 bulan setelah data terakhir).</p>
       </form></div>
 
-    <div className="wrap noprint"><p>{badge(d.source)}</p><p className="muted">Laporan {jenis}, {T} halaman. Periode: <b>{periodeProyeksi}</b> ({aktualBulan} bulan data nyata, {proyeksiBulan} bulan perkiraan{w.dipotong ? "; dipotong sampai batas 36 bulan setelah data terakhir" : ""}). Cetak ke PDF dari browser (Ctrl/Cmd+P, A4, tanpa margin, aktifkan "Background graphics"). Narasi Claude: {!claudeConfigured() ? "nonaktif (ANTHROPIC_API_KEY belum diset)" : narasi ? "aktif (tersimpan; membuka ulang tidak memanggil Claude lagi)" : buatNarasi === "1" ? "gagal dibuat atau gagal divalidasi" : <>belum dibuat. <a href={linkBuat}><b>Buat narasi dengan Claude</b></a> (memanggil Claude satu kali, hasilnya disimpan)</>}.</p></div>
+    <div className="wrap noprint"><p>{badge(d.source)}</p><p className="muted">Laporan {jenis}, {T} halaman. Periode: <b>{periodeProyeksi}</b> ({aktualBulan} bulan data nyata, {proyeksiBulan} bulan perkiraan{w.dipotong ? "; dipotong sampai batas 36 bulan setelah data terakhir" : ""}). Cetak ke PDF dari browser (Ctrl/Cmd+P, A4, tanpa margin, aktifkan "Background graphics"). Narasi Claude: {!claudeConfigured() ? "nonaktif (ANTHROPIC_API_KEY belum diset)" : narasi ? "aktif (tersimpan; membuka ulang tidak memanggil Claude lagi)" : buatNarasi === "1" ? "gagal dibuat atau gagal divalidasi" : admin ? <>belum dibuat. <a href={linkBuat}><b>Buat narasi dengan Claude</b></a> (memanggil Claude satu kali, hasilnya disimpan)</> : "belum dibuat (minta admin membuatnya)"}.</p></div>
 
     <section className="page cover">
       <div className="c-top">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/logo.png" alt="Logo" className="c-logo" /><br /><span className="c-brand">Shaistanaya City · PT Neo Pudji Jaya</span>

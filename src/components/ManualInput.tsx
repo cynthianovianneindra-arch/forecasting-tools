@@ -15,7 +15,6 @@ function Form({ jenis, judul, children, ket }: { jenis: string; judul: string; c
         <input type="hidden" name="jenis" value={jenis} />
         {ket && <p className="muted" style={{ fontSize: 12, flexBasis: "100%", margin: 0 }}>{ket}</p>}
         {children}
-        <F label="Token unggah"><input style={inp} type="password" name="token" required autoComplete="off" /></F>
         <button className="btn" type="submit">Simpan</button>
       </form>
     </details>
@@ -80,7 +79,6 @@ export function ManualInput({ d }: { d: D }) {
       {d.manualMacro.length > 0 && <p className="muted" style={{ fontSize: 12 }}>Data ekonomi manual terakhir: {d.manualMacro.map((m) => `${m.indikator} ${labelPenuh(m.bulan)} = ${m.nilai}`).join("; ")}</p>}
       <form action="/api/manual" method="post" style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
         <input type="hidden" name="jenis" value="urungkan" />
-        <F label="Token unggah"><input style={inp} type="password" name="token" required autoComplete="off" /></F>
         <button className="btn alt" type="submit">Urungkan input manual terakhir</button>
       </form>
     </div>

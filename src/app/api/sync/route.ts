@@ -1,7 +1,11 @@
 import { driveConfigured, fetchFromDrive } from "@/lib/drive";
+import { adminSegar } from "@/lib/auth";
 
 // Paksa ambil ulang dari Drive lalu kembali ke layar Data. Dijadwalkan harian lewat Vercel Cron (GET).
-export async function POST(req: Request) { return run(req, true); }
+export async function POST(req: Request) {
+  if (!(await adminSegar())) return Response.json({ error: "Hanya untuk admin" }, { status: 403 });
+  return run(req, true);
+}
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) return new Response("unauthorized", { status: 401 });
