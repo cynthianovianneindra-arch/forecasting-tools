@@ -2,6 +2,7 @@
 
 export const COOKIE = "fs_sess";
 export const TTL_DETIK = 12 * 3600;
+export const TTL_INGAT_DETIK = 30 * 24 * 3600;
 export type Peran = "admin" | "viewer";
 export interface Sesi { uid: number; em: string; nm: string; rl: Peran; exp: number }
 

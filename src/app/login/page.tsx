@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { LoginForm } from "@/components/LoginForm";
 import { sesiSaatIni } from "@/lib/auth";
 import { amanNext, secretValid } from "@/lib/session";
 
@@ -9,22 +10,20 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   const q = await searchParams;
   const next = amanNext(q.next);
   if (await sesiSaatIni()) redirect(next);
-  const siap = secretValid(process.env.SESSION_SECRET);
   return (
     <main className="login">
-      <form method="post" action="/api/auth/login" className="login-card">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="Logo Shaistanaya City" className="login-logo" />
-        <h1>Forecast Penjualan</h1>
-        <p className="muted">Shaistanaya City · PT Neo Pudji Jaya</p>
-        {q.err && <p className="err" role="alert">{q.err}</p>}
-        {!siap && <p className="warn">Login belum aktif: isi SESSION_SECRET (minimal 32 karakter) di pengaturan server.</p>}
-        <input type="hidden" name="next" value={next} />
-        <label className="field">Email<input className="inp" type="email" name="email" required autoComplete="username" autoFocus /></label>
-        <label className="field">Kata sandi<input className="inp" type="password" name="password" required autoComplete="current-password" /></label>
-        <button className="btn" type="submit" style={{ width: "100%" }}>Masuk</button>
-        <p className="muted" style={{ fontSize: 12, margin: 0 }}>Akun dibuat oleh admin. Lupa kata sandi? Hubungi admin.</p>
-      </form>
+      <section className="lg-art" aria-hidden="true">
+        <div className="lg-brand">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="" /><span>Shaistanaya City</span>
+        </div>
+        <div className="lg-copy">
+          <h2>Proyeksi penjualan yang jelas.</h2>
+          <p>UTJ, akad, dan penerimaan untuk bulan-bulan ke depan, lengkap dengan laporan siap cetak untuk tim Shaistanaya City.</p>
+        </div>
+        <svg className="lg-dune" viewBox="0 0 600 120" preserveAspectRatio="none"><path d="M0 120V70C80 40 160 30 250 50c90 20 150 50 230 30 50-12 90-30 120-45v85z" /></svg>
+      </section>
+      <section className="lg-side"><LoginForm next={next} galat={q.err} siap={secretValid(process.env.SESSION_SECRET)} /></section>
     </main>
   );
 }
