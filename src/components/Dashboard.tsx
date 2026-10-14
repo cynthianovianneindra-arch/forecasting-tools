@@ -4,16 +4,18 @@ import Link from "next/link";
 import { Chart, Legend, Bar } from "./Chart";
 import { f1, labelBulan, labelPenuh, tampilLabel } from "@/lib/format";
 import { stockByType } from "@/lib/stock";
+import { METODE_NAMA, Metode } from "@/lib/forecast";
 
 interface Row { bulan: string; utj: number; utjInt: number; utjLoInt: number; utjHiInt: number; akad: number; akadInt: number; trend: number }
 interface Makro { indikator: string; korelasi: number | null; terakhir: string | null; nilaiTerakhir: number | null }
 interface Props {
+  metode?: Metode;
   monthly: { bulan: string; utj: number; akad: number }[]; rows: Row[]; netPrice: number; divergent: boolean;
   stok?: { open: number; total: number; belumDibangun: number; perTipe: { tipe: string; n: number }[]; belumDibangunPerTipe: { tipe: string; n: number }[] } | null;
   stokHabis?: number | null; stokKurang?: number | null; makro?: Makro[] | null;
 }
 
-export function Dashboard({ monthly, rows, netPrice, divergent, stok, stokHabis, stokKurang, makro }: Props) {
+export function Dashboard({ metode = "es", monthly, rows, netPrice, divergent, stok, stokHabis, stokKurang, makro }: Props) {
   const [mode, setMode] = useState<"bulanan" | "tahunan">("bulanan");
   let bars: Bar[];
   if (mode === "bulanan") {
@@ -34,7 +36,7 @@ export function Dashboard({ monthly, rows, netPrice, divergent, stok, stokHabis,
   return (
     <div className="stack">
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: 16 }}>
-        <div><h1>Proyeksi Penjualan</h1><p className="muted" style={{ maxWidth: 640 }}>Proyeksi dasar 12 bulan ke depan ({labelBulan(rows[0].bulan)} – {labelBulan(rows[11].bulan)}) dengan exponential smoothing. Garis putus menandai awal proyeksi. Akad dibulatkan ke bawah.</p></div>
+        <div><h1>Proyeksi Penjualan</h1><p className="muted" style={{ maxWidth: 640 }}>Proyeksi dasar 12 bulan ke depan ({labelBulan(rows[0].bulan)} – {labelBulan(rows[11].bulan)}) dengan metode {METODE_NAMA[metode]}. Garis putus menandai awal proyeksi. Akad dibulatkan ke bawah.</p></div>
         <div className="seg" role="group" aria-label="Tampilan">
           {(["bulanan", "tahunan"] as const).map((m) => <button key={m} className={mode === m ? "on" : ""} aria-pressed={mode === m} onClick={() => setMode(m)}>{m === "bulanan" ? "Bulanan" : "Tahunan"}</button>)}
         </div>

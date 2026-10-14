@@ -69,6 +69,79 @@ export function linearTrend(y: number[], h: number, k = 24): number[] {
   return Array.from({ length: h }, (_, j) => Math.max(0, a + b * (n + j)));
 }
 
+export type Metode = "es" | "wma" | "mlr";
+export const METODE_NAMA: Record<Metode, string> = { es: "Exponential smoothing", wma: "Weighted moving average", mlr: "Multiple linear regression" };
+export const METODE_PENJELASAN: Record<Metode, string> = {
+  es: "Memperhalus data lama: bulan terbaru berpengaruh paling besar, hasilnya datar.",
+  wma: "Rata-rata beberapa bulan terakhir, bulan terbaru diberi bobot lebih besar, hasilnya datar.",
+  mlr: "Garis tren dan pola musiman bulanan, ditambah rata-rata 3 bulan sebelumnya.",
+};
+export const METODE_LIST: Metode[] = ["es", "wma", "mlr"];
+export const parseMetode = (v?: string): Metode => (v === "wma" || v === "mlr" ? v : "es");
+
+/** Weighted moving average: jendela k terakhir dengan bobot linear (terbaru = k, terlama = 1); k dipilih dari {3,4,6,9,12} yang paling kecil galat satu langkahnya pada riwayat. */
+export function wmaFit(y: number[]): { k: number; value: number } {
+  const wavg = (w: number[]) => { const k = w.length; let s = 0, z = 0; w.forEach((v, i) => { s += v * (i + 1); z += i + 1; }); return k ? s / z : 0; };
+  let best = { k: Math.min(3, Math.max(1, y.length)), sse: Infinity };
+  for (const k of [3, 4, 6, 9, 12]) {
+    if (y.length < k + 6) continue;
+    let sse = 0;
+    for (let i = k; i < y.length; i++) sse += (y[i] - wavg(y.slice(i - k, i))) ** 2;
+    if (sse < best.sse) best = { k, sse };
+  }
+  return { k: best.k, value: wavg(y.slice(-best.k)) };
+}
+export function weightedMovingAverage(y: number[], h: number): number[] {
+  return Array(h).fill(wmaFit(y).value);
+}
+
+/** Selesaikan sistem linear kecil (eliminasi Gauss dengan pivot). */
+function solve(A: number[][], b: number[]): number[] {
+  const n = b.length;
+  const M = A.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    [M[c], M[p]] = [M[p], M[c]];
+    if (Math.abs(M[c][c]) < 1e-12) continue;
+    for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c] / M[c][c]; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return M.map((r, i) => (Math.abs(r[i]) < 1e-12 ? 0 : r[n] / r[i]));
+}
+
+/**
+ * Multiple linear regression untuk UTJ bulanan. Peubah: konstanta, tren (t), musiman bulanan (sin dan cos), dan rata-rata 3 bulan sebelumnya.
+ * m0 = indeks bulan pertama deret (ym). Proyeksi bertahap; hasil dipotong ke [0, 3 x maksimum riwayat].
+ */
+export function multipleLinearRegression(y: number[], h: number, m0 = 0): number[] {
+  const n = y.length;
+  if (n < 12) return Array(h).fill(mean(y));
+  const feat = (i: number, hist: number[]) => {
+    const ang = (2 * Math.PI * ((m0 + i) % 12)) / 12;
+    return [1, i / 12, Math.sin(ang), Math.cos(ang), mean(hist.slice(Math.max(0, i - 3), i))];
+  };
+  const X: number[][] = [], Y: number[] = [];
+  for (let i = 3; i < n; i++) { X.push(feat(i, y)); Y.push(y[i]); }
+  const p = X[0].length;
+  const A = Array.from({ length: p }, (_, r) => Array.from({ length: p }, (_, c) => X.reduce((s, row) => s + row[r] * row[c], 0) + (r === c && r > 0 ? 0.5 : 0)));
+  const b = Array.from({ length: p }, (_, r) => X.reduce((s, row, i) => s + row[r] * Y[i], 0));
+  const beta = solve(A, b);
+  const cap = 3 * Math.max(1, ...y);
+  const ext = [...y];
+  for (let j = 0; j < h; j++) {
+    const x = feat(n + j, ext);
+    ext.push(Math.min(cap, Math.max(0, x.reduce((s, v, k) => s + v * beta[k], 0))));
+  }
+  return ext.slice(n);
+}
+
+/** Proyeksi UTJ h bulan dengan metode terpilih. m0 = indeks bulan pertama deret (ym). */
+export function forecastUtj(metode: Metode, y: number[], h: number, m0 = 0): number[] {
+  if (metode === "wma") return weightedMovingAverage(y, h);
+  if (metode === "mlr") return multipleLinearRegression(y, h, m0);
+  return exponentialSmoothing(y, h);
+}
+
 /** Deret bulanan penuh (kalender) dari kunci bulan awal sampai akhir. */
 export function monthlySeries(txns: Txn[], field: "utj" | "akad" | "batal", start: string, end: string) {
   const months: string[] = [];
@@ -156,14 +229,14 @@ export interface BacktestResult {
 }
 
 /** Rolling origin: asal pertama setelah 24 bulan, ramal H=3 bulan. */
-export function backtest(txns: Txn[], start: string, end: string, H = 3, minHist = 24): BacktestResult {
+export function backtest(txns: Txn[], start: string, end: string, H = 3, minHist = 24, metode: Metode = "es"): BacktestResult {
   const u = monthlySeries(txns, "utj", start, end);
   const a = monthlySeries(txns, "akad", start, end);
   const n = u.values.length;
   let ae13 = 0, ae13n = 0, aeMa = 0, tot = 0, atot = 0, mtot = 0, origins = 0;
   const errs: number[][] = Array.from({ length: H }, () => []);
   for (let t = minHist; t <= n - H; t++) {
-    const fc = exponentialSmoothing(u.values.slice(0, t), H);
+    const fc = forecastUtj(metode, u.values.slice(0, t), H, ym(start));
     const ma = movingAverage(u.values.slice(0, t), H, 12);
     const actU = u.values.slice(t, t + H), actA = a.values.slice(t, t + H);
     fc.forEach((p, i) => { ae13 += Math.abs(p - actU[i]); aeMa += Math.abs(ma[i] - actU[i]); ae13n++; errs[i].push(p - actU[i]); });
@@ -209,17 +282,27 @@ export const fl = (v: number) => Math.floor(v + 1e-9);
 /** utj/utjLo/utjHi mentah dipakai untuk perhitungan; *Int = dibulatkan ke bawah untuk tampilan (UTJ dan akad adalah cacah unit). */
 export interface ForecastRow { bulan: string; utj: number; utjInt: number; utjLo: number; utjHi: number; utjLoInt: number; utjHiInt: number; akad: number; akadInt: number; batal: number; trend: number }
 
-export function forecast(txns: Txn[], start: string, end: string, H = 12): { rows: ForecastRow[]; bt: BacktestResult; trendDivergent: boolean } {
+export interface BandingMetode { metode: Metode; utjMae13: number; utjMaeTotal3: number; akadMaeTotal3: number }
+
+/** Perbandingan tiga metode lewat uji mundur yang sama. Paling mendekati = galat UTJ rata-rata (1-3 bulan) terkecil; seri dipecah oleh galat akad. */
+export function bandingkanMetode(bts: Record<Metode, BacktestResult>): { baris: BandingMetode[]; terbaik: Metode } {
+  const baris = METODE_LIST.map((m) => ({ metode: m, utjMae13: bts[m].utjMae13, utjMaeTotal3: bts[m].utjMaeTotal3, akadMaeTotal3: bts[m].akadMaeTotal3 }));
+  const terbaik = [...baris].sort((a, b) => a.utjMae13 - b.utjMae13 || a.akadMaeTotal3 - b.akadMaeTotal3)[0].metode;
+  return { baris, terbaik };
+}
+
+export function forecast(txns: Txn[], start: string, end: string, H = 12, metode: Metode = "es"): { rows: ForecastRow[]; bt: BacktestResult; trendDivergent: boolean; metode: Metode; banding: { baris: BandingMetode[]; terbaik: Metode } } {
   const u = monthlySeries(txns, "utj", start, end);
-  const base = exponentialSmoothing(u.values, H);
+  const base = forecastUtj(metode, u.values, H, ym(start));
   const trend = linearTrend(u.values, H, 24);
   const pj = pipelineAkadBatal(txns, end, base);
   const akad = pj.akad;
-  const bt = backtest(txns, start, end);
+  const bts = { es: backtest(txns, start, end, 3, 24, "es"), wma: backtest(txns, start, end, 3, 24, "wma"), mlr: backtest(txns, start, end, 3, 24, "mlr") };
+  const bt = bts[metode];
   const rows = base.map((p, i) => {
     const { lo, hi } = utjInterval(p, i + 1, bt.errorsByHorizon);
     return { bulan: addMonths(end, i + 1), utj: p, utjInt: fl(p), utjLo: lo, utjHi: hi, utjLoInt: fl(lo), utjHiInt: fl(hi), akad: akad[i], akadInt: fl(akad[i]), batal: pj.batal[i], trend: trend[i] };
   });
   const bs = mean(base), ts = mean(trend);
-  return { rows, bt, trendDivergent: Math.abs(ts - bs) / Math.max(bs, 1) > 0.25 };
+  return { rows, bt, trendDivergent: Math.abs(ts - bs) / Math.max(bs, 1) > 0.25, metode, banding: bandingkanMetode(bts) };
 }

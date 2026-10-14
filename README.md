@@ -101,3 +101,12 @@ alter table narasi_cache enable row level security;
 - Bulan yang sudah lewat memakai data nyata, bulan ke depan memakai proyeksi (sampai 36 bulan setelah data terakhir); rentang yang mencakup keduanya digabung. Angka total, grafik, tabel, stok, dan narasi mengikuti rentang itu.
 - Funnel, tipe, bank, dan marketing memakai data nyata di dalam rentang; bila rentang belum punya data nyata, dipakai bulan aktual terakhir dengan jumlah bulan yang sama.
 - Skenario what-if tetap memakai proyeksi dasar 12 bulan ke depan.
+
+## Tiga metode proyeksi UTJ
+Dropdown **Metode proyeksi** ada di Dashboard, Simulasi, dan Laporan (`?metode=es|wma|mlr`; bawaan exponential smoothing):
+- **Exponential smoothing** (`es`): level yang diperhalus, alpha dicari di 0,05–0,30.
+- **Weighted moving average** (`wma`): rata-rata k bulan terakhir (k dipilih dari 3, 4, 6, 9, 12 dengan galat satu langkah terkecil) dengan bobot linear, bulan terbaru paling besar.
+- **Multiple linear regression** (`mlr`): peubah konstanta, tren, musiman bulanan (sin dan cos), dan rata-rata 3 bulan sebelumnya; proyeksi bertahap, dipotong ke [0, 3 × maksimum riwayat].
+Akad dan batal tetap dihitung dari pipeline UTJ memakai UTJ hasil metode terpilih; rentang kemungkinan memakai galat uji mundur metode itu sendiri.
+
+**Mana yang paling mendekati** ditentukan uji mundur yang sama untuk ketiganya (asal pertama setelah 24 bulan, ramal 3 bulan): metode dengan galat UTJ rata-rata terkecil diberi tanda ★; galat akad 3 bulan ditampilkan berdampingan. Perbandingan tampil di Dashboard dan halaman terakhir Laporan.
