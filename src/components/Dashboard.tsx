@@ -39,7 +39,7 @@ export function Dashboard({ monthly, rows, netPrice, open, divergent }: { monthl
         <div className="stack">
           <div className="card"><h2>Mau coba skenario?</h2><p className="muted">Ubah harga, promo, leads, suplai unit, atau kondisi ekonomi dan lihat dampaknya.</p><Link className="btn" href="/simulasi">Buka Simulasi</Link></div>
           <div className="card"><h2>Unduh laporan</h2><Link className="btn" href="/laporan?jenis=bulanan">PDF Bulanan</Link> <Link className="btn alt" href="/laporan?jenis=tahunan">PDF Tahunan</Link></div>
-          <div className="card"><h2>Pipeline berjalan</h2><div className="kpi">{open} UTJ</div><p className="muted">belum akad dan belum batal (data demo)</p></div>
+          <div className="card"><h2>Pipeline berjalan</h2><div className="kpi">{open} UTJ</div><p className="muted">belum akad dan belum batal</p></div>
         </div>
       </div>
     </div>

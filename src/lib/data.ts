@@ -4,11 +4,12 @@ import { loadMonthly, reconstructTxns } from "./demo";
 import { forecast, monthlySeries, Txn } from "./forecast";
 import { driveConfigured, fetchFromDrive } from "./drive";
 import { importPenjualan, ImportReport } from "./importExcel";
+import { applyFilter, cards, Filter, options } from "./insights";
 import { NET_PRICE_MILIAR } from "./whatif";
 
 export const EXCEL_PATH = path.join(process.cwd(), "data", "FORECASTING_UPDATE.xlsx");
 
-export async function getData(mode: "kalender" | "excel" = "kalender") {
+export async function getData(mode: "kalender" | "excel" = "kalender", filter: Filter = {}) {
   let txns: Txn[], monthly: { bulan: string; utj: number; akad: number }[];
   let source: "excel" | "drive" | "demo" = "demo";
   let driveInfo: { name: string; modifiedTime: string; fetchedAt: string } | null = null;
@@ -36,9 +37,17 @@ export async function getData(mode: "kalender" | "excel" = "kalender") {
     monthly = loadMonthly();
     txns = reconstructTxns(monthly);
   }
+  const opts = options(txns);
   const start = monthly[0].bulan, end = monthly[monthly.length - 1].bulan;
-  const f = forecast(txns, start, end);
-  const open = txns.filter((t) => !t.akad && !t.batal).length;
-  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError };
+  const ft = applyFilter(txns, filter, true);
+  if (ft.length !== txns.length) {
+    const u = monthlySeries(ft, "utj", start, end), a = monthlySeries(ft, "akad", start, end);
+    monthly = u.months.map((b, i) => ({ bulan: b, utj: u.values[i], akad: a.values[i] }));
+  }
+  const f = forecast(ft, start, end);
+  const open = ft.filter((t) => !t.akad && !t.batal).length;
+  const kartu = source === "demo" ? null : cards(applyFilter(txns, filter, false));
+  const filtered = ft.length !== txns.length;
+  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, opts, kartu, filtered, nTxn: ft.length };
 }
 export { f1, labelBulan, labelPanjang } from "./format";
