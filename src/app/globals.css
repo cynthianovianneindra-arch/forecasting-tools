@@ -21,3 +21,4 @@ label.sl{display:block;font-size:13px;margin:10px 0}label.sl input{width:100%;mi
 .kpi{font-size:22px;font-weight:800}.mini td:first-child{width:55%}
 .page{width:794px;min-height:1123px;margin:0 auto 16px;background:#fff;padding:48px;border:1px solid var(--border)}
 @media print{.hdr,.noprint{display:none}body{background:#fff}.page{border:0;margin:0;page-break-after:always}@page{size:A4;margin:0}}
+.ok{font-size:12px;font-weight:700;color:#176B3A;background:#E2F3E8;border-radius:999px;padding:6px 12px;display:inline-block}

@@ -19,4 +19,4 @@ Web app proyeksi UTJ, akad, dan penerimaan. Spesifikasi: `docs/SPEC.md`; mockup:
 `fixtures/monthly_utj_akad.csv` hanya hitungan bulanan. Transaksi untuk pipeline direkonstruksi di
 `src/lib/demo.ts` (akad dipasangkan FIFO ke UTJ tertua; sisa > 8 bulan dianggap batal). Maka MAE akad
 pipeline (~5,7) belum sebanding dengan target 2,95 dan angka "pipeline berjalan" tidak nyata. Kriteria Fase 1
-untuk akad baru bisa diverifikasi setelah `FORECASTING_UPDATE.xlsx` diimpor (taruh di `data/`, di-gitignore).
+untuk akad baru bisa diverifikasi setelah `FORECASTING_UPDATE.xlsx` ditaruh di `data/` (di-gitignore). Jika file ada, app otomatis membaca sheet PENJUALAN (kolom J, AT, AU, AX; `src/lib/importExcel.ts`), membersihkan error Excel, dan melaporkan peringatan di menu Data & Integrasi; jika tidak ada, memakai data demo. Impor baru diuji dengan workbook sintetis, belum dengan file asli.
