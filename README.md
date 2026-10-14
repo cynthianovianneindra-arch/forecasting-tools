@@ -31,7 +31,7 @@ Prioritas sumber: Drive, lalu `data/FORECASTING_UPDATE.xlsx`, lalu data demo. Be
 
 ## Narasi Claude dan batas pemakaian
 - Isi `ANTHROPIC_API_KEY` (Vercel env). Halaman Laporan memanggil Claude sekali per set angka (cache 1 jam); angka di teks divalidasi terhadap JSON, jika gagal memakai teks templat.
-- `CLAUDE_DAILY_LIMIT` (default 5 panggilan/hari, UTC) membatasi total panggilan; hitungan di memori instance, jadi pada serverless bisa ter-reset. Pasang juga batas pengeluaran bulanan di console.anthropic.com sebagai batas keras.
+- `CLAUDE_DAILY_LIMIT` (default 5 panggilan/hari, UTC) membatasi panggilan narasi laporan, dan `CLAUDE_SYNC_DAILY_LIMIT` (default 4) membatasi pembacaan halaman BI/BPS; hitungan di memori instance, jadi pada serverless bisa ter-reset. Pasang juga batas pengeluaran bulanan di console.anthropic.com sebagai batas keras.
 - `/api/narasi` butuh `NARASI_TOKEN` (header `Authorization: Bearer ...`), maksimum 20.000 karakter masukan; tanpa token endpoint nonaktif.
 
 ## Isi data lewat dashboard (unggah Excel)
@@ -51,7 +51,7 @@ Tabel `datasets` punya kolom `marketing` (jsonb); unggah ulang Excel agar data m
 
 ## Pembaruan otomatis data ekonomi (tanpa API key berbayar)
 - **IHSG (^JKSE) dan emas (GC=F, USD/oz):** Yahoo Finance endpoint chart (tidak resmi, tanpa key). Parser diuji dengan contoh respons.
-- **Inflasi tahunan:** halaman bps.go.id (`BPS_INFLASI_URL`, default beranda). **BI Rate:** halaman bi.go.id (`BI_RATE_URL`). Teks halaman diekstrak Claude; hasil hanya diterima jika bulan valid, nilai wajar (0-20%), dan angkanya benar-benar muncul di teks halaman. Memakai kuota `CLAUDE_DAILY_LIMIT`.
+- **Inflasi tahunan:** halaman bps.go.id (`BPS_INFLASI_URL`, default beranda). **BI Rate:** halaman bi.go.id (`BI_RATE_URL`). Teks halaman diekstrak Claude; hasil hanya diterima jika bulan valid, nilai wajar (0-20%), dan angkanya benar-benar muncul di teks halaman. Memakai kuota terpisah `CLAUDE_SYNC_DAILY_LIMIT` (default 4/hari), tidak mengurangi jatah laporan.
 - Hasil disimpan di tabel Supabase `macro_live` dan menimpa bulan yang sama dari Excel. Sumber yang gagal tidak menimpa data terakhir; alasan gagal tampil di layar Data.
 - Pemicu: tombol "Sinkron data ekonomi sekarang" (butuh `UPLOAD_TOKEN`) dan Vercel Cron harian `/api/macro-sync` (butuh `CRON_SECRET`).
 - **Hasil uji pertama di produksi:** Yahoo (IHSG, emas) berhasil; bps.go.id menjawab HTTP 403 (memblokir akses otomatis), sehingga inflasi kini memakai cadangan halaman Data Inflasi bi.go.id (`BI_INFLASI_URL`); BI Rate gagal karena ANTHROPIC_API_KEY ditolak (401). Isi ulang key yang valid.

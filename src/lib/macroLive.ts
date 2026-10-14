@@ -87,7 +87,7 @@ export async function syncLive(deps: { fetch?: typeof fetch; call?: (system: str
     for (const [url, sumber] of urls) {
       try {
         if (!deps.call && !process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY belum diset (dibutuhkan untuk membaca halaman)");
-        const call = deps.call ?? (await import("./claude")).callClaude;
+        const call = deps.call ?? ((sys: string, usr: string) => import("./claude").then((m) => m.callClaude(sys, usr, "sync")));
         const v = await extractFromPage(await fetchPage(url, f), ind, call);
         rows.push({ bulan: v.bulan, indikator: ind, nilai: v.nilai, sumber });
         hasil.push({ indikator: ind, ok: true, bulan: v.bulan, nilai: v.nilai, sumber });

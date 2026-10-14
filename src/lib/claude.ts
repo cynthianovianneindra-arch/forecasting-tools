@@ -3,22 +3,26 @@ import { tulisNarasi } from "./narasi";
 
 export const claudeConfigured = () => !!process.env.ANTHROPIC_API_KEY;
 
-/** Batas panggilan Claude per hari (UTC), env CLAUDE_DAILY_LIMIT, default 5. Disimpan di memori instance: pada serverless
- *  hitungan bisa ter-reset saat instance baru, jadi ini pengaman biaya kasar; batas keras tetap atur di console.anthropic.com. */
-const used = { day: "", n: 0 };
-export const dailyLimit = () => Math.max(0, parseInt(process.env.CLAUDE_DAILY_LIMIT ?? "5", 10) || 0);
-export function takeBudget(): boolean {
-  const day = new Date().toISOString().slice(0, 10);
-  if (used.day !== day) { used.day = day; used.n = 0; }
-  if (used.n >= dailyLimit()) return false;
-  used.n++;
+/** Batas panggilan Claude per hari (UTC), dipisah per jenis: "laporan" (env CLAUDE_DAILY_LIMIT, default 5) dan "sync" untuk
+ *  pembacaan halaman BI/BPS (env CLAUDE_SYNC_DAILY_LIMIT, default 4). Disimpan di memori instance: pada serverless hitungan bisa
+ *  ter-reset saat instance baru, jadi ini pengaman biaya kasar; batas keras tetap atur di console.anthropic.com. */
+export type Jenis = "laporan" | "sync";
+const used: Record<Jenis, { day: string; n: number }> = { laporan: { day: "", n: 0 }, sync: { day: "", n: 0 } };
+const hariIni = () => new Date().toISOString().slice(0, 10);
+export const dailyLimit = (j: Jenis = "laporan") =>
+  Math.max(0, parseInt((j === "sync" ? process.env.CLAUDE_SYNC_DAILY_LIMIT : process.env.CLAUDE_DAILY_LIMIT) ?? (j === "sync" ? "4" : "5"), 10) || 0);
+export function takeBudget(j: Jenis = "laporan"): boolean {
+  const u = used[j];
+  if (u.day !== hariIni()) { u.day = hariIni(); u.n = 0; }
+  if (u.n >= dailyLimit(j)) return false;
+  u.n++;
   return true;
 }
-export const budgetLeft = () => Math.max(0, dailyLimit() - (used.day === new Date().toISOString().slice(0, 10) ? used.n : 0));
-export function resetBudgetForTest() { used.day = ""; used.n = 0; }
+export const budgetLeft = (j: Jenis = "laporan") => Math.max(0, dailyLimit(j) - (used[j].day === hariIni() ? used[j].n : 0));
+export function resetBudgetForTest() { for (const u of Object.values(used)) { u.day = ""; u.n = 0; } }
 
-export async function callClaude(system: string, user: string): Promise<string> {
-  if (!takeBudget()) throw new Error("Batas harian panggilan Claude tercapai");
+export async function callClaude(system: string, user: string, jenis: Jenis = "laporan"): Promise<string> {
+  if (!takeBudget(jenis)) throw new Error("Batas harian panggilan Claude tercapai");
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": process.env.ANTHROPIC_API_KEY!, "anthropic-version": "2023-06-01", "content-type": "application/json" },
