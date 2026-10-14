@@ -5,7 +5,7 @@ import { Chart, Legend, Bar } from "./Chart";
 import { f1, labelBulan, labelPenuh, tampilLabel } from "@/lib/format";
 import { stockByType } from "@/lib/stock";
 
-interface Row { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; akadInt: number; trend: number }
+interface Row { bulan: string; utj: number; utjInt: number; utjLoInt: number; utjHiInt: number; akad: number; akadInt: number; trend: number }
 interface Makro { indikator: string; korelasi: number | null; terakhir: string | null; nilaiTerakhir: number | null }
 interface Props {
   monthly: { bulan: string; utj: number; akad: number }[]; rows: Row[]; netPrice: number; divergent: boolean;
@@ -18,11 +18,11 @@ export function Dashboard({ monthly, rows, netPrice, divergent, stok, stokHabis,
   let bars: Bar[];
   if (mode === "bulanan") {
     bars = [...monthly.slice(-12).map((m) => ({ label: labelBulan(m.bulan), full: labelPenuh(m.bulan), showLabel: tampilLabel(m.bulan), utj: m.utj, akad: m.akad, proj: false })),
-      ...rows.map((r) => ({ label: labelBulan(r.bulan), full: labelPenuh(r.bulan), showLabel: tampilLabel(r.bulan), utj: r.utj, akad: r.akadInt, proj: true, lo: r.utjLo, hi: r.utjHi, trend: r.trend }))];
+      ...rows.map((r) => ({ label: labelBulan(r.bulan), full: labelPenuh(r.bulan), showLabel: tampilLabel(r.bulan), utj: r.utjInt, akad: r.akadInt, proj: true, lo: r.utjLoInt, hi: r.utjHiInt, trend: r.trend }))];
   } else {
     const yrs = new Map<string, Bar>();
     for (const m of monthly) { const y = m.bulan.slice(0, 4); const b = yrs.get(y) ?? { label: y, full: `Tahun ${y}`, utj: 0, akad: 0, proj: false }; b.utj += m.utj; b.akad += m.akad; yrs.set(y, b); }
-    for (const r of rows) { const y = r.bulan.slice(0, 4); const b = yrs.get(y) ?? { label: y, full: `Tahun ${y}`, utj: 0, akad: 0, proj: true }; b.utj += r.utj; b.akad += r.akadInt; b.proj = true; b.full = `Tahun ${y} (aktual + proyeksi)`; yrs.set(y, b); }
+    for (const r of rows) { const y = r.bulan.slice(0, 4); const b = yrs.get(y) ?? { label: y, full: `Tahun ${y}`, utj: 0, akad: 0, proj: true }; b.utj += r.utjInt; b.akad += r.akadInt; b.proj = true; b.full = `Tahun ${y} (aktual + proyeksi)`; yrs.set(y, b); }
     bars = [...yrs.values()];
   }
   const table = rows.slice(0, 6);
@@ -41,7 +41,7 @@ export function Dashboard({ monthly, rows, netPrice, divergent, stok, stokHabis,
             <p className="muted" style={{ fontSize: 12 }}>Rentang abu-abu = kemungkinan UTJ (10–90%) dari galat uji mundur; makin jauh makin lebar. Penjualan sangat berfluktuasi, jadi baca rentangnya, bukan hanya satu angka.</p></div>
           <div className="card"><h2>Rincian proyeksi (6 bulan pertama)</h2>
             <table><thead><tr><th>Periode</th><th className="n">UTJ (rentang)</th><th className="n">Akad</th><th className="n">Penerimaan (Rp miliar)</th></tr></thead>
-              <tbody>{table.map((r) => <tr key={r.bulan}><td>{labelPenuh(r.bulan)}</td><td className="n">{f1(r.utj)} ({f1(r.utjLo)}–{f1(r.utjHi)})</td><td className="n">{r.akadInt}</td><td className="n">{f1(r.akadInt * netPrice)}</td></tr>)}</tbody></table>
+              <tbody>{table.map((r) => <tr key={r.bulan}><td>{labelPenuh(r.bulan)}</td><td className="n">{r.utjInt} ({r.utjLoInt}–{r.utjHiInt})</td><td className="n">{r.akadInt}</td><td className="n">{f1(r.akadInt * netPrice)}</td></tr>)}</tbody></table>
           </div>
         </div>
         <div className="stack">

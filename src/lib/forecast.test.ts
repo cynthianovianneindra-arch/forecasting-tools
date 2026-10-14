@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { loadMonthly, reconstructTxns } from "./demo";
-import { forecast, movingAverage, linearTrend, backtest, hazards, exponentialSmoothing, sesFit } from "./forecast";
+import { forecast, utjInterval, utjIntervalPendek, movingAverage, linearTrend, backtest, hazards, exponentialSmoothing, sesFit } from "./forecast";
 
 const rows = loadMonthly();
 const txns = reconstructTxns(rows);
@@ -52,5 +52,24 @@ describe("forecast", () => {
     const w = f.rows.map((r) => r.utjHi - r.utjLo);
     expect(w[11]).toBeGreaterThanOrEqual(w[0]);
     f.rows.forEach((r) => { expect(r.akadInt).toBe(Math.floor(r.akad + 1e-9)); expect(r.utjLo).toBeLessThanOrEqual(r.utj); expect(r.utjHi).toBeGreaterThanOrEqual(r.utj); });
+  });
+});
+
+describe("rentang proyeksi untuk riwayat pendek", () => {
+  it("rentang cadangan melebar dengan horizon dan tidak nol", () => {
+    const a = utjIntervalPendek(6, 1), b = utjIntervalPendek(6, 12);
+    expect(a.hi - a.lo).toBeGreaterThan(4);
+    expect(b.hi - b.lo).toBeGreaterThan(a.hi - a.lo);
+    expect(a.lo).toBeGreaterThanOrEqual(0);
+    expect(utjIntervalPendek(0, 3).hi).toBeGreaterThan(0);
+  });
+  it("utjInterval memakai cadangan bila galat uji mundur < 5", () => {
+    expect(utjInterval(6, 2, [[1, 2], [3]])).toEqual(utjIntervalPendek(6, 2));
+  });
+  it("forecast pada rentang pendek tetap menghasilkan 12 bulan dengan rentang", () => {
+    const f = forecast(txns.filter((t) => t.utj <= "2024-12"), "2024-01", "2024-12");
+    expect(f.rows).toHaveLength(12);
+    expect(f.rows[0].bulan).toBe("2025-01");
+    f.rows.forEach((r) => expect(r.utjHi).toBeGreaterThan(r.utjLo));
   });
 });

@@ -186,8 +186,17 @@ const quantile = (a: number[], q: number) => {
 };
 
 /** Rentang 10–90% untuk UTJ bulanan; melebar dengan horizon. Dasar: kuantil galat backtest (horizon > 3 mengikuti akar horizon). */
+export const MIN_GALAT_BACKTEST = 5;
+
+/** Rentang cadangan bila riwayat terlalu pendek untuk uji mundur: data cacah (Poisson) dengan faktor sebaran 1,5 yang melebar dengan horizon. */
+export function utjIntervalPendek(point: number, horizon: number) {
+  const half = 1.28 * 1.5 * Math.sqrt(Math.max(point, 0.5) * (1 + horizon / 12));
+  return { lo: Math.max(0, point - half), hi: point + half };
+}
+
 export function utjInterval(point: number, horizon: number, errsByH: number[][]) {
   const h = Math.min(horizon, errsByH.length);
+  if (!errsByH[h - 1] || errsByH[h - 1].length < MIN_GALAT_BACKTEST) return utjIntervalPendek(point, horizon);
   const e = errsByH[h - 1].map((x) => -x); // aktual - prediksi
   const scale = horizon > h ? Math.sqrt(horizon / h) : 1;
   const lo = Math.max(0, point + quantile(e, 0.1) * scale);
@@ -195,7 +204,10 @@ export function utjInterval(point: number, horizon: number, errsByH: number[][])
   return { lo, hi };
 }
 
-export interface ForecastRow { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; akadInt: number; batal: number; trend: number }
+export const fl = (v: number) => Math.floor(v + 1e-9);
+
+/** utj/utjLo/utjHi mentah dipakai untuk perhitungan; *Int = dibulatkan ke bawah untuk tampilan (UTJ dan akad adalah cacah unit). */
+export interface ForecastRow { bulan: string; utj: number; utjInt: number; utjLo: number; utjHi: number; utjLoInt: number; utjHiInt: number; akad: number; akadInt: number; batal: number; trend: number }
 
 export function forecast(txns: Txn[], start: string, end: string, H = 12): { rows: ForecastRow[]; bt: BacktestResult; trendDivergent: boolean } {
   const u = monthlySeries(txns, "utj", start, end);
@@ -206,7 +218,7 @@ export function forecast(txns: Txn[], start: string, end: string, H = 12): { row
   const bt = backtest(txns, start, end);
   const rows = base.map((p, i) => {
     const { lo, hi } = utjInterval(p, i + 1, bt.errorsByHorizon);
-    return { bulan: addMonths(end, i + 1), utj: p, utjLo: lo, utjHi: hi, akad: akad[i], akadInt: Math.floor(akad[i] + 1e-9), batal: pj.batal[i], trend: trend[i] };
+    return { bulan: addMonths(end, i + 1), utj: p, utjInt: fl(p), utjLo: lo, utjHi: hi, utjLoInt: fl(lo), utjHiInt: fl(hi), akad: akad[i], akadInt: fl(akad[i]), batal: pj.batal[i], trend: trend[i] };
   });
   const bs = mean(base), ts = mean(trend);
   return { rows, bt, trendDivergent: Math.abs(ts - bs) / Math.max(bs, 1) > 0.25 };

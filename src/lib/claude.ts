@@ -22,7 +22,7 @@ export async function callClaude(system: string, user: string): Promise<string> 
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": process.env.ANTHROPIC_API_KEY!, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5", max_tokens: 1200, system, messages: [{ role: "user", content: user }] }),
+    body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5", max_tokens: 2200, system, messages: [{ role: "user", content: user }] }),
   });
   if (r.status === 401) throw new Error("Claude API 401: ANTHROPIC_API_KEY ditolak (key salah, ada spasi/baris baru di ujung, sudah dicabut, atau belum ada kredit); buat key baru dan isi ulang di Vercel");
   if (!r.ok) throw new Error(`Claude API ${r.status}`);
@@ -30,10 +30,10 @@ export async function callClaude(system: string, user: string): Promise<string> 
   return (j.content?.[0]?.text as string) ?? "";
 }
 
-export const SECTIONS = ["ringkasan", "proyeksi", "funnel", "bank", "marketing"] as const;
+export const SECTIONS = ["ringkasan", "proyeksi", "funnel", "bank", "marketing", "stok", "risiko", "rekomendasi"] as const;
 export type Sections = Record<(typeof SECTIONS)[number], string>;
 
-const FORMAT = `Balas HANYA JSON dengan kunci ${SECTIONS.join(", ")} (masing-masing 2-3 kalimat): ringkasan = ringkasan manajemen; proyeksi = membaca proyeksi UTJ/akad beserta rentang; funnel = funnel dan pembatalan; bank = proses bank dan konteks ekonomi; marketing = efektivitas marketing dari data marketing (sebut bahwa pola awal dan bukan sebab-akibat, sampel pendek). Jika data marketing tidak ada, isi marketing dengan "Data marketing belum tersedia."`;
+const FORMAT = `Balas HANYA JSON dengan kunci ${SECTIONS.join(", ")} (ringkasan = 6-8 kalimat yang merangkum hasil utama, kinerja, stok, marketing, ekonomi, dan risiko; yang lain masing-masing 2-4 kalimat): ringkasan = ringkasan manajemen yang detail; proyeksi = membaca proyeksi UTJ/akad beserta rentang; funnel = funnel dan pembatalan; bank = proses bank dan konteks ekonomi; stok = kondisi stok dan kebutuhan order bangun; risiko = risiko dan keterbatasan utama; rekomendasi = urutan tindakan prioritas untuk manajemen dari daftar rekomendasi yang diberikan; marketing = efektivitas marketing dari data marketing (sebut bahwa pola awal dan bukan sebab-akibat, sampel pendek). Jika data marketing tidak ada, isi marketing dengan "Data marketing belum tersedia."`;
 
 const cache = new Map<string, { at: number; v: Sections | null }>();
 const TTL = 60 * 60 * 1000;
