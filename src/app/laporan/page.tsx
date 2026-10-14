@@ -2,6 +2,7 @@ import { Nav, badge } from "@/components/Nav";
 import { Chart } from "@/components/Chart";
 import { ReportPage, Note } from "@/components/ReportPage";
 import { getData, f1, labelBulan, labelPanjang } from "@/lib/data";
+import { stockByType } from "@/lib/stock";
 import { avgNetPrice, priceByType, ringkasanTeks } from "@/lib/laporan";
 import { applyScenario, describeScenario, parseScenario } from "@/lib/whatif";
 import { claudeConfigured, narasiLaporan } from "@/lib/claude";
@@ -35,7 +36,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const batalPct = pot(k.funnel.batal);
   const mk = d.marketing && d.marketing.leads.length ? marketingInsights(d.marketing, txns) : null;
   const narasi = await narasiLaporan({
-    stok: d.stok ? { unitOpen: d.stok.open, totalUnit: d.stok.total, bulanStokHabis: d.stokHabis } : null,
+    stok: d.stok ? { unitOpen: d.stok.open, unitBelumDibangun: d.stok.belumDibangun, totalUnit: d.stok.total, bulanStokHabis: d.stokHabis, kekuranganUnit: d.stokKurang } : null,
     ekonomi: d.makro ? d.makro.map((m) => ({ indikator: m.indikator, korelasiDenganUtj: m.korelasi, bulanTerakhir: m.terakhir })) : null,
     marketing: mk ? { ...mk.stats, kategori: mk.kategori.slice(0, 5), temuan: mk.findings.map((f) => ({ judul: f.judul, temuan: f.temuan, label: f.label })) } : null,
     periode: `${labelPanjang(r[0].bulan)} - ${labelPanjang(r[11].bulan)}`, jenis,
@@ -70,7 +71,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
 
     <ReportPage n={5} title="Akad dan penerimaan"><p>Akad diproyeksikan dari UTJ yang sedang berjalan ({d.open} UTJ belum akad atau batal) ditambah UTJ baru, memakai peluang akad dan batal per umur UTJ dari data historis.</p>
       <table>{th("Bulan", "Akad", "Penerimaan (Rp M)")}<tbody>{r.map((x) => <tr key={x.bulan}><td>{labelPanjang(x.bulan)}</td><td className="n">{f1(x.akad)}</td><td className="n">{f1(x.akad * net)}</td></tr>)}</tbody></table>
-      {d.stok && <Note>Stok Open saat ini {d.stok.open} unit dari {d.stok.total}. {d.stokHabis !== null ? `Pada laju proyeksi, stok habis di bulan ke-${d.stokHabis}; proyeksi di atas mengasumsikan unit tersedia sehingga perlu tambahan unit (order bangun) atau pelepasan unit berstatus lain.` : "Stok cukup untuk seluruh 12 bulan proyeksi."}</Note>}
+      {d.stok && <Note>Stok Open saat ini {d.stok.open} unit dari {d.stok.total}. {d.stokHabis !== null ? `Pada laju proyeksi (UTJ dikurangi batal), stok habis di bulan ke-${d.stokHabis} dan kurang sekitar ${d.stokKurang} unit dalam 12 bulan; ${d.stok.belumDibangun} unit berstatus Close (belum dibangun) bisa dijual setelah dibangun. Proyeksi di atas mengasumsikan unit tersedia.` : "Stok cukup untuk seluruh 12 bulan proyeksi."}</Note>}
       <p className="muted">Uji mundur (26 titik): galat total akad 3 bulan {f1(bt.akadMaeTotal3)} unit, dibanding {f1(bt.akadMaeMa12)} unit bila memakai rata-rata 12 bulan.</p></ReportPage>
 
     <ReportPage n={6} title="Funnel penjualan dan pembatalan">{narasi && <p>{narasi.funnel}</p>}<table>{th("Tahap", "Jumlah", "% dari UTJ")}<tbody>
@@ -80,6 +81,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       <Note>Alasan batal baru terisi sebagian, jadi pola di atas bersifat hipotesis.</Note></ReportPage>
 
     <ReportPage n={7} title="Tipe rumah dan harga"><table>{th("Tipe", "UTJ", "Akad")}<tbody>{k.byType.map((x) => <tr key={x.tipe}><td>{x.tipe}</td><td className="n">{x.utj}</td><td className="n">{x.akad}</td></tr>)}</tbody></table>
+      {d.stok && <><h2 style={{ marginTop: 16 }}>Stok per tipe</h2><table>{th("Tipe", "Open (tersedia)", "Belum dibangun")}<tbody>{stockByType(d.stok).map((x) => <tr key={x.tipe}><td>{x.tipe}</td><td className="n">{x.open}</td><td className="n">{x.belum}</td></tr>)}<tr><td><b>Total</b></td><td className="n"><b>{d.stok.open}</b></td><td className="n"><b>{d.stok.belumDibangun}</b></td></tr></tbody></table></>}
       {harga.length > 0 && <><h2 style={{ marginTop: 16 }}>Harga bersih rata-rata (akad)</h2><table>{th("Tipe", "Akad", "Rata-rata (Rp M)", "Porsi nilai")}<tbody>{harga.map((x) => <tr key={x.tipe}><td>{x.tipe}</td><td className="n">{x.akad}</td><td className="n">{(x.rata / 1e9).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td className="n">{x.porsi}%</td></tr>)}</tbody></table></>}</ReportPage>
 
     <ReportPage n={8} title="Agent dan sumber leads"><table>{th("Agent", "UTJ", "Akad", "Konversi")}<tbody>{k.byAgent.map((x) => <tr key={x.agent}><td>{x.agent}</td><td className="n">{x.utj}</td><td className="n">{x.akad}</td><td className="n">{x.konversi}%</td></tr>)}</tbody></table>
@@ -114,6 +116,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
         <Note>Skenario memakai koefisien ilustrasi yang belum dikalibrasi dari data; baca sebagai gambaran arah, bukan ramalan. Pengaruh variabel ekonomi lemah pada data historis. Proyeksi dasar di halaman lain tidak berubah.</Note></>}
       <h2 style={{ marginTop: 16 }}>Cara angka dibuat</h2><p>UTJ = rata-rata 12 bulan terakhir; akad = pipeline UTJ; rentang dari kuantil galat uji mundur ({bt.origins} titik uji, galat UTJ rata-rata {f1(bt.utjMae13)} unit/bulan).</p>
       <h2>Keterbatasan</h2><ul><li>Penjualan berfluktuasi; satu angka tidak menjamin hasil.</li><li>Variabel ekonomi hanya konteks.</li><li>Skenario di menu Simulasi memakai koefisien ilustrasi dan belum dikalibrasi.</li><li>Penerimaan memakai harga bersih rata-rata, bukan jadwal termin.</li></ul>
-      <h2>Langkah berikutnya</h2><ul><li>Lengkapi alasan batal dan status leads di sumber data.</li><li>Kalibrasi koefisien skenario dari data; sambungkan pembaruan otomatis data ekonomi (BPS, BI, Twelve Data).</li><li>Konfirmasi definisi stok tersedia dijual (Open saja, atau termasuk Margal/Close).</li></ul></ReportPage>
+      <h2>Langkah berikutnya</h2><ul><li>Lengkapi alasan batal dan status leads di sumber data.</li><li>Kalibrasi koefisien skenario dari data; sambungkan pembaruan otomatis data ekonomi (BPS, BI, Twelve Data).</li><li>Rencanakan order bangun dari unit Close agar stok tidak menjadi pembatas penjualan.</li></ul></ReportPage>
   </>);
 }

@@ -55,3 +55,7 @@ Tabel `datasets` punya kolom `marketing` (jsonb); unggah ulang Excel agar data m
 - Hasil disimpan di tabel Supabase `macro_live` dan menimpa bulan yang sama dari Excel. Sumber yang gagal tidak menimpa data terakhir; alasan gagal tampil di layar Data.
 - Pemicu: tombol "Sinkron data ekonomi sekarang" (butuh `UPLOAD_TOKEN`) dan Vercel Cron harian `/api/macro-sync` (butuh `CRON_SECRET`).
 - **Belum diuji dengan situs asli**: sandbox pengembangan tidak bisa menjangkau Yahoo, BPS, atau BI. URL BPS default (beranda) mungkin tidak memuat angka inflasi; isi `BPS_INFLASI_URL` dengan halaman yang memuatnya. Kegagalan akan tampil jelas di layar Data.
+
+## Arti status unit dan peringatan stok (dikonfirmasi pemilik)
+Open = tersedia dijual (stok); Close = belum dibangun (potensi order bangun); Margal dan Sold = sudah terjual; Proses = sudah dipesan.
+Peringatan stok memakai pemakaian bersih = UTJ dikurangi batal (UTJ batal mengembalikan unit ke stok), dari model pipeline: pada proyeksi dasar sekitar 5,1 unit/bulan, stok Open (32) habis di bulan ke-7 dan kurang sekitar 29 unit dalam 12 bulan; 78 unit Close menjadi batas atas order bangun di Simulasi.

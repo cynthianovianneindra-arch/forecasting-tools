@@ -89,12 +89,12 @@ export function hazards(txns: Txn[], T: string): Hazards {
   return { ha, hb };
 }
 
-/** Proyeksi akad per bulan (h bulan) dari pipeline UTJ terbuka + UTJ baru yang diproyeksikan. */
-export function pipelineAkad(txns: Txn[], T: string, utjForecast: number[]): number[] {
+/** Proyeksi akad dan batal per bulan (h bulan) dari pipeline UTJ terbuka + UTJ baru yang diproyeksikan. */
+export function pipelineAkadBatal(txns: Txn[], T: string, utjForecast: number[]): { akad: number[]; batal: number[] } {
   const h = utjForecast.length;
   const t = ym(T);
   const { ha, hb } = hazards(txns, T);
-  const out = Array(h).fill(0);
+  const out = Array(h).fill(0), outB = Array(h).fill(0);
   for (const x of txns) {
     if (ym(x.utj) > t) continue;
     if ((x.akad && ym(x.akad) <= t) || (x.batal && ym(x.batal) <= t)) continue;
@@ -104,6 +104,7 @@ export function pipelineAkad(txns: Txn[], T: string, utjForecast: number[]): num
       const a = age + k;
       if (a > MAX_AGE) break;
       out[k - 1] += s * ha[a];
+      outB[k - 1] += s * hb[a];
       s *= 1 - ha[a] - hb[a];
     }
   }
@@ -111,10 +112,16 @@ export function pipelineAkad(txns: Txn[], T: string, utjForecast: number[]): num
     let s = 1;
     for (let k = 0; k <= h - j; k++) {
       out[j + k - 1] += utjForecast[j - 1] * s * ha[k];
+      outB[j + k - 1] += utjForecast[j - 1] * s * hb[k];
       s *= 1 - ha[k] - hb[k];
     }
   }
-  return out;
+  return { akad: out, batal: outB };
+}
+
+/** Proyeksi akad per bulan (lihat pipelineAkadBatal). */
+export function pipelineAkad(txns: Txn[], T: string, utjForecast: number[]): number[] {
+  return pipelineAkadBatal(txns, T, utjForecast).akad;
 }
 
 export interface BacktestResult {
@@ -165,17 +172,18 @@ export function utjInterval(point: number, horizon: number, errsByH: number[][])
   return { lo, hi };
 }
 
-export interface ForecastRow { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; trend: number }
+export interface ForecastRow { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; batal: number; trend: number }
 
 export function forecast(txns: Txn[], start: string, end: string, H = 12): { rows: ForecastRow[]; bt: BacktestResult; trendDivergent: boolean } {
   const u = monthlySeries(txns, "utj", start, end);
   const base = movingAverage(u.values, H, 12);
   const trend = linearTrend(u.values, H, 24);
-  const akad = pipelineAkad(txns, end, base);
+  const pj = pipelineAkadBatal(txns, end, base);
+  const akad = pj.akad;
   const bt = backtest(txns, start, end);
   const rows = base.map((p, i) => {
     const { lo, hi } = utjInterval(p, i + 1, bt.errorsByHorizon);
-    return { bulan: addMonths(end, i + 1), utj: p, utjLo: lo, utjHi: hi, akad: akad[i], trend: trend[i] };
+    return { bulan: addMonths(end, i + 1), utj: p, utjLo: lo, utjHi: hi, akad: akad[i], batal: pj.batal[i], trend: trend[i] };
   });
   const bs = mean(base), ts = mean(trend);
   return { rows, bt, trendDivergent: Math.abs(ts - bs) / Math.max(bs, 1) > 0.25 };

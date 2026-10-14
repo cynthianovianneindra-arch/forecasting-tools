@@ -1,5 +1,6 @@
 import { Nav, badge } from "@/components/Nav";
 import { getData } from "@/lib/data";
+import { ARTI_STATUS } from "@/lib/stock";
 import { listDatasets, storeConfigured } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ o
       <tr><td>Total akad (target 188)</td><td className="n">{total.a} {total.a === 188 ? "✓" : "✗"}</td></tr>
       <tr><td>Bulan terakhir</td><td className="n">{d.end}</td></tr></tbody></table></div>
     {d.report && <div className="card"><h2>Hasil impor Excel</h2><p>{d.report.rows} baris dibaca, {d.report.utj} UTJ, {d.report.akad} akad, {d.report.batal} batal.</p>{d.report.warnings.length > 0 ? <><p className="err">{d.report.warnings.length} peringatan kualitas data</p><ul>{d.report.warnings.slice(0, 20).map((w) => <li key={w}>{w}</li>)}</ul></> : <p>Tidak ada peringatan.</p>}</div>}
-    {d.stok && <div className="card"><h2>Master unit (sheet UNIT)</h2><p className="muted">Stok tersedia dijual dihitung dari status Open; konfirmasi definisi dengan pemilik.</p><table><tbody>{d.stok.status.map((x) => <tr key={x.status}><td>{x.status}</td><td className="n">{x.n}</td></tr>)}<tr><td><b>Total</b></td><td className="n"><b>{d.stok.total}</b></td></tr></tbody></table></div>}
+    {d.stok && <div className="card"><h2>Master unit (sheet UNIT)</h2><p className="muted">Stok tersedia dijual = status Open. Close = belum dibangun; Margal dan Sold = sudah terjual; Proses = sudah dipesan.</p><table><tbody>{d.stok.status.map((x) => <tr key={x.status}><td>{x.status} <span className="muted">({ARTI_STATUS[x.status] ?? "-"})</span></td><td className="n">{x.n}</td></tr>)}<tr><td><b>Total</b></td><td className="n"><b>{d.stok.total}</b></td></tr></tbody></table></div>}
     {d.makro && <div className="card"><h2>Data ekonomi dari Excel (INSTRUMEN EKONOMI)</h2><table><thead><tr><th>Indikator</th><th className="n">Data terakhir</th><th className="n">Nilai</th><th className="n">Korelasi dengan UTJ</th></tr></thead><tbody>{d.makro.map((m) => <tr key={m.indikator}><td>{m.indikator}</td><td className="n">{m.terakhir ?? "-"}</td><td className="n">{m.nilaiTerakhir === null ? "-" : m.nilaiTerakhir.toLocaleString("id-ID", { maximumFractionDigits: 4 })}</td><td className="n">{m.korelasi ?? "-"}</td></tr>)}</tbody></table><p className="muted">Riwayat dari Excel; data live (di bawah) menimpa bulan yang sama.</p></div>}
     <div className="card"><h2>Pembaruan otomatis data ekonomi</h2>
       <table><thead><tr><th>Indikator</th><th>Sumber</th><th className="n">Bulan terakhir</th><th className="n">Nilai</th><th className="n">Diambil</th></tr></thead><tbody>

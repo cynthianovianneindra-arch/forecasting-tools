@@ -11,6 +11,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     <FilterBar opts={d.opts} cur={filter} />
     {d.filtered && <p className="warn">Filter aktif: proyeksi dihitung ulang dari {d.nTxn} UTJ saja. Sampel kecil, rentang tidak andal.</p>}
     {d.filtered && d.monthly.slice(-12).every((m) => m.utj === 0) && <p className="err">Tidak ada UTJ pada 12 bulan terakhir untuk filter ini (mungkin stok habis atau tidak dijual lagi). Proyeksi 0 hanya hasil hitungan, bukan ramalan.</p>}
-    <Dashboard monthly={d.monthly} rows={d.f.rows} netPrice={d.netPrice} open={d.open} divergent={d.f.trendDivergent} stok={d.stok} stokHabis={d.stokHabis} />
+    <Dashboard monthly={d.monthly} rows={d.f.rows} netPrice={d.netPrice} open={d.open} divergent={d.f.trendDivergent} stok={d.stok} stokHabis={d.stokHabis} stokKurang={d.stokKurang} />
     {d.kartu && <section className="stack"><h2>Data aktual</h2><Cards k={d.kartu} /></section>}</main></>);
 }
