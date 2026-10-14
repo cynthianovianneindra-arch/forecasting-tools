@@ -10,7 +10,8 @@ export function Nav({ active, updated }: { active: string; updated: string }) {
   return (
     <>
       <aside className="side" aria-label="Menu utama">
-        <span className="logo" title="Forecast Penjualan">F</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Logo Shaistanaya City" className="logo-img" />
         {items.map(([h, l]) => <Link key={h} href={h} className={"navlink" + (h === active ? " navon" : "")}><svg viewBox="0 0 24 24" aria-hidden="true">{ic[h]}</svg>{l}</Link>)}
         <span className="sidegap" />
       </aside>

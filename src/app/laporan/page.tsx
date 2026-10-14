@@ -82,7 +82,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
     <div className="wrap noprint"><p>{badge(d.source)}</p><p className="muted">Laporan {jenis}, {T} halaman. Cetak ke PDF dari browser (Ctrl/Cmd+P, A4, tanpa margin, aktifkan "Background graphics"). Narasi Claude: {!claudeConfigured() ? "nonaktif (ANTHROPIC_API_KEY belum diset)" : narasi ? "aktif (tersimpan; membuka ulang tidak memanggil Claude lagi)" : buatNarasi === "1" ? "gagal dibuat atau gagal divalidasi" : <>belum dibuat. <a href={linkBuat}><b>Buat narasi dengan Claude</b></a> (memanggil Claude satu kali, hasilnya disimpan)</>}.</p></div>
 
     <section className="page cover">
-      <div className="c-top"><span className="c-brand">Shaistanaya City · PT Neo Pudji Jaya</span>
+      <div className="c-top">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/logo.png" alt="Logo" className="c-logo" /><br /><span className="c-brand">Shaistanaya City · PT Neo Pudji Jaya</span>
         <h1>Laporan<br />Proyeksi<br />Penjualan</h1><span className="c-bar" />
         <p className="c-sub">{jenis === "tahunan" ? "Tahunan" : "Bulanan"} · proyeksi {periodeProyeksi}</p></div>
       <div className="c-bottom"><h4>INFORMASI</h4>
@@ -93,7 +93,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
         </div></div></section>
 
     <section className="page rp">
-      <div className="rp-top"><span>Laporan Proyeksi Penjualan · Shaistanaya City</span><span>02 / {String(T).padStart(2, "0")}</span></div>
+      <div className="rp-top"><span className="rp-brand"><img src="/logo.png" alt="" />Laporan Proyeksi Penjualan · Shaistanaya City</span><span>02 / {String(T).padStart(2, "0")}</span></div>
       <h2 className="rp-title">Daftar isi</h2><span className="rp-bar" />
       <div className="toc">
         <div className="toc-side">
