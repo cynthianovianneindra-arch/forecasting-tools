@@ -7,7 +7,7 @@ import { mergeMacro } from "./macroLive";
 import { filterMarketing, marketingInsights } from "./marketing";
 import { driveConfigured, fetchFromDrive } from "./drive";
 import { importPenjualan, ImportReport } from "./importExcel";
-import { applyFilter, cards, Filter, options } from "./insights";
+import { applyFilter, cards, Filter, options, rentangPeriode } from "./insights";
 import { stockSummary, stockoutMonth, stockShortfall } from "./stock";
 import { macroContext, utjMonthMap } from "./macro";
 import { NET_PRICE_MILIAR } from "./whatif";
@@ -56,20 +56,28 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
     txns = reconstructTxns(monthly);
   }
   const opts = options(txns);
-  const start = monthly[0].bulan, end = monthly[monthly.length - 1].bulan;
+  const start0 = monthly[0].bulan, end0 = monthly[monthly.length - 1].bulan;
+  // Periode ikut memengaruhi proyeksi: deret dibatasi ke [dari, sampai] dan proyeksi 12 bulan dihitung setelah bulan akhir rentang.
+  const rp = rentangPeriode(filter);
+  const start = rp.dari && rp.dari > start0 ? rp.dari : start0;
+  const end = rp.sampai && rp.sampai < end0 ? rp.sampai : end0;
+  const periodeAktif = start <= end && (start !== start0 || end !== end0)
+    ? { start, end, n: monthlySeries([], "utj", start, end).months.length } : null;
+  const [fs, fe] = periodeAktif ? [start, end] : [start0, end0];
   const ft = applyFilter(txns, filter, true);
-  if (ft.length !== txns.length) {
-    const u = monthlySeries(ft, "utj", start, end), a = monthlySeries(ft, "akad", start, end);
+  if (ft.length !== txns.length || periodeAktif) {
+    const u = monthlySeries(ft, "utj", fs, fe), a = monthlySeries(ft, "akad", fs, fe);
     monthly = u.months.map((b, i) => ({ bulan: b, utj: u.values[i], akad: a.values[i] }));
   }
-  const f = forecast(ft, start, end);
+  const f = forecast(ft, fs, fe);
   const open = ft.filter((t) => !t.akad && !t.batal).length;
   const kartu = source === "demo" ? null : cards(applyFilter(txns, filter, false));
   const filtered = ft.length !== txns.length;
+  const sampaiAwal = !periodeAktif || fe >= end0; // stok adalah kondisi terkini: hanya relevan bila proyeksi berawal dari bulan data terakhir
   const txPeriode = applyFilter(txns, filter, false);
   const mkData = report?.marketing ? filterMarketing(report.marketing, filter) : null;
   const mk = mkData && mkData.leads.length ? marketingInsights(mkData, txPeriode) : null;
-  const stok = report?.units ? stockSummary(report.units.filter((u) => (!filter.cluster || u.cluster === filter.cluster) && (!filter.tahap || u.tahap === filter.tahap) && (!filter.tipe || u.tipe === filter.tipe))) : null;
+  const stok = report?.units && sampaiAwal ? stockSummary(report.units.filter((u) => (!filter.cluster || u.cluster === filter.cluster) && (!filter.tahap || u.tahap === filter.tahap) && (!filter.tipe || u.tipe === filter.tipe))) : null;
   const stokHabis = stok ? stockoutMonth(f.rows.map((x) => x.utj), stok.open, 0, f.rows.map((x) => x.batal)) : null;
   const stokKurang = stok ? stockShortfall(f.rows.map((x) => x.utj), stok.open, f.rows.map((x) => x.batal)) : null;
   let live: LiveRowDb[] = [];
@@ -84,6 +92,6 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
     const last = rows[rows.length - 1];
     return { indikator: k, bulan: last?.bulan ?? null, nilai: last?.nilai ?? null, sumber: last?.sumber ?? null, diambil: rows.reduce((m, x) => (x.diambil > m ? x.diambil : m), "") || null };
   });
-  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null, stok, stokHabis, stokKurang, mk, mkAda: !!report?.marketing, makro, units: report?.units ?? null, macroRows: macroGabung, liveStatus, manualMacro: manual.slice(0, 10) };
+  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null, stok, stokHabis, stokKurang, periodeAktif, mk, mkAda: !!report?.marketing, makro, units: report?.units ?? null, macroRows: macroGabung, liveStatus, manualMacro: manual.slice(0, 10) };
 }
 export { f1, labelBulan, labelPanjang } from "./format";

@@ -186,8 +186,17 @@ const quantile = (a: number[], q: number) => {
 };
 
 /** Rentang 10–90% untuk UTJ bulanan; melebar dengan horizon. Dasar: kuantil galat backtest (horizon > 3 mengikuti akar horizon). */
+export const MIN_GALAT_BACKTEST = 5;
+
+/** Rentang cadangan bila riwayat terlalu pendek untuk uji mundur: data cacah (Poisson) dengan faktor sebaran 1,5 yang melebar dengan horizon. */
+export function utjIntervalPendek(point: number, horizon: number) {
+  const half = 1.28 * 1.5 * Math.sqrt(Math.max(point, 0.5) * (1 + horizon / 12));
+  return { lo: Math.max(0, point - half), hi: point + half };
+}
+
 export function utjInterval(point: number, horizon: number, errsByH: number[][]) {
   const h = Math.min(horizon, errsByH.length);
+  if (!errsByH[h - 1] || errsByH[h - 1].length < MIN_GALAT_BACKTEST) return utjIntervalPendek(point, horizon);
   const e = errsByH[h - 1].map((x) => -x); // aktual - prediksi
   const scale = horizon > h ? Math.sqrt(horizon / h) : 1;
   const lo = Math.max(0, point + quantile(e, 0.1) * scale);
