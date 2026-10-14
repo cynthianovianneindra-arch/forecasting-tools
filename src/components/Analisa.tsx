@@ -27,7 +27,7 @@ export function Analisa({ mk }: { mk: MK }) {
         <table><tbody>{mk.kategori.map((x) => <tr key={x.kategori}><td>{x.kategori}</td><td className="n">Rp {f1(x.biaya / 1e6)} jt ({f1(x.porsi)}%)</td></tr>)}</tbody></table></div>
       <div className="card" style={{ gridColumn: "1 / -1" }}><h2>Temuan dan tindakan marketing</h2>
         {mk.findings.length === 0 ? <p className="muted">Tidak ada temuan yang melewati ambang aturan pada periode ini.</p> : mk.findings.map((f, i) => (
-          <div key={f.id} style={{ borderTop: i ? "1px solid #EDE7DE" : "none", padding: "8px 0" }}>
+          <div key={f.id} style={{ borderTop: i ? "1px solid #DEDDDB" : "none", padding: "8px 0" }}>
             <b>{i + 1}. {f.judul}</b> <span className="muted" style={{ fontSize: 12 }}>· prioritas {f.prioritas} · {f.label === "hipotesis" ? "hipotesis (sampel kecil)" : "dari data"}</span>
             <div style={{ fontSize: 13 }}><b>Temuan:</b> {f.temuan}</div><div style={{ fontSize: 13 }}><b>Tindakan:</b> {f.tindakan}</div><div style={{ fontSize: 13 }}><b>Ukuran berhasil:</b> {f.ukuran}</div></div>))}</div>
     </div>

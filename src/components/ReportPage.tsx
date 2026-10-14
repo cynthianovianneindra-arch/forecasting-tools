@@ -1,14 +1,22 @@
 export function ReportPage({ n, total, title, children }: { n: number; total: number; title: string; children: React.ReactNode }) {
   return (
     <section className="page rp">
-      <div className="rp-top"><span>Laporan Proyeksi Penjualan · Shaistanaya City</span><span>{String(n).padStart(2, "0")} / {String(total).padStart(2, "0")}</span></div>
+      <div className="rp-top"><span className="rp-brand">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/logo.png" alt="" />Laporan Proyeksi Penjualan · Shaistanaya City</span><span>{String(n).padStart(2, "0")} / {String(total).padStart(2, "0")}</span></div>
       <h2 className="rp-title">{title}</h2><span className="rp-bar" />
       {children}
       <div className="rp-foot">Semua angka dihitung mesin forecast dari data penjualan.</div>
     </section>
   );
 }
-export const Note = ({ children }: { children: React.ReactNode }) => <p className="rp-note">{children}</p>;
+// Sorot hanya bagian yang ditandai **seperti ini** (informasi paling penting); teks lain tidak diubah.
+const SOROT = /\*\*(.+?)\*\*/g;
+export function hl(t: React.ReactNode): React.ReactNode {
+  if (typeof t === "string") return t.split(SOROT).map((p, i) => (i % 2 ? <mark key={i}>{p}</mark> : p));
+  if (Array.isArray(t)) return t.map((x, i) => <span key={i}>{hl(x)}</span>);
+  return t;
+}
+export const Hl = ({ t }: { t: React.ReactNode }) => <>{hl(t)}</>;
+export const Note = ({ children }: { children: React.ReactNode }) => <p className="rp-note">{hl(children)}</p>;
 export const Kpi = ({ l, v, s, a }: { l: string; v: React.ReactNode; s?: React.ReactNode; a?: boolean }) => (
   <div className={"rp-kpi" + (a ? " acc" : "")}><small>{l}</small><b>{v}</b>{s ? <span>{s}</span> : null}</div>
 );

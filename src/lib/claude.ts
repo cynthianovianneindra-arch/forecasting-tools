@@ -38,7 +38,7 @@ export async function callClaude(system: string, user: string, jenis: Jenis = "l
 export const SECTIONS = ["ringkasan", "risiko", "rekomendasi"] as const;
 export type Sections = Record<(typeof SECTIONS)[number], string>;
 
-const FORMAT = `Balas HANYA JSON dengan kunci ${SECTIONS.join(", ")}. Singkat dan padat, tanpa pengantar atau pengulangan angka yang tidak perlu: ringkasan = 3-4 kalimat berisi hasil utama proyeksi, kinerja, stok, dan hal yang paling perlu diperhatikan; risiko = 2-3 kalimat tentang risiko dan keterbatasan utama; rekomendasi = 2-3 kalimat urutan tindakan prioritas dari daftar rekomendasi yang diberikan.`;
+const FORMAT = `Balas HANYA JSON dengan kunci ${SECTIONS.join(", ")}. Bahasa sehari-hari yang mudah dipahami, kalimat pendek, singkat dan padat, tanpa pengantar atau pengulangan angka yang tidak perlu: ringkasan = 3-4 kalimat berisi hasil utama proyeksi, kinerja, stok, dan hal yang paling perlu diperhatikan; risiko = 2-3 kalimat tentang risiko dan keterbatasan utama; rekomendasi = 2-3 kalimat urutan tindakan prioritas dari daftar rekomendasi yang diberikan. Tandai dengan **dua tanda bintang** hanya SATU frasa paling penting di tiap bagian (maksimal satu kali per bagian), jangan menandai angka atau kata lain.`;
 
 const cache = new Map<string, { at: number; v: Sections | null }>();
 const TTL = 60 * 60 * 1000;

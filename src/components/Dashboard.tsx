@@ -41,7 +41,7 @@ export function Dashboard({ monthly, rows, netPrice, divergent, stok, stokHabis,
       </div>
       <div className="kpis">
         <div className="kpi-card accent"><small>UTJ proyeksi 12 bulan</small><span className="big">{utjP}</span><Chg v={delta(utjP, utjA)} /></div>
-        <div className="kpi-card"><small>Akad proyeksi 12 bulan</small><span className="big">{akadP}</span><Chg v={delta(akadP, akadA)} /></div>
+        <div className="kpi-card gold"><small>Akad proyeksi 12 bulan</small><span className="big">{akadP}</span><Chg v={delta(akadP, akadA)} /></div>
         <div className="kpi-card"><small>Penerimaan proyeksi</small><span className="big">Rp {f1(akadP * netPrice)} M</span><span className="sub">dari akad × harga bersih rata-rata</span></div>
         <div className="kpi-card"><small>{stok ? "Stok Open" : "UTJ 12 bulan terakhir"}</small><span className="big">{stok ? stok.open : utjA}</span><span className="sub">{stok ? (stokHabis !== null && stokHabis !== undefined ? `habis di bulan ke-${stokHabis}` : "cukup untuk 12 bulan") : `akad ${akadA}`}</span></div>
       </div>
