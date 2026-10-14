@@ -6,7 +6,7 @@ import Link from "next/link";
 import { EMPTY, Scenario, VARS, applyScenario, changedCount, scenarioQuery } from "@/lib/whatif";
 
 interface Row { bulan: string; utj: number; utjLo: number; utjHi: number; akad: number; batal: number; trend: number }
-export function Simulasi({ rows, netPrice, stok, belumDibangun, kekurangan }: { rows: Row[]; netPrice: number; stok?: number; belumDibangun?: number; kekurangan?: number | null }) {
+export function Simulasi({ rows, netPrice, stok, belumDibangun, kekurangan, perTipe }: { rows: Row[]; netPrice: number; stok?: number; belumDibangun?: number; kekurangan?: number | null; perTipe?: { tipe: string; open: number; belum: number }[] }) {
   const [s, setS] = useState<Scenario>(EMPTY);
   const [mode, setMode] = useState<"bulanan" | "tahunan">("bulanan");
   const { rows: sc, stockWarning } = useMemo(() => applyScenario(rows, s, stok), [rows, s, stok]);
@@ -32,7 +32,7 @@ export function Simulasi({ rows, netPrice, stok, belumDibangun, kekurangan }: { 
             {stockWarning && <p className="err">Peringatan: UTJ skenario melebihi stok unit yang tersedia dijual ({stok === undefined ? "stok demo" : `stok Open ${stok} unit + unit dibangun`}).</p>}</div>
           <div>{groups.map((g, i) => (
             <details key={g} open={i === 0}><summary>{g}</summary>
-              {i === 0 && belumDibangun !== undefined && <p className="muted" style={{ fontSize: 12 }}>Unit belum dibangun (status Close): <b>{belumDibangun}</b>, batas atas order bangun.{kekurangan ? ` Pada proyeksi dasar, stok Open kurang sekitar ${kekurangan} unit dalam 12 bulan (UTJ dikurangi batal).` : " Stok Open cukup untuk 12 bulan pada proyeksi dasar."}</p>}
+              {i === 0 && belumDibangun !== undefined && <p className="muted" style={{ fontSize: 12 }}>Unit belum dibangun (status Close): <b>{belumDibangun}</b>, batas atas order bangun.{kekurangan ? ` Pada proyeksi dasar, stok Open kurang sekitar ${kekurangan} unit dalam 12 bulan (UTJ dikurangi batal).` : " Stok Open cukup untuk 12 bulan pada proyeksi dasar."}{perTipe && perTipe.length > 0 && <span> Belum dibangun per tipe: {perTipe.filter((x) => x.belum > 0).map((x) => `${x.tipe} ${x.belum}`).join(", ")}.</span>}</p>}
               {VARS.filter((v) => v.group === g).map((v) => (
                 <label className="sl" key={v.key}>{v.label}: <b>{s[v.key]} {v.unit}</b>
                   <input type="range" min={v.min} max={v.key === "units" && belumDibangun !== undefined ? Math.min(v.max, belumDibangun) : v.max} step={v.step} value={s[v.key]} onChange={(e) => setS({ ...s, [v.key]: +e.target.value })} /></label>))}

@@ -2,6 +2,7 @@ import { Nav, badge } from "@/components/Nav";
 import { Chart } from "@/components/Chart";
 import { ReportPage, Note } from "@/components/ReportPage";
 import { getData, f1, labelBulan, labelPanjang } from "@/lib/data";
+import { stockByType } from "@/lib/stock";
 import { avgNetPrice, priceByType, ringkasanTeks } from "@/lib/laporan";
 import { applyScenario, describeScenario, parseScenario } from "@/lib/whatif";
 import { claudeConfigured, narasiLaporan } from "@/lib/claude";
@@ -80,6 +81,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       <Note>Alasan batal baru terisi sebagian, jadi pola di atas bersifat hipotesis.</Note></ReportPage>
 
     <ReportPage n={7} title="Tipe rumah dan harga"><table>{th("Tipe", "UTJ", "Akad")}<tbody>{k.byType.map((x) => <tr key={x.tipe}><td>{x.tipe}</td><td className="n">{x.utj}</td><td className="n">{x.akad}</td></tr>)}</tbody></table>
+      {d.stok && <><h2 style={{ marginTop: 16 }}>Stok per tipe</h2><table>{th("Tipe", "Open (tersedia)", "Belum dibangun")}<tbody>{stockByType(d.stok).map((x) => <tr key={x.tipe}><td>{x.tipe}</td><td className="n">{x.open}</td><td className="n">{x.belum}</td></tr>)}<tr><td><b>Total</b></td><td className="n"><b>{d.stok.open}</b></td><td className="n"><b>{d.stok.belumDibangun}</b></td></tr></tbody></table></>}
       {harga.length > 0 && <><h2 style={{ marginTop: 16 }}>Harga bersih rata-rata (akad)</h2><table>{th("Tipe", "Akad", "Rata-rata (Rp M)", "Porsi nilai")}<tbody>{harga.map((x) => <tr key={x.tipe}><td>{x.tipe}</td><td className="n">{x.akad}</td><td className="n">{(x.rata / 1e9).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td className="n">{x.porsi}%</td></tr>)}</tbody></table></>}</ReportPage>
 
     <ReportPage n={8} title="Agent dan sumber leads"><table>{th("Agent", "UTJ", "Akad", "Konversi")}<tbody>{k.byAgent.map((x) => <tr key={x.agent}><td>{x.agent}</td><td className="n">{x.utj}</td><td className="n">{x.akad}</td><td className="n">{x.konversi}%</td></tr>)}</tbody></table>

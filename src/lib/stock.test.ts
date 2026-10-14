@@ -1,5 +1,5 @@
 import { it, expect } from "vitest";
-import { stockSummary, stockoutMonth, stockShortfall } from "./stock";
+import { stockSummary, stockoutMonth, stockShortfall, stockByType } from "./stock";
 import { macroContext } from "./macro";
 it("ringkasan stok", () => {
   const s = stockSummary([{ unit: "A", tipe: "X", tahap: "", cluster: "", status: "Open" }, { unit: "B", tipe: "X", tahap: "", cluster: "", status: "Sold" }, { unit: "C", tipe: "Y", tahap: "", cluster: "", status: "open" }]);
@@ -25,4 +25,8 @@ it("konteks makro", () => {
   const r = macroContext(m, new Map([["2025-01", 2], ["2025-02", 4], ["2025-03", 6], ["2025-04", 8]]));
   expect(r.find((x) => x.indikator.startsWith("Harga emas"))).toMatchObject({ n: 4, korelasi: 1, terakhir: "2025-04" });
   expect(r.find((x) => x.indikator === "IHSG")?.korelasi).toBeNull();
+});
+it("gabungan stok per tipe", () => {
+  const r = stockByType({ perTipe: [{ tipe: "A", n: 2 }], belumDibangunPerTipe: [{ tipe: "A", n: 3 }, { tipe: "B", n: 9 }] });
+  expect(r).toEqual([{ tipe: "B", open: 0, belum: 9 }, { tipe: "A", open: 2, belum: 3 }]);
 });

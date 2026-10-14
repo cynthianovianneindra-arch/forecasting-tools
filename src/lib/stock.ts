@@ -29,6 +29,14 @@ export function stockSummary(units: UnitRow[]) {
 
 /** Bulan ke berapa (1..h) pemakaian unit kumulatif melampaui stok; null bila stok cukup.
  *  Pemakaian bersih = UTJ dikurangi batal (UTJ batal mengembalikan unit ke stok). */
+/** Gabungan per tipe: Open (stok), Close (belum dibangun), diurutkan dari yang terbesar. */
+export function stockByType(st: { perTipe: { tipe: string; n: number }[]; belumDibangunPerTipe: { tipe: string; n: number }[] }) {
+  const m = new Map<string, { tipe: string; open: number; belum: number }>();
+  for (const x of st.perTipe) m.set(x.tipe, { tipe: x.tipe, open: x.n, belum: 0 });
+  for (const x of st.belumDibangunPerTipe) { const e = m.get(x.tipe) ?? { tipe: x.tipe, open: 0, belum: 0 }; e.belum = x.n; m.set(x.tipe, e); }
+  return [...m.values()].sort((a, b) => b.open + b.belum - (a.open + a.belum));
+}
+
 export function stockoutMonth(utj: number[], stok: number, extraBuilt = 0, batal: number[] = []): number | null {
   let c = 0;
   for (let i = 0; i < utj.length; i++) { c += utj[i] - (batal[i] ?? 0); if (c > stok + extraBuilt) return i + 1; }
