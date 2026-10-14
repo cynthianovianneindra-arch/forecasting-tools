@@ -1,12 +1,23 @@
 import { syncLive } from "@/lib/macroLive";
-import { storeConfigured, upsertMacroLive } from "@/lib/store";
+import { listMacroLive, storeConfigured, upsertMacroLive } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-async function run() {
+const TUJUH_HARI = 7 * 24 * 3600 * 1000;
+
+/** paksa = tombol manual (selalu ambil); cron harian melewati inflasi/BI Rate yang sudah diambil dalam 7 hari. */
+async function run(paksa = false) {
   if (!storeConfigured()) return { error: "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY belum diset", hasil: [] };
-  const { rows, hasil } = await syncLive();
+  const lewati = new Set<string>();
+  if (!paksa) {
+    const ada = await listMacroLive();
+    for (const ind of ["inflasi", "birate"]) {
+      const t = Math.max(0, ...ada.filter((x) => x.indikator === ind).map((x) => Date.parse(x.diambil) || 0));
+      if (Date.now() - t < TUJUH_HARI) lewati.add(ind);
+    }
+  }
+  const { rows, hasil } = await syncLive({ lewati });
   await upsertMacroLive(rows); // sumber yang gagal tidak menimpa data terakhir
   return { hasil };
 }
@@ -19,7 +30,7 @@ export async function POST(req: Request) {
   if (!token) return back("err", "UPLOAD_TOKEN belum diset; sinkron data ekonomi dinonaktifkan");
   if (form.get("token") !== token) return back("err", "Token salah");
   try {
-    const r = await run();
+    const r = await run(true);
     if ("error" in r && r.error) return back("err", r.error);
     const ok = r.hasil.filter((h) => h.ok).length;
     const gagal = r.hasil.filter((h) => !h.ok).map((h) => `${h.sumber} (${h.indikator}): ${h.error}`);

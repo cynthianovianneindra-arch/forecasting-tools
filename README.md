@@ -31,7 +31,7 @@ Prioritas sumber: Drive, lalu `data/FORECASTING_UPDATE.xlsx`, lalu data demo. Be
 
 ## Narasi Claude dan batas pemakaian
 - Isi `ANTHROPIC_API_KEY` (Vercel env). Halaman Laporan memanggil Claude sekali per set angka (cache 1 jam); angka di teks divalidasi terhadap JSON, jika gagal memakai teks templat.
-- `CLAUDE_DAILY_LIMIT` (default 5 panggilan/hari, UTC) membatasi panggilan narasi laporan, dan `CLAUDE_SYNC_DAILY_LIMIT` (default 4) membatasi pembacaan halaman BI/BPS; hitungan di memori instance, jadi pada serverless bisa ter-reset. Pasang juga batas pengeluaran bulanan di console.anthropic.com sebagai batas keras.
+- `CLAUDE_DAILY_LIMIT` (default 50 panggilan/hari, UTC) membatasi panggilan narasi laporan, dan `CLAUDE_SYNC_DAILY_LIMIT` (default 10) membatasi pembacaan halaman BI/BPS; hitungan di memori instance, jadi pada serverless bisa ter-reset. Pasang juga batas pengeluaran bulanan di console.anthropic.com sebagai batas keras.
 - `/api/narasi` butuh `NARASI_TOKEN` (header `Authorization: Bearer ...`), maksimum 20.000 karakter masukan; tanpa token endpoint nonaktif.
 
 ## Isi data lewat dashboard (unggah Excel)
@@ -51,7 +51,7 @@ Tabel `datasets` punya kolom `marketing` (jsonb); unggah ulang Excel agar data m
 
 ## Pembaruan otomatis data ekonomi (tanpa API key berbayar)
 - **IHSG (^JKSE) dan emas (GC=F, USD/oz):** Yahoo Finance endpoint chart (tidak resmi, tanpa key). Parser diuji dengan contoh respons.
-- **Inflasi tahunan:** halaman bps.go.id (`BPS_INFLASI_URL`, default beranda). **BI Rate:** halaman bi.go.id (`BI_RATE_URL`). Teks halaman diekstrak Claude; hasil hanya diterima jika bulan valid, nilai wajar (0-20%), dan angkanya benar-benar muncul di teks halaman. Memakai kuota terpisah `CLAUDE_SYNC_DAILY_LIMIT` (default 4/hari), tidak mengurangi jatah laporan.
+- **Inflasi tahunan:** halaman bps.go.id (`BPS_INFLASI_URL`, default beranda). **BI Rate:** halaman bi.go.id (`BI_RATE_URL`). Teks halaman diekstrak Claude; hasil hanya diterima jika bulan valid, nilai wajar (0-20%), dan angkanya benar-benar muncul di teks halaman. Memakai kuota terpisah `CLAUDE_SYNC_DAILY_LIMIT` (default 10/hari), tidak mengurangi jatah laporan.
 - Hasil disimpan di tabel Supabase `macro_live` dan menimpa bulan yang sama dari Excel. Sumber yang gagal tidak menimpa data terakhir; alasan gagal tampil di layar Data.
 - Pemicu: tombol "Sinkron data ekonomi sekarang" (butuh `UPLOAD_TOKEN`) dan Vercel Cron harian `/api/macro-sync` (butuh `CRON_SECRET`).
 - **Hasil uji pertama di produksi:** Yahoo (IHSG, emas) berhasil; bps.go.id menjawab HTTP 403 (memblokir akses otomatis), sehingga inflasi kini memakai cadangan halaman Data Inflasi bi.go.id (`BI_INFLASI_URL`); BI Rate gagal karena ANTHROPIC_API_KEY ditolak (401). Isi ulang key yang valid.
@@ -79,3 +79,13 @@ Saat Dari/Sampai bulan dipilih, deret UTJ untuk exponential smoothing dibatasi k
 - **Analisis skenario** di bawah hasil (dan di laporan): perubahan total UTJ/akad/penerimaan, pengaruh tiap kelompok variabel (dari angka mentah supaya efek kecil tidak hilang oleh pembulatan), kecukupan stok, perbandingan dengan ketidakpastian proyeksi dasar, dan catatan keterbatasan. Seluruhnya dihitung kode (`src/lib/analisis.ts`).
 - **UTJ bulat di seluruh alat:** UTJ (proyeksi, kisaran, skenario, laporan) dan akad dibulatkan ke bawah per bulan; total 12 bulan = jumlah angka bulanan yang sudah dibulatkan, jadi bisa lebih kecil daripada jumlah angka mentah (efek ke bawah sekitar 0,3 unit per bulan).
 - **Laporan 16 halaman:** sampul, daftar isi bernomor halaman (dibuat otomatis dari urutan halaman), ringkasan manajemen detail (2 halaman: hasil utama, kinerja, stok, marketing, ekonomi, risiko, rekomendasi prioritas berbasis aturan), lalu halaman rinci per topik termasuk halaman baru Stok dan kapasitas penjualan. Narasi Claude (ringkasan, proyeksi, funnel, bank, marketing, stok, risiko, rekomendasi) tetap divalidasi angkanya; teks dari mesin selalu tampil.
+
+## Hemat biaya Claude
+- Narasi laporan disimpan di tabel Supabase `narasi_cache` (kunci = hash data). Data yang sama tidak memanggil Claude lagi, termasuk setelah server restart. Claude hanya dipanggil saat tombol "Buat narasi dengan Claude" di halaman Laporan ditekan; membuka halaman biasa hanya membaca narasi tersimpan.
+- Sinkron inflasi/BI Rate (butuh Claude) dilewati bila sudah diambil dalam 7 hari terakhir; tombol manual di layar Data selalu mengambil ulang. Pembacaan halaman memakai model kecil (`ANTHROPIC_SYNC_MODEL`, default `claude-haiku-5-5`).
+- Validasi angka narasi maksimal 2 percobaan.
+- Buat tabel cache sekali di Supabase (SQL Editor):
+```sql
+create table if not exists narasi_cache (hash text primary key, narasi jsonb not null, dibuat timestamptz not null default now());
+alter table narasi_cache enable row level security;
+```

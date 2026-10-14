@@ -69,3 +69,24 @@ export async function deleteDataset(id: number): Promise<void> {
   const r = await fetch(`${url()}/rest/v1/datasets?id=eq.${id}`, { method: "DELETE", headers: { ...headers(), prefer: "return=minimal" } });
   if (!r.ok) throw new Error(`Gagal menghapus snapshot (${r.status})`);
 }
+
+/** Cache narasi Claude per hash data, supaya data yang sama tidak memanggil Claude lagi (tabel narasi_cache; bila tabel belum ada, dianggap tidak ada cache). */
+export async function getNarasi(hash: string): Promise<unknown | null> {
+  if (!storeConfigured()) return null;
+  try {
+    const r = await fetch(`${url()}/rest/v1/narasi_cache?hash=eq.${hash}&select=narasi&limit=1`, { headers: headers(), cache: "no-store" });
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return rows[0]?.narasi ?? null;
+  } catch { return null; }
+}
+
+export async function saveNarasi(hash: string, narasi: unknown): Promise<void> {
+  if (!storeConfigured()) return;
+  try {
+    await fetch(`${url()}/rest/v1/narasi_cache?on_conflict=hash`, {
+      method: "POST", headers: { ...headers(), prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ hash, narasi, dibuat: new Date().toISOString() }),
+    });
+  } catch { /* cache gagal tersimpan tidak boleh menggagalkan laporan */ }
+}

@@ -7,7 +7,7 @@ import { avgNetPrice, priceByType, rekomendasiDari, ringkasanDetail, RingkasInpu
 import { describeScenario, parseScenario } from "@/lib/whatif";
 import { analisisSkenario } from "@/lib/analisis";
 import { referensiDari } from "@/lib/referensi";
-import { claudeConfigured, narasiLaporan } from "@/lib/claude";
+import { cariNarasi, claudeConfigured, narasiLaporan } from "@/lib/claude";
 import { marketingInsights } from "@/lib/marketing";
 import { cards } from "@/lib/insights";
 
@@ -16,8 +16,8 @@ const Cara = ({ children }: { children: React.ReactNode }) => <p className="mute
 const Narasi = ({ teks }: { teks?: string }) => (teks ? <p>{teks}</p> : null);
 
 export const dynamic = "force-dynamic";
-export default async function Page({ searchParams }: { searchParams: Promise<{ jenis?: string; s?: string }> }) {
-  const { jenis = "bulanan", s: sRaw } = await searchParams;
+export default async function Page({ searchParams }: { searchParams: Promise<{ jenis?: string; s?: string; narasi?: string }> }) {
+  const { jenis = "bulanan", s: sRaw, narasi: buatNarasi } = await searchParams;
   const d = await getData();
   const txns = d.txns;
   const k = cards(txns);
@@ -48,7 +48,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const skenario = parseScenario(sRaw);
   const an = skenario ? analisisSkenario({ base: r, s: skenario, ref: refData.ref, stokOpen: d.stok?.open ?? 0, belumDibangunPerTipe: d.stok?.belumDibangunPerTipe ?? [], netPriceMiliar: net, korelasiEkonomi: refData.korelasi }) : null;
 
-  const narasi = await narasiLaporan({
+  // Claude hanya dipanggil bila tombol "Buat narasi" ditekan (?narasi=1) dan belum ada narasi tersimpan untuk data yang sama.
+  const inputNarasi = {
     periode: periodeProyeksi, jenis, dataSampai: labelPanjang(d.end),
     proyeksi12Bulan: { utj: tot.utj, utjRendah: tot.lo, utjTinggi: tot.hi, akad: tot.akad, penerimaanMiliarRp: +tot.pen.toFixed(1) },
     duabelasBulanTerakhir: l12, kuartal: q.map((x) => ({ utj: x.utj, akad: x.akad })),
@@ -60,7 +61,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
     marketing: mk ? { ...mk.stats, kategori: mk.kategori.slice(0, 5), temuan: mk.findings.map((f) => ({ judul: f.judul, temuan: f.temuan, label: f.label })) } : null,
     ringkasanMesin: detail, rekomendasiMesin: rekom,
     peringatan: ["Korelasi bulanan variabel ekonomi dengan UTJ lemah; hanya konteks, bukan penggerak proyeksi", "Alasan batal baru tercatat sebagian", "Sampel per agent kecil", "UTJ dan akad dibulatkan ke bawah per bulan"],
-  });
+  };
+  const narasi = buatNarasi === "1" ? await narasiLaporan(inputNarasi) : await cariNarasi(inputNarasi);
+  const linkBuat = `/laporan?${new URLSearchParams({ jenis, ...(sRaw ? { s: sRaw } : {}), narasi: "1" }).toString()}`;
   const harga = priceByType(txns);
   const net2 = net.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const real = d.source !== "demo";
@@ -90,7 +93,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const blok = (b: { judul: string; butir: string[] }) => <div key={b.judul}><h2 style={{ marginTop: 12 }}>{b.judul}</h2><ul style={{ margin: "4px 0", paddingLeft: 20 }}>{b.butir.map((x) => <li key={x} style={{ fontSize: 13, marginBottom: 3 }}>{x}</li>)}</ul></div>;
 
   return (<><Nav active="/laporan" updated="Pratinjau laporan" />
-    <div className="wrap noprint"><p>{badge(d.source)}</p><p className="muted">Laporan {jenis}, {T} halaman. Cetak ke PDF dari browser (Ctrl/Cmd+P, A4, tanpa margin). Narasi Claude: {claudeConfigured() ? (narasi ? "aktif" : "key ada, tetapi narasi gagal divalidasi; memakai teks dari mesin") : "nonaktif (ANTHROPIC_API_KEY belum diset); memakai teks dari mesin"}.</p></div>
+    <div className="wrap noprint"><p>{badge(d.source)}</p><p className="muted">Laporan {jenis}, {T} halaman. Cetak ke PDF dari browser (Ctrl/Cmd+P, A4, tanpa margin). Narasi Claude: {!claudeConfigured() ? "nonaktif (ANTHROPIC_API_KEY belum diset); memakai teks dari mesin" : narasi ? "aktif (tersimpan; membuka ulang tidak memanggil Claude lagi)" : buatNarasi === "1" ? "gagal dibuat atau gagal divalidasi; memakai teks dari mesin" : <>belum dibuat; memakai teks dari mesin. <a href={linkBuat}><b>Buat narasi dengan Claude</b></a> (memanggil Claude satu kali, hasilnya disimpan)</>}.</p></div>
 
     <section className="page"><h1>Laporan Proyeksi Penjualan {jenis === "tahunan" ? "Tahunan" : "Bulanan"}</h1><p className="muted">Shaistanaya City · PT Neo Pudji Jaya</p>
       <h2 style={{ marginTop: 24 }}>Angka utama proyeksi 12 bulan ({periodeProyeksi})</h2>
