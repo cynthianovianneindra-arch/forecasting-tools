@@ -28,3 +28,8 @@ File sumber: `FORECASTING UPDATE.xlsx` di Drive (ID di `.env.example`).
 3. Set env `GOOGLE_SERVICE_ACCOUNT_JSON` (isi JSON satu baris), opsional `DRIVE_FILE_ID`, `CRON_SECRET`.
 4. Menu Data & Integrasi: tombol "Sinkron semua sekarang". Vercel Cron memanggil `/api/sync` tiap hari (`vercel.json`). Cache 1 jam.
 Prioritas sumber: Drive, lalu `data/FORECASTING_UPDATE.xlsx`, lalu data demo. Belum diuji dengan Drive asli (sandbox tidak bisa mengakses Drive).
+
+## Narasi Claude dan batas pemakaian
+- Isi `ANTHROPIC_API_KEY` (Vercel env). Halaman Laporan memanggil Claude sekali per set angka (cache 1 jam); angka di teks divalidasi terhadap JSON, jika gagal memakai teks templat.
+- `CLAUDE_DAILY_LIMIT` (default 30 panggilan/hari, UTC) membatasi total panggilan; hitungan di memori instance, jadi pada serverless bisa ter-reset. Pasang juga batas pengeluaran bulanan di console.anthropic.com sebagai batas keras.
+- `/api/narasi` butuh `NARASI_TOKEN` (header `Authorization: Bearer ...`), maksimum 20.000 karakter masukan; tanpa token endpoint nonaktif.

@@ -3,6 +3,7 @@ import { Chart } from "@/components/Chart";
 import { ReportPage, Note } from "@/components/ReportPage";
 import { getData, f1, labelBulan, labelPanjang } from "@/lib/data";
 import { avgNetPrice, priceByType, ringkasanTeks } from "@/lib/laporan";
+import { claudeConfigured, narasiLaporan } from "@/lib/claude";
 import { cards } from "@/lib/insights";
 
 const th = (...c: string[]) => <thead><tr>{c.map((x, i) => <th key={x} className={i ? "n" : ""}>{x}</th>)}</tr></thead>;
@@ -13,6 +14,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const txns = d.txns;
   const real = d.source !== "demo";
   const k = cards(txns);
+  const pot = (e: number) => Math.round((e / Math.max(1, k.funnel.utj)) * 100);
   const r = d.f.rows, bt = d.f.bt;
   const net = (real && avgNetPrice(txns)) ? avgNetPrice(txns)! / 1e9 : d.netPrice;
   const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
@@ -24,24 +26,34 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const years = new Map<string, { utj: number; akad: number }>();
   for (const m of d.monthly) { const y = years.get(m.bulan.slice(0, 4)) ?? { utj: 0, akad: 0 }; y.utj += m.utj; y.akad += m.akad; years.set(m.bulan.slice(0, 4), y); }
   const ringkas = ringkasanTeks(tot, k, l12);
+  const batalPct = pot(k.funnel.batal);
+  const narasi = await narasiLaporan({
+    periode: `${labelPanjang(r[0].bulan)} - ${labelPanjang(r[11].bulan)}`, jenis,
+    proyeksi12Bulan: { utj: Math.round(tot.utj), utjRendah: Math.round(tot.lo), utjTinggi: Math.round(tot.hi), akad: Math.round(tot.akad), penerimaanMiliarRp: +tot.penerimaanM.toFixed(1) },
+    duabelasBulanTerakhir: l12,
+    kuartal: q.map((x) => ({ utj: Math.round(x.utj), akad: Math.round(x.akad) })),
+    ujiMundur: { titik: bt.origins, galatUtjRataRata: +bt.utjMae13.toFixed(1), galatAkadTotal3Bln: +bt.akadMaeTotal3.toFixed(1) },
+    funnel: { ...k.funnel, persenBatal: batalPct }, alasanBatalTercatat: k.alasan,
+    bank: k.bank.map((b) => ({ bank: b.bank, berkas: b.berkas, persenApprove: b.approve, rataHari: b.hari === null ? null : Math.round(b.hari) })),
+    peringatan: ["Variabel ekonomi belum tersambung; korelasi bulanan dengan UTJ lemah (sekitar 0,2)", "Alasan batal baru tercatat sebagian", "Sampel per agent kecil"],
+  });
   const harga = priceByType(txns);
-  const pot = (e: number) => Math.round((e / Math.max(1, k.funnel.utj)) * 100);
 
   return (<><Nav active="/laporan" updated="Pratinjau laporan" />
-    <div className="wrap noprint"><p>{badge(d.source)}</p><p className="muted">Laporan {jenis}. Cetak ke PDF dari browser (Ctrl/Cmd+P, A4, tanpa margin). Halaman 10–11 (marketing) menunggu data LEADS dan EVENT MARKETING; narasi Claude lewat <code>/api/narasi</code> belum dipasang ke halaman.</p></div>
+    <div className="wrap noprint"><p>{badge(d.source)}</p><p className="muted">Laporan {jenis}. Cetak ke PDF dari browser (Ctrl/Cmd+P, A4, tanpa margin). Halaman 10–11 (marketing) menunggu data LEADS dan EVENT MARKETING; narasi Claude: {claudeConfigured() ? (narasi ? "aktif" : "key ada, tetapi narasi gagal divalidasi; memakai teks templat") : "nonaktif (ANTHROPIC_API_KEY belum diset); memakai teks templat"}.</p></div>
 
     <section className="page"><h1>Laporan Proyeksi Penjualan {jenis === "tahunan" ? "Tahunan" : "Bulanan"}</h1><p className="muted">Shaistanaya City · PT Neo Pudji Jaya · data s.d. {labelPanjang(d.end)}</p>
       <table><tbody><tr><td>UTJ 12 bulan ke depan</td><td className="n">{f1(tot.utj)} ({f1(tot.lo)}–{f1(tot.hi)})</td></tr><tr><td>Akad 12 bulan ke depan</td><td className="n">{f1(tot.akad)}</td></tr><tr><td>Penerimaan (Rp miliar)</td><td className="n">{f1(tot.penerimaanM)}</td></tr></tbody></table>
       <h2 style={{ marginTop: 24 }}>Isi laporan</h2><ol className="muted"><li>Ringkasan manajemen</li><li>Kinerja 12 bulan terakhir</li><li>Proyeksi UTJ</li><li>Akad dan penerimaan</li><li>Funnel dan pembatalan</li><li>Tipe rumah dan harga</li><li>Agent dan sumber leads</li><li>Proses bank dan kondisi ekonomi</li><li>Efektivitas marketing (menunggu data)</li><li>Temuan marketing (menunggu data)</li><li>Skenario, cara angka dibuat, keterbatasan</li></ol></section>
 
-    <ReportPage n={2} title="Ringkasan manajemen">{ringkas.map((t) => <p key={t}>{t}</p>)}
+    <ReportPage n={2} title="Ringkasan manajemen">{narasi ? <><p>{narasi.ringkasan}</p><p className="muted" style={{ fontSize: 11 }}>Ditulis Claude dari angka mesin; setiap angka di teks sudah dicek ada di data.</p></> : ringkas.map((t) => <p key={t}>{t}</p>)}
       <Note>Penerimaan = akad × harga bersih rata-rata (Rp {f1(net)} miliar{real ? ", dari akad nyata" : ", angka SPEC"}). Jadwal penerimaan bertahap belum dimodelkan.</Note></ReportPage>
 
     <ReportPage n={3} title="Kinerja 12 bulan terakhir"><Chart bars={bars.slice(0, 12)} title="12 bulan terakhir" />
       <table>{th("Bulan", "UTJ", "Akad")}<tbody>{last12.map((m) => <tr key={m.bulan}><td>{labelPanjang(m.bulan)}</td><td className="n">{m.utj}</td><td className="n">{m.akad}</td></tr>)}<tr><td><b>Total</b></td><td className="n"><b>{l12.utj}</b></td><td className="n"><b>{l12.akad}</b></td></tr></tbody></table>
       {jenis === "tahunan" && <><h2 style={{ marginTop: 16 }}>Perbandingan antar tahun</h2><table>{th("Tahun", "UTJ", "Akad")}<tbody>{[...years].map(([y, v]) => <tr key={y}><td>{y}{y === "2022" ? " (mulai Apr)" : y === d.end.slice(0, 4) ? " (s.d. " + labelBulan(d.end) + ")" : ""}</td><td className="n">{v.utj}</td><td className="n">{v.akad}</td></tr>)}</tbody></table></>}</ReportPage>
 
-    <ReportPage n={4} title="Proyeksi UTJ"><Chart bars={bars} title="Proyeksi UTJ dan akad" />
+    <ReportPage n={4} title="Proyeksi UTJ">{narasi && <p>{narasi.proyeksi}</p>}<Chart bars={bars} title="Proyeksi UTJ dan akad" />
       <table>{th("Bulan", "UTJ", "Rentang 10–90%")}<tbody>{r.map((x) => <tr key={x.bulan}><td>{labelPanjang(x.bulan)}</td><td className="n">{f1(x.utj)}</td><td className="n">{f1(x.utjLo)}–{f1(x.utjHi)}</td></tr>)}</tbody></table>
       <table style={{ marginTop: 12 }}>{th("Kuartal", "UTJ", "Akad")}<tbody>{q.map((x) => <tr key={x.q}><td>{x.q}</td><td className="n">{f1(x.utj)}</td><td className="n">{f1(x.akad)}</td></tr>)}</tbody></table>
       {d.f.trendDivergent && <Note>Garis tren berjauhan dari proyeksi utama: arah penjualan mungkin berubah.</Note>}</ReportPage>
@@ -50,7 +62,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       <table>{th("Bulan", "Akad", "Penerimaan (Rp M)")}<tbody>{r.map((x) => <tr key={x.bulan}><td>{labelPanjang(x.bulan)}</td><td className="n">{f1(x.akad)}</td><td className="n">{f1(x.akad * net)}</td></tr>)}</tbody></table>
       <p className="muted">Uji mundur (26 titik): galat total akad 3 bulan {f1(bt.akadMaeTotal3)} unit, dibanding {f1(bt.akadMaeMa12)} unit bila memakai rata-rata 12 bulan.</p></ReportPage>
 
-    <ReportPage n={6} title="Funnel penjualan dan pembatalan"><table>{th("Tahap", "Jumlah", "% dari UTJ")}<tbody>
+    <ReportPage n={6} title="Funnel penjualan dan pembatalan">{narasi && <p>{narasi.funnel}</p>}<table>{th("Tahap", "Jumlah", "% dari UTJ")}<tbody>
       {[["UTJ", k.funnel.utj], ["SPR & PPJB", k.funnel.spr], ["Akad", k.funnel.akad], ["Pencairan", k.funnel.cair], ["Batal", k.funnel.batal]].map(([a, b]) => <tr key={a as string}><td>{a}</td><td className="n">{b}</td><td className="n">{pot(b as number)}%</td></tr>)}</tbody></table>
       <h2 style={{ marginTop: 16 }}>Alasan batal</h2><p className="muted">Alasan tercatat untuk {k.alasan.tercatat} dari {k.alasan.total} kasus batal.</p>
       <table><tbody>{k.alasan.rinci.map((x) => <tr key={x.alasan}><td>{x.alasan}</td><td className="n">{x.jml}</td></tr>)}</tbody></table>
@@ -62,7 +74,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
     <ReportPage n={8} title="Agent dan sumber leads"><table>{th("Agent", "UTJ", "Akad", "Konversi")}<tbody>{k.byAgent.map((x) => <tr key={x.agent}><td>{x.agent}</td><td className="n">{x.utj}</td><td className="n">{x.akad}</td><td className="n">{x.konversi}%</td></tr>)}</tbody></table>
       <Note>Sampel per agent kecil; konversi dibaca sebagai hipotesis. Data leads (sheet LEADS) baru ada sejak Okt 2025 dan belum diimpor; kolom Asal Leads di PENJUALAN hanya terisi sebagian.</Note></ReportPage>
 
-    <ReportPage n={9} title="Proses bank dan kondisi ekonomi"><table>{th("Bank", "Berkas", "Approve", "Rata-rata hari")}<tbody>{k.bank.map((x) => <tr key={x.bank}><td>{x.bank}</td><td className="n">{x.berkas}</td><td className="n">{x.approve}%</td><td className="n">{x.hari === null ? "-" : f1(x.hari)}</td></tr>)}</tbody></table>
+    <ReportPage n={9} title="Proses bank dan kondisi ekonomi">{narasi && <p>{narasi.bank}</p>}<table>{th("Bank", "Berkas", "Approve", "Rata-rata hari")}<tbody>{k.bank.map((x) => <tr key={x.bank}><td>{x.bank}</td><td className="n">{x.berkas}</td><td className="n">{x.approve}%</td><td className="n">{x.hari === null ? "-" : f1(x.hari)}</td></tr>)}</tbody></table>
       <Note>Variabel ekonomi (IHSG, emas, inflasi, BI Rate) belum tersambung. Pada uji data historis, korelasinya dengan UTJ bulanan lemah (sekitar 0,2), sehingga hanya dipakai sebagai konteks, bukan penggerak proyeksi.</Note></ReportPage>
 
     <ReportPage n={10} title="Efektivitas marketing"><Note>Menunggu impor sheet LEADS dan EVENT MARKETING (biaya, leads, UTJ per bulan).</Note></ReportPage>
