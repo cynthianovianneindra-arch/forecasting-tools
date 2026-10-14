@@ -1,20 +1,19 @@
 import { ManualError, applyEdit, cekMakro, Edit } from "@/lib/manual";
 import { deleteDataset, latestDataset, saveDataset, storeConfigured, upsertMacroManual } from "@/lib/store";
 import type { ImportReport } from "@/lib/importExcel";
+import { adminSegar } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 const str = (f: FormData, k: string) => (typeof f.get(k) === "string" ? (f.get(k) as string).trim() : "");
 const num = (f: FormData, k: string) => (str(f, k) === "" ? undefined : Number(str(f, k).replace(",", ".")));
 
-// Input data manual dari layar Data & Integrasi. Butuh UPLOAD_TOKEN. Setiap perubahan = snapshot dataset baru (bisa diurungkan).
+// Input data manual dari layar Data & Integrasi. Hanya admin (sesi login). Setiap perubahan = snapshot dataset baru (bisa diurungkan).
 export async function POST(req: Request) {
   const back = (k: "ok" | "err", msg: string) => { const u = new URL("/data", req.url); u.searchParams.set(k, msg); return Response.redirect(u, 303); };
-  const token = process.env.UPLOAD_TOKEN;
-  if (!token) return back("err", "UPLOAD_TOKEN belum diset; input manual dinonaktifkan");
+  if (!(await adminSegar())) return Response.json({ error: "Hanya untuk admin" }, { status: 403 });
   if (!storeConfigured()) return back("err", "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY belum diset");
   const f = await req.formData();
-  if (str(f, "token") !== token) return back("err", "Token salah");
   const jenis = str(f, "jenis");
   try {
     if (jenis === "makro") {

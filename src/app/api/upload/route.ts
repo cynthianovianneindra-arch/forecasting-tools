@@ -1,5 +1,6 @@
 import { importPenjualan } from "@/lib/importExcel";
 import { saveDataset, storeConfigured } from "@/lib/store";
+import { adminSegar } from "@/lib/auth";
 
 export const runtime = "nodejs";
 const MAX_BYTES = 4 * 1024 * 1024; // batas body fungsi serverless Vercel ±4,5 MB
@@ -12,11 +13,9 @@ const back = (req: Request, msg: string, ok = false) => {
 
 // Unggah Excel lewat dashboard: parse PENJUALAN, simpan transaksi anonim (tanpa nama pembeli) ke Supabase.
 export async function POST(req: Request) {
-  const token = process.env.UPLOAD_TOKEN;
-  if (!token) return back(req, "UPLOAD_TOKEN belum diset di server; unggah dinonaktifkan");
+  if (!(await adminSegar())) return Response.json({ error: "Hanya untuk admin" }, { status: 403 });
   if (!storeConfigured()) return back(req, "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY belum diset");
   const form = await req.formData();
-  if (form.get("token") !== token) return back(req, "Token unggah salah");
   const file = form.get("file");
   if (!(file instanceof File) || !file.name.toLowerCase().endsWith(".xlsx")) return back(req, "Pilih file .xlsx");
   if (file.size > MAX_BYTES) return back(req, "File terlalu besar (maks 4 MB)");

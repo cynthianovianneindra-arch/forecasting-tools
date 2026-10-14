@@ -110,3 +110,24 @@ Dropdown **Metode proyeksi** ada di Dashboard, Simulasi, dan Laporan (`?metode=e
 Akad dan batal tetap dihitung dari pipeline UTJ memakai UTJ hasil metode terpilih; rentang kemungkinan memakai galat uji mundur metode itu sendiri.
 
 **Mana yang paling mendekati** ditentukan uji mundur yang sama untuk ketiganya (asal pertama setelah 24 bulan, ramal 3 bulan): metode dengan galat UTJ rata-rata terkecil diberi tanda ★; galat akad 3 bulan ditampilkan berdampingan. Perbandingan tampil di Dashboard dan halaman terakhir Laporan.
+
+## Login dan pengguna
+Semua halaman dan API wajib login (kecuali halaman /login). Cron Vercel dan API narasi memakai header `Authorization: Bearer ...` masing-masing.
+- **Env wajib di Vercel (Production):** `SESSION_SECRET` (acak, minimal 32 karakter; tanpa ini semua halaman terkunci), `ADMIN_EMAIL`, `ADMIN_PASSWORD` (akun admin cadangan/pertama, tidak disimpan di database; ganti lewat env).
+- **Peran:** *admin* (unggah Excel, input manual, sinkron, buat narasi Claude, kelola pengguna) dan *pengguna* (lihat Dashboard, Simulasi, Laporan; hanya baca). `UPLOAD_TOKEN` tidak lagi dipakai (digantikan login admin).
+- **Pengguna lain:** menu **Pengguna** (admin) menambah akun, mengubah peran, menonaktifkan, dan mereset kata sandi. Akun disimpan di tabel Supabase `app_users` (kata sandi berupa hash scrypt). Buat tabelnya sekali di SQL Editor:
+```sql
+create table if not exists app_users (
+  id bigserial primary key,
+  email text not null unique,
+  nama text not null default '',
+  peran text not null default 'viewer' check (peran in ('admin','viewer')),
+  password_hash text not null,
+  aktif boolean not null default true,
+  dibuat timestamptz not null default now(),
+  login_terakhir timestamptz
+);
+alter table app_users enable row level security;
+```
+- **Keamanan:** cookie sesi bertanda tangan HMAC, HttpOnly, SameSite=Lax, Secure di produksi, berlaku 12 jam; 5 kali gagal login per email dan IP mengunci 15 menit (hitungan di memori instance); tindakan admin memeriksa ulang ke database bahwa akun masih aktif dan admin.
+- **Lupa kata sandi:** admin mereset di menu Pengguna; akun admin cadangan diganti lewat `ADMIN_PASSWORD`.

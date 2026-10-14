@@ -1,4 +1,5 @@
 import { jagaLonjakan, syncLive } from "@/lib/macroLive";
+import { adminSegar } from "@/lib/auth";
 import { listMacroLive, storeConfigured, upsertMacroLive } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -21,13 +22,10 @@ async function run(paksa = false) {
   return { hasil };
 }
 
-// Tombol di layar Data (butuh UPLOAD_TOKEN): ambil IHSG/emas (Yahoo), inflasi (bps.go.id), BI Rate (bi.go.id).
+// Tombol di layar Data (hanya admin): ambil IHSG/emas (Yahoo), inflasi (bps.go.id), BI Rate (bi.go.id).
 export async function POST(req: Request) {
-  const token = process.env.UPLOAD_TOKEN;
-  const form = await req.formData();
   const back = (k: string, msg: string) => { const u = new URL("/data", req.url); u.searchParams.set(k, msg); return Response.redirect(u, 303); };
-  if (!token) return back("err", "UPLOAD_TOKEN belum diset; sinkron data ekonomi dinonaktifkan");
-  if (form.get("token") !== token) return back("err", "Token salah");
+  if (!(await adminSegar())) return Response.json({ error: "Hanya untuk admin" }, { status: 403 });
   try {
     const r = await run(true);
     if ("error" in r && r.error) return back("err", r.error);
