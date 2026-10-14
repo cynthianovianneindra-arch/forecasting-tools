@@ -50,3 +50,10 @@ it("syncLive: satu sumber gagal tidak menghentikan yang lain", async () => {
   expect(hasil.find((h) => h.indikator === "birate")?.ok).toBe(true);
   expect(rows.some((r) => r.indikator === "ihsg" && r.nilai === 7100)).toBe(true);
 });
+it("syncLive: inflasi/birate yang dilewati tidak memanggil Claude", async () => {
+  const f = vi.fn(async (u: RequestInfo | URL) => String(u).includes("yahoo") ? new Response(JSON.stringify(yahoo([100]))) : new Response("x", { status: 403 }));
+  const call = vi.fn(async () => "{}");
+  const { hasil } = await syncLive({ fetch: f as unknown as typeof fetch, call, lewati: new Set(["inflasi", "birate"]) });
+  expect(call).not.toHaveBeenCalled();
+  expect(hasil.filter((h) => h.indikator === "inflasi" || h.indikator === "birate").every((h) => h.ok && /dilewati/.test(h.sumber))).toBe(true);
+});

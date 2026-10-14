@@ -65,7 +65,7 @@ export async function fetchPage(url: string, f: typeof fetch = fetch): Promise<s
 }
 
 /** Ambil semua indikator; kegagalan satu sumber tidak menghentikan yang lain (SPEC 7: pakai data terakhir + peringatan). */
-export async function syncLive(deps: { fetch?: typeof fetch; call?: (system: string, user: string) => Promise<string> } = {}): Promise<{ rows: LiveRow[]; hasil: SyncResult[] }> {
+export async function syncLive(deps: { fetch?: typeof fetch; call?: (system: string, user: string) => Promise<string>; lewati?: Set<string> } = {}): Promise<{ rows: LiveRow[]; hasil: SyncResult[] }> {
   const f = deps.fetch ?? fetch;
   const rows: LiveRow[] = [], hasil: SyncResult[] = [];
   for (const y of YAHOO) {
@@ -82,12 +82,14 @@ export async function syncLive(deps: { fetch?: typeof fetch; call?: (system: str
     { ind: "birate", urls: [[BI_URL(), "bi.go.id"]] },
   ];
   for (const { ind, urls } of sumberList) {
+    // Inflasi dan BI Rate berubah bulanan: bila sudah diambil baru-baru ini, lewati supaya tidak memanggil Claude tanpa perlu.
+    if (deps.lewati?.has(ind)) { hasil.push({ indikator: ind, ok: true, sumber: "dilewati (sudah diambil dalam 7 hari terakhir)" }); continue; }
     const galat: string[] = [];
     let berhasil = false;
     for (const [url, sumber] of urls) {
       try {
         if (!deps.call && !process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY belum diset (dibutuhkan untuk membaca halaman)");
-        const call = deps.call ?? (await import("./claude")).callClaude;
+        const call = deps.call ?? ((sys: string, usr: string) => import("./claude").then((m) => m.callClaude(sys, usr, "sync")));
         const v = await extractFromPage(await fetchPage(url, f), ind, call);
         rows.push({ bulan: v.bulan, indikator: ind, nilai: v.nilai, sumber });
         hasil.push({ indikator: ind, ok: true, bulan: v.bulan, nilai: v.nilai, sumber });

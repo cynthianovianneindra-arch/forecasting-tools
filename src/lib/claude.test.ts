@@ -18,3 +18,8 @@ it("batas harian", () => {
   expect(dailyLimit()).toBe(2);
   delete process.env.CLAUDE_DAILY_LIMIT; resetBudgetForTest();
 });
+it("batas sync terpisah dari laporan", () => {
+  process.env.CLAUDE_DAILY_LIMIT = "1"; process.env.CLAUDE_SYNC_DAILY_LIMIT = "2"; resetBudgetForTest();
+  expect([takeBudget("laporan"), takeBudget("laporan"), takeBudget("sync"), takeBudget("sync"), takeBudget("sync")]).toEqual([true, false, true, true, false]);
+  delete process.env.CLAUDE_DAILY_LIMIT; delete process.env.CLAUDE_SYNC_DAILY_LIMIT; resetBudgetForTest();
+});
