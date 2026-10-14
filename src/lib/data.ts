@@ -67,7 +67,8 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
   const kartu = source === "demo" ? null : cards(applyFilter(txns, filter, false));
   const filtered = ft.length !== txns.length;
   const txPeriode = applyFilter(txns, filter, false);
-  const mk = report?.marketing && report.marketing.leads.length ? marketingInsights(filterMarketing(report.marketing, filter), txPeriode) : null;
+  const mkData = report?.marketing ? filterMarketing(report.marketing, filter) : null;
+  const mk = mkData && mkData.leads.length ? marketingInsights(mkData, txPeriode) : null;
   const stok = report?.units ? stockSummary(report.units.filter((u) => (!filter.cluster || u.cluster === filter.cluster) && (!filter.tahap || u.tahap === filter.tahap) && (!filter.tipe || u.tipe === filter.tipe))) : null;
   const stokHabis = stok ? stockoutMonth(f.rows.map((x) => x.utj), stok.open, 0, f.rows.map((x) => x.batal)) : null;
   const stokKurang = stok ? stockShortfall(f.rows.map((x) => x.utj), stok.open, f.rows.map((x) => x.batal)) : null;
@@ -83,6 +84,6 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
     const last = rows[rows.length - 1];
     return { indikator: k, bulan: last?.bulan ?? null, nilai: last?.nilai ?? null, sumber: last?.sumber ?? null, diambil: rows.reduce((m, x) => (x.diambil > m ? x.diambil : m), "") || null };
   });
-  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null, stok, stokHabis, stokKurang, mk, makro, units: report?.units ?? null, macroRows: macroGabung, liveStatus, manualMacro: manual.slice(0, 10) };
+  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null, stok, stokHabis, stokKurang, mk, mkAda: !!report?.marketing, makro, units: report?.units ?? null, macroRows: macroGabung, liveStatus, manualMacro: manual.slice(0, 10) };
 }
 export { f1, labelBulan, labelPanjang } from "./format";

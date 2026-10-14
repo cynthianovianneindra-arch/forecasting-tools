@@ -1,15 +1,26 @@
 import type { Txn } from "./forecast";
 
-export interface Filter { tipe?: string; agent?: string; marketing?: string; cluster?: string; tahap?: string; tahun?: string; bulan?: string }
+export interface Filter { tipe?: string; agent?: string; marketing?: string; cluster?: string; tahap?: string; tahun?: string; dari?: string; sampai?: string; bulan?: string }
+
+const BULAN_OK = /^\d{4}-(0[1-9]|1[0-2])$/;
+/** Rentang periode (YYYY-MM, inklusif) dari filter: dari/sampai (bebas, otomatis ditukar bila terbalik), atau bulan tunggal, atau tahun. */
+export function rentangPeriode(f: { tahun?: string; dari?: string; sampai?: string; bulan?: string }): { dari?: string; sampai?: string } {
+  let dari = f.dari && BULAN_OK.test(f.dari) ? f.dari : undefined, sampai = f.sampai && BULAN_OK.test(f.sampai) ? f.sampai : undefined;
+  if (dari || sampai) { if (dari && sampai && dari > sampai) [dari, sampai] = [sampai, dari]; return { dari, sampai }; }
+  if (f.bulan && BULAN_OK.test(f.bulan)) return { dari: f.bulan, sampai: f.bulan };
+  if (f.tahun && /^\d{4}$/.test(f.tahun)) return { dari: `${f.tahun}-01`, sampai: `${f.tahun}-12` };
+  return {};
+}
+export const dalamPeriode = (b: string, r: { dari?: string; sampai?: string }) => (!r.dari || b >= r.dari) && (!r.sampai || b <= r.sampai);
 
 export function applyFilter(t: Txn[], f: Filter, forForecast: boolean): Txn[] {
   return t.filter((x) => (!f.tipe || x.tipe === f.tipe) && (!f.agent || x.agent === f.agent) && (!f.marketing || x.marketing === f.marketing) && (!f.cluster || x.cluster === f.cluster) && (!f.tahap || x.tahap === f.tahap)
-    && (forForecast || (f.bulan ? x.utj === f.bulan : !f.tahun || x.utj.startsWith(f.tahun))));
+    && (forForecast || dalamPeriode(x.utj, rentangPeriode(f))));
 }
 
 export function options(t: Txn[]) {
   const u = (k: "tipe" | "agent" | "marketing" | "cluster" | "tahap") => [...new Set(t.map((x) => x[k]).filter((v): v is string => !!v))].sort();
-  return { tipe: u("tipe"), agent: u("agent"), marketing: u("marketing"), cluster: u("cluster"), tahap: u("tahap"), tahun: [...new Set(t.map((x) => x.utj.slice(0, 4)))].sort(), bulan: [...new Set(t.map((x) => x.utj))].sort().reverse() };
+  return { tipe: u("tipe"), agent: u("agent"), marketing: u("marketing"), cluster: u("cluster"), tahap: u("tahap"), tahun: [...new Set(t.map((x) => x.utj.slice(0, 4)))].sort(), bulan: [...new Set(t.map((x) => x.utj))].sort() };
 }
 
 const count = <T,>(items: T[], key: (x: T) => string | undefined) => {

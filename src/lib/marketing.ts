@@ -1,4 +1,5 @@
 import type { Txn } from "./forecast";
+import { dalamPeriode, rentangPeriode } from "./insights";
 import type { MarketingData } from "./importExcel";
 
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 1000) / 10 : 0);
@@ -13,8 +14,9 @@ export function pearson(x: number[], y: number[]): number | null {
 const median = (a: number[]) => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 0; };
 
 /** Batasi data marketing ke periode (bulan atau tahun) yang dipilih di dashboard. */
-export function filterMarketing(m: MarketingData, f: { tahun?: string; bulan?: string }): MarketingData {
-  const ok = (b: string) => (f.bulan ? b === f.bulan : !f.tahun || b.startsWith(f.tahun));
+export function filterMarketing(m: MarketingData, f: { tahun?: string; dari?: string; sampai?: string; bulan?: string }): MarketingData {
+  const r = rentangPeriode(f);
+  const ok = (b: string) => dalamPeriode(b, r);
   return { leads: m.leads.filter((l) => ok(l.bulan)), events: m.events.filter((e) => ok(e.bulan)) };
 }
 
