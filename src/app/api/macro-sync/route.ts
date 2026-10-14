@@ -1,4 +1,4 @@
-import { syncLive } from "@/lib/macroLive";
+import { jagaLonjakan, syncLive } from "@/lib/macroLive";
 import { listMacroLive, storeConfigured, upsertMacroLive } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -10,14 +10,13 @@ const TUJUH_HARI = 7 * 24 * 3600 * 1000;
 async function run(paksa = false) {
   if (!storeConfigured()) return { error: "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY belum diset", hasil: [] };
   const lewati = new Set<string>();
-  if (!paksa) {
-    const ada = await listMacroLive();
-    for (const ind of ["inflasi", "birate"]) {
-      const t = Math.max(0, ...ada.filter((x) => x.indikator === ind).map((x) => Date.parse(x.diambil) || 0));
-      if (Date.now() - t < TUJUH_HARI) lewati.add(ind);
-    }
+  const ada = await listMacroLive();
+  for (const ind of ["inflasi", "birate"]) {
+    const t = Math.max(0, ...ada.filter((x) => x.indikator === ind).map((x) => Date.parse(x.diambil) || 0));
+    if (Date.now() - t < TUJUH_HARI) lewati.add(ind);
   }
-  const { rows, hasil } = await syncLive({ lewati });
+  const mentah = await syncLive({ lewati: paksa ? new Set<string>() : lewati });
+  const { rows, hasil } = jagaLonjakan(mentah.rows, mentah.hasil, ada);
   await upsertMacroLive(rows); // sumber yang gagal tidak menimpa data terakhir
   return { hasil };
 }
