@@ -170,7 +170,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       <Note>Biaya dan leads hanya ada untuk {mk.stats.jumlahBulan} bulan; korelasi biaya-leads {mk.stats.korelasiBiayaLeads ?? "-"} dan biaya-UTJ {mk.stats.korelasiBiayaUtj ?? "-"} adalah pola awal, bukan sebab-akibat. Porsi UTJ per sumber mencakup seluruh riwayat, jadi bandingkan porsi, bukan konversi.</Note></>)}
 
     {pg("Temuan dan tindakan marketing", !mk ? <Note>Menunggu data marketing.</Note> : <>{mk.findings.length === 0 ? <p>Tidak ada temuan yang melewati ambang aturan pada data ini.</p> : mk.findings.map((f, i) => (
-      <div key={f.id} style={{ border: "1px solid #E1E5EB", borderRadius: 10, padding: 12, marginBottom: 10 }}>
+      <div key={f.id} style={{ border: "1px solid #EDE7DE", borderRadius: 10, padding: 12, marginBottom: 10 }}>
         <b>{i + 1}. {f.judul}</b> <span className="muted" style={{ fontSize: 11 }}>· Prioritas {f.prioritas} · {f.label === "hipotesis" ? "hipotesis (sampel kecil)" : "dari data"}</span>
         <p style={{ margin: "6px 0" }}><b>Temuan:</b> {f.temuan}</p><p style={{ margin: "6px 0" }}><b>Tindakan:</b> {f.tindakan}</p><p style={{ margin: "6px 0" }}><b>Ukuran berhasil:</b> {f.ukuran}</p></div>))}
       <Note>Data yang perlu ditambahkan: kode kampanye atau organik-berbayar per lead, status wajib diisi, alasan batal wajib diisi, dan ID event agar biaya, leads, UTJ bisa dikaitkan.</Note></>)}

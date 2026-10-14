@@ -26,6 +26,11 @@ export function Dashboard({ monthly, rows, netPrice, divergent, stok, stokHabis,
     bars = [...yrs.values()];
   }
   const table = rows.slice(0, 6);
+  const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
+  const utjP = sum(rows.map((r) => r.utjInt)), akadP = sum(rows.map((r) => r.akadInt));
+  const utjA = sum(monthly.slice(-12).map((m) => m.utj)), akadA = sum(monthly.slice(-12).map((m) => m.akad));
+  const delta = (p: number, a: number) => (a > 0 ? Math.round(((p - a) / a) * 100) : null);
+  const Chg = ({ v }: { v: number | null }) => (v === null ? null : <span className={"chg" + (v < 0 ? " neg" : "")}>{v >= 0 ? "+" : ""}{v}% vs 12 bln terakhir</span>);
   return (
     <div className="stack">
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: 16 }}>
@@ -33,6 +38,12 @@ export function Dashboard({ monthly, rows, netPrice, divergent, stok, stokHabis,
         <div className="seg" role="group" aria-label="Tampilan">
           {(["bulanan", "tahunan"] as const).map((m) => <button key={m} className={mode === m ? "on" : ""} aria-pressed={mode === m} onClick={() => setMode(m)}>{m === "bulanan" ? "Bulanan" : "Tahunan"}</button>)}
         </div>
+      </div>
+      <div className="kpis">
+        <div className="kpi-card accent"><small>UTJ proyeksi 12 bulan</small><span className="big">{utjP}</span><Chg v={delta(utjP, utjA)} /></div>
+        <div className="kpi-card"><small>Akad proyeksi 12 bulan</small><span className="big">{akadP}</span><Chg v={delta(akadP, akadA)} /></div>
+        <div className="kpi-card"><small>Penerimaan proyeksi</small><span className="big">Rp {f1(akadP * netPrice)} M</span><span className="sub">dari akad × harga bersih rata-rata</span></div>
+        <div className="kpi-card"><small>{stok ? "Stok Open" : "UTJ 12 bulan terakhir"}</small><span className="big">{stok ? stok.open : utjA}</span><span className="sub">{stok ? (stokHabis !== null && stokHabis !== undefined ? `habis di bulan ke-${stokHabis}` : "cukup untuk 12 bulan") : `akad ${akadA}`}</span></div>
       </div>
       {divergent && <div className="warn">Arah penjualan mungkin berubah: garis tren berjauhan dari proyeksi utama</div>}
       <div className="grid">
