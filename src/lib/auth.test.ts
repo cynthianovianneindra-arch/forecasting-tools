@@ -46,6 +46,7 @@ it("aturan akses", () => {
   expect(A("/pengguna", "GET", sesi())).toBe("403");
   expect(A("/api/upload", "POST", sesi())).toBe("403");
   expect(A("/api/manual", "POST", sesi())).toBe("403");
+  expect(A("/api/target", "POST", sesi())).toBe("403");
   expect(A("/api/macro-sync", "POST", sesi())).toBe("403");
   expect(A("/pengguna", "GET", sesi({ rl: "admin" }))).toBe("izinkan");
   expect(A("/api/upload", "POST", sesi({ rl: "admin" }))).toBe("izinkan");

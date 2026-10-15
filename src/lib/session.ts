@@ -43,7 +43,7 @@ export function putusanAkses(a: { path: string; method: string; sesi: Sesi | nul
   if (adaAuthHeader && ((method === "GET" && (path === "/api/sync" || path === "/api/macro-sync")) || (method === "POST" && path === "/api/narasi"))) return "izinkan";
   const api = path.startsWith("/api/");
   if (!sesi) return api ? "401" : "login";
-  const adminSaja = path === "/pengguna" || path.startsWith("/api/pengguna") || path === "/api/upload" || path === "/api/manual" || ((path === "/api/macro-sync" || path === "/api/sync") && method === "POST");
+  const adminSaja = path === "/pengguna" || path.startsWith("/api/pengguna") || path === "/api/upload" || path === "/api/manual" || path === "/api/target" || ((path === "/api/macro-sync" || path === "/api/sync") && method === "POST");
   if (adminSaja && sesi.rl !== "admin") return "403";
   return "izinkan";
 }

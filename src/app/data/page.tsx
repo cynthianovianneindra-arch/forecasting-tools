@@ -1,20 +1,25 @@
 import { Nav, badge } from "@/components/Nav";
 import { getData } from "@/lib/data";
 import { ManualInput } from "@/components/ManualInput";
+import { TargetForm } from "@/components/TargetForm";
 import { ARTI_STATUS } from "@/lib/stock";
 import { listDatasets, storeConfigured } from "@/lib/store";
 import { sesiSaatIni } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-export default async function Page({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string; tahun?: string }> }) {
   const q = await searchParams;
   const d = await getData();
   const hist = await listDatasets();
   const admin = (await sesiSaatIni())?.rl === "admin";
+  const tahunIni = new Date().getFullYear();
+  const tahunTarget = /^\d{4}$/.test(q.tahun ?? "") ? q.tahun! : String(Math.max(tahunIni, +d.end.slice(0, 4)));
+  const tahunPilihan = Array.from(new Set([...Array.from({ length: 5 }, (_, i) => String(+d.end.slice(0, 4) - 1 + i)), tahunTarget, ...d.targets.map((t) => t.bulan.slice(0, 4))])).sort();
   const total = d.monthly.reduce((s, m) => ({ u: s.u + m.utj, a: s.a + m.akad }), { u: 0, a: 0 });
   return (<><Nav active="/data" updated="Integrasi belum tersambung" /><main className="wrap stack"><h1>Data &amp; Integrasi</h1><p>{badge(d.source)}</p>
     {q.ok && <p className="ok">{q.ok}</p>}{q.err && <p className="err">{q.err}</p>}
     {admin && storeConfigured() && d.source !== "demo" && <ManualInput d={d} />}
+    {admin && storeConfigured() && <TargetForm tahun={tahunTarget} tahunPilihan={tahunPilihan} ada={d.targets} />}
     {!admin && <p className="warn">Anda masuk sebagai pengguna (lihat saja). Unggah data, input manual, dan sinkron hanya untuk admin.</p>}
     {admin && <div className="card"><h2>Isi data: unggah Excel</h2>
       <p className="muted">Unggah <b>FORECASTING UPDATE.xlsx</b> (sheet PENJUALAN). Hanya transaksi anonim yang disimpan (tanggal UTJ/akad/batal, tipe, agent, marketing, bank, harga); nama pembeli dan nomor telepon tidak dibaca. Data terbaru langsung dipakai Dashboard, Simulasi, dan Laporan.</p>

@@ -5,6 +5,7 @@ import { getData, f1, labelBulan, labelPanjang } from "@/lib/data";
 import { forecast, parseMetode, METODE_NAMA, METODE_PENJELASAN } from "@/lib/forecast";
 import { MetodeSelect } from "@/components/Metode";
 import { UnduhPdf } from "@/components/UnduhPdf";
+import { persen, statusTarget } from "@/lib/target";
 import { sesiSaatIni } from "@/lib/auth";
 import { jendelaLaporan, daftarBulan, selisihBulan } from "@/lib/periode";
 import { tampilLabel } from "@/lib/format";
@@ -57,6 +58,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const utjTot = sum(dalamJendela.map((x) => x.utj)), akadTot = sum(dalamJendela.map((x) => x.akad));
   const tot = { utj: utjTot, akad: akadTot, lo: proyeksiBulan ? Math.max(0, utjTot - half) : utjTot, hi: proyeksiBulan ? utjTot + half : utjTot, pen: akadTot * net };
   const n = w.n;
+  // Target (bila sudah diisi admin) untuk bulan-bulan di dalam rentang laporan
+  const targetMap = new Map(d.targets.map((t) => [t.bulan, t]));
+  const bulanBerTarget = dalamJendela.filter((x) => targetMap.has(x.bulan));
+  const tg = bulanBerTarget.length ? {
+    n: bulanBerTarget.length,
+    tUtj: sum(bulanBerTarget.map((x) => targetMap.get(x.bulan)!.utj)), tAkad: sum(bulanBerTarget.map((x) => targetMap.get(x.bulan)!.akad)),
+    hUtj: sum(bulanBerTarget.map((x) => x.utj)), hAkad: sum(bulanBerTarget.map((x) => x.akad)),
+  } : null;
+  const stTxt = (h: number, t: number) => { const s = statusTarget(h, t); return s === "tercapai" ? "sesuai atau di atas target" : s === "mendekati" ? "mendekati target" : s === "di bawah" ? "di bawah target" : ""; };
   const pembanding = d.monthly.slice(-n);                                       // n bulan aktual terakhir sebagai pembanding
   const l12 = { utj: sum(pembanding.map((m) => m.utj)), akad: sum(pembanding.map((m) => m.akad)) };
   const bars = baris.map((x) => ({ label: labelBulan(x.bulan), showLabel: tampilLabel(x.bulan), utj: x.utj, akad: x.akad, proj: !x.aktual, lo: x.lo, hi: x.hi, trend: x.trend }));
@@ -187,6 +197,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
         <Kpi l="Uang masuk" v={`Rp ${f1(tot.pen)} M`} />
         <Kpi l="Bulan" v={`${aktualBulan} + ${proyeksiBulan}`} s="data nyata + perkiraan" />
       </Kpis>
+      {tg && (tg.tUtj > 0 || tg.tAkad > 0) && <Note>{`Target periode${tg.n < dalamJendela.length ? ` (${tg.n} dari ${dalamJendela.length} bulan yang punya target)` : ""}: UTJ ${tg.tUtj}, akad ${tg.tAkad}. Hasil ${proyeksiBulan ? "dan perkiraan " : ""}periode ini: UTJ ${tg.hUtj}${persen(tg.hUtj, tg.tUtj) !== null ? ` (${persen(tg.hUtj, tg.tUtj)}% dari target, ${stTxt(tg.hUtj, tg.tUtj)})` : ""}, akad ${tg.hAkad}${persen(tg.hAkad, tg.tAkad) !== null ? ` (${persen(tg.hAkad, tg.tAkad)}% dari target, ${stTxt(tg.hAkad, tg.tAkad)})` : ""}.`}</Note>}
       {proyeksiBulan > 0 && <Note>{`Cara membaca rentang: angka besar (${tot.utj}) adalah perkiraan terbaik. Rentang ${tot.lo}–${tot.hi} artinya **8 dari 10 kemungkinan**, hasil sebenarnya ada di antara dua angka itu. Rentangnya lebar karena penjualan naik-turun tiap bulan.`}</Note>}
       <Chart bars={bars} title="UTJ dan akad" />
       <table className="compact" style={{ marginTop: 8 }}><thead><tr><th>Bulan</th><th>Status</th><th className="n">UTJ</th><th className="n">Rentang UTJ</th><th className="n">Akad</th><th className="n">Uang masuk (Rp M)</th></tr></thead><tbody>{(n < 12 ? baris.slice(-6) : dalamJendela).map((x) => <tr key={x.bulan} style={x.dalam ? { fontWeight: 700 } : { color: "#5B6670" }}><td>{labelPanjang(x.bulan)}</td><td>{x.aktual ? "Data nyata" : "Perkiraan"}</td><td className="n">{x.utj}</td><td className="n">{x.aktual ? "-" : `${x.lo}–${x.hi}`}</td><td className="n">{x.akad}</td><td className="n">{f1(x.akad * net)}</td></tr>)}

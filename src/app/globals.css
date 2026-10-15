@@ -123,3 +123,8 @@ body:has(.login){padding-left:0;background:#101316;background-image:none;color:#
 .lg-foot{margin:2px 0 0;font-size:12px;color:rgba(255,255,255,.55)}
 @media(max-width:860px){.login{grid-template-columns:1fr;padding:0}.lg-art{display:none}.lg-side{min-height:100vh;padding:28px 22px}}
 @media(max-width:760px){.sideuser{display:none}}
+.tgt-row{margin-bottom:14px}.tgt-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px}
+.tgt-bar{position:relative;height:12px;border-radius:999px;background:#DADDE0;overflow:hidden}.tgt-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
+.tgt-bar .perk{background:#9FB1BF}.tgt-bar .real{background:var(--g-navy)}
+.tgt-badge{font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 10px;background:#E1E7EC;color:#1A2127}.tgt-badge.ok{background:#DDEBE0;color:#1E5A2E}.tgt-badge.mid{background:#F3E8CC;color:#6B4E0A}.tgt-badge.neg{background:#FBE3E0;color:#A1332B}
+.inp.tgt{width:88px;min-height:36px;text-align:right}
