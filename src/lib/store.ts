@@ -90,3 +90,22 @@ export async function saveNarasi(hash: string, narasi: unknown): Promise<void> {
     });
   } catch { /* cache gagal tersimpan tidak boleh menggagalkan laporan */ }
 }
+
+/** Target penjualan per bulan (tabel target_penjualan); bila tabel belum ada, dianggap belum ada target. */
+export async function listTarget(): Promise<{ bulan: string; utj: number; akad: number }[]> {
+  if (!storeConfigured()) return [];
+  try {
+    const r = await fetch(`${url()}/rest/v1/target_penjualan?select=bulan,utj,akad&order=bulan.asc&limit=1000`, { headers: headers(), cache: "no-store" });
+    return r.ok ? r.json() : [];
+  } catch { return []; }
+}
+
+export async function upsertTarget(rows: { bulan: string; utj: number; akad: number }[]): Promise<void> {
+  if (!rows.length) return;
+  const r = await fetch(`${url()}/rest/v1/target_penjualan?on_conflict=bulan`, {
+    method: "POST", headers: { ...headers(), prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify(rows.map((x) => ({ ...x, diperbarui: new Date().toISOString() }))),
+  });
+  if (r.status === 404) throw new Error("Tabel target_penjualan belum dibuat di Supabase (lihat README, bagian Target penjualan)");
+  if (!r.ok) throw new Error(`Gagal menyimpan target (${r.status})`);
+}

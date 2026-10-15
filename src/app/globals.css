@@ -120,3 +120,8 @@ body:has(.login){padding-left:0;background:#E5E4E2;background-image:none}
 .lg-help{background:#F1F0EE;border-radius:10px;padding:9px 12px;margin:-4px 0 0;font-size:12.5px;color:#3E505E}
 .lg-foot{margin:0;font-size:13px;color:#2B3640;background:rgba(255,255,255,.72);border-radius:999px;padding:7px 16px;backdrop-filter:blur(6px)}.lg-foot b{text-decoration:underline;text-underline-offset:3px}
 @media(max-width:860px){.login{padding:0}.lg-frame{border-radius:0;min-height:100vh;justify-content:center;padding:88px 18px 28px;align-items:flex-start;background-position:62% bottom}.lg-stack{max-width:420px}}
+.tgt-row{margin-bottom:14px}.tgt-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px}
+.tgt-bar{position:relative;height:12px;border-radius:999px;background:#DADDE0;overflow:hidden}.tgt-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
+.tgt-bar .perk{background:#9FB1BF}.tgt-bar .real{background:var(--g-navy)}
+.tgt-badge{font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 10px;background:#E1E7EC;color:#1A2127}.tgt-badge.ok{background:#DDEBE0;color:#1E5A2E}.tgt-badge.mid{background:#F3E8CC;color:#6B4E0A}.tgt-badge.neg{background:#FBE3E0;color:#A1332B}
+.inp.tgt{width:88px;min-height:36px;text-align:right}

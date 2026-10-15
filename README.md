@@ -81,6 +81,13 @@ Saat Dari/Sampai bulan dipilih, deret UTJ untuk exponential smoothing dibatasi k
 - **Laporan 16 halaman:** sampul, daftar isi bernomor halaman (dibuat otomatis dari urutan halaman), ringkasan manajemen detail (2 halaman: hasil utama, kinerja, stok, marketing, ekonomi, risiko, rekomendasi prioritas berbasis aturan), lalu halaman rinci per topik termasuk halaman baru Stok dan kapasitas penjualan. Narasi Claude (ringkasan, proyeksi, funnel, bank, marketing, stok, risiko, rekomendasi) tetap divalidasi angkanya; teks dari mesin selalu tampil.
 
 ## Hemat biaya Claude
+- **Target penjualan:** admin mengisi target UTJ dan akad per bulan (atau total setahun yang dibagi rata) di menu Data & Integrasi. Dashboard menampilkan kartu "Target vs realisasi" (realisasi sampai bulan data terakhir, perkiraan akhir tahun, dan kebutuhan per bulan untuk sisa tahun), dan laporan memuat catatan target untuk rentang yang dipilih. Buat tabelnya sekali di SQL Editor:
+
+```sql
+create table if not exists target_penjualan (bulan text primary key, utj integer not null default 0, akad integer not null default 0, diperbarui timestamptz not null default now());
+alter table target_penjualan enable row level security;
+```
+
 - Narasi laporan disimpan di tabel Supabase `narasi_cache` (kunci = hash data). Data yang sama tidak memanggil Claude lagi, termasuk setelah server restart. Claude hanya dipanggil saat tombol "Buat narasi dengan Claude" di halaman Laporan ditekan; membuka halaman biasa hanya membaca narasi tersimpan.
 - Sinkron inflasi/BI Rate (butuh Claude) dilewati bila sudah diambil dalam 7 hari terakhir; tombol manual di layar Data selalu mengambil ulang. Pembacaan halaman memakai model kecil (`ANTHROPIC_SYNC_MODEL`, default `claude-haiku-5-5`).
 - Validasi angka narasi maksimal 2 percobaan.
