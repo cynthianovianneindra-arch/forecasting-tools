@@ -15,4 +15,4 @@ export async function middleware(req: NextRequest) {
   return NextResponse.redirect(u);
 }
 
-export const config = { matcher: ["/((?!_next/static|_next/image|icon.png|logo.png|favicon.ico).*)"] };
+export const config = { matcher: ["/((?!_next/static|_next/image|icon.png|logo.png|login-bg.jpg|favicon.ico).*)"] };

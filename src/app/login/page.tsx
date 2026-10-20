@@ -12,18 +12,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
   if (await sesiSaatIni()) redirect(next);
   return (
     <main className="login">
-      <section className="lg-art" aria-hidden="true">
+      <div className="lg-frame">
         <div className="lg-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="" /><span>Shaistanaya City</span>
+          <img src="/logo.png" alt="" /><span>Shaistanaya City<small>PT Neo Pudji Jaya</small></span>
         </div>
-        <div className="lg-copy">
-          <h2>Proyeksi penjualan yang jelas.</h2>
-          <p>UTJ, akad, dan penerimaan untuk bulan-bulan ke depan, lengkap dengan laporan siap cetak untuk tim Shaistanaya City.</p>
+        <div className="lg-stack">
+          <LoginForm next={next} galat={q.err} siap={secretValid(process.env.SESSION_SECRET)} />
+          <p className="lg-foot">Belum punya akun? <b>Hubungi admin</b> untuk dibuatkan.</p>
         </div>
-        <svg className="lg-dune" viewBox="0 0 600 120" preserveAspectRatio="none"><path d="M0 120V70C80 40 160 30 250 50c90 20 150 50 230 30 50-12 90-30 120-45v85z" /></svg>
-      </section>
-      <section className="lg-side"><LoginForm next={next} galat={q.err} siap={secretValid(process.env.SESSION_SECRET)} /></section>
+      </div>
     </main>
   );
 }

@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { loadMonthly, reconstructTxns } from "./demo";
 import { forecast, monthlySeries, Txn, Metode } from "./forecast";
-import { latestDataset, listMacroLive, listMacroManual, LiveRowDb, MacroManualDb, storeConfigured } from "./store";
+import { latestDataset, listMacroLive, listMacroManual, listTarget, LiveRowDb, MacroManualDb, storeConfigured } from "./store";
 import { mergeMacro } from "./macroLive";
 import { filterMarketing, marketingInsights } from "./marketing";
 import { driveConfigured, fetchFromDrive } from "./drive";
@@ -82,6 +82,8 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
   const stokKurang = stok ? stockShortfall(f.rows.map((x) => x.utj), stok.open, f.rows.map((x) => x.batal)) : null;
   let live: LiveRowDb[] = [];
   try { live = await listMacroLive(); } catch { live = []; }
+  let targets: { bulan: string; utj: number; akad: number }[] = [];
+  try { targets = await listTarget(); } catch { targets = []; }
   let manual: MacroManualDb[] = [];
   try { manual = await listMacroManual(); } catch { manual = []; }
   // urutan prioritas: input manual > data live > Excel
@@ -92,6 +94,6 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
     const last = rows[rows.length - 1];
     return { indikator: k, bulan: last?.bulan ?? null, nilai: last?.nilai ?? null, sumber: last?.sumber ?? null, diambil: rows.reduce((m, x) => (x.diambil > m ? x.diambil : m), "") || null };
   });
-  return { monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null, stok, stokHabis, stokKurang, periodeAktif, mk, mkAda: !!report?.marketing, makro, units: report?.units ?? null, macroRows: macroGabung, liveStatus, manualMacro: manual.slice(0, 10) };
+  return { targets, monthly, f, end, open, netPrice: NET_PRICE_MILIAR, source, report, driveInfo, driveError, uploadInfo, storeError, opts, kartu, filtered, nTxn: ft.length, txns, marketing: report?.marketing ?? null, stok, stokHabis, stokKurang, periodeAktif, mk, mkAda: !!report?.marketing, makro, units: report?.units ?? null, macroRows: macroGabung, liveStatus, manualMacro: manual.slice(0, 10) };
 }
 export { f1, labelBulan, labelPanjang } from "./format";
