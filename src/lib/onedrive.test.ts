@@ -1,5 +1,5 @@
 import { it, expect, beforeEach, afterEach } from "vitest";
-import { kodeBerbagi, miripXlsx, unduhDariOneDrive, sidikBerkas, unduhanLangsung, kandidatUnduhan } from "./onedrive";
+import { kodeBerbagi, miripXlsx, unduhDariOneDrive, sidikBerkas, unduhanLangsung, kandidatUnduhan, bersihkanTautan } from "./onedrive";
 import { sinkronOneDrive } from "./sinkronExcel";
 
 const URL_BAGI = "https://1drv.ms/x/c/abc/XYZ?e=123";
@@ -66,4 +66,19 @@ it("tautan pendek: pengalihan ke onedrive.live.com dengan resid dicoba sebagai u
   const r = await unduhDariOneDrive(f);
   expect(r.buffer.byteLength).toBeGreaterThan(0);
   expect(dipanggil.find((u) => u.includes("/download"))).toContain("resid=A%211");
+});
+
+it("bersihkan tautan: kode iframe, kutip, spasi, dan &amp; menjadi alamat saja", () => {
+  expect(bersihkanTautan('<iframe src="https://1drv.ms/x/c/abc/XYZ-1" width="402" height="346" frameborder="0" scrolling="no"></iframe>')).toBe("https://1drv.ms/x/c/abc/XYZ-1");
+  expect(bersihkanTautan(' "https://onedrive.live.com/embed?cid=A&amp;resid=B%211&amp;authkey=k"  ')).toBe("https://onedrive.live.com/embed?cid=A&resid=B%211&authkey=k");
+  expect(bersihkanTautan("https://1drv.ms/x/c/abc/XYZ")).toBe("https://1drv.ms/x/c/abc/XYZ");
+});
+
+it("unduh: env berisi kode iframe tetap dipakai dengan alamat di dalamnya", async () => {
+  process.env.ONEDRIVE_EXCEL_URL = '<iframe src="https://1drv.ms/x/c/abc/XYZ" width="402"></iframe>';
+  const dipanggil: string[] = [];
+  const f = (async (u: string, init?: RequestInit) => { dipanggil.push(u); return init?.redirect === "manual" ? new Response(null, { status: 200 }) : resp(zip()); }) as unknown as typeof fetch;
+  await unduhDariOneDrive(f);
+  expect(dipanggil.every((u) => !u.includes("iframe"))).toBe(true);
+  expect(dipanggil.some((u) => u.includes("api.onedrive.com"))).toBe(true);
 });
