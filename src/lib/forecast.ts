@@ -1,4 +1,5 @@
 // Mesin forecast: fungsi murni & deterministik. Semua angka dihitung di sini, bukan oleh Claude.
+import { etsForecast } from "./ets";
 
 export interface BankCase { bank: string; hari: number | null; status: string }
 export interface Txn {
@@ -69,15 +70,16 @@ export function linearTrend(y: number[], h: number, k = 24): number[] {
   return Array.from({ length: h }, (_, j) => Math.max(0, a + b * (n + j)));
 }
 
-export type Metode = "es" | "wma" | "mlr";
-export const METODE_NAMA: Record<Metode, string> = { es: "Exponential smoothing", wma: "Weighted moving average", mlr: "Multiple linear regression" };
+export type Metode = "ets" | "es" | "wma" | "mlr";
+export const METODE_NAMA: Record<Metode, string> = { ets: "Rumus Excel (FORECAST.ETS)", es: "Exponential smoothing", wma: "Weighted moving average", mlr: "Multiple linear regression" };
 export const METODE_PENJELASAN: Record<Metode, string> = {
+  ets: "Seperti rumus di Excel: UTJ dari exponential smoothing dengan pola musiman otomatis (dibulatkan ke bawah). Batal = UTJ x tingkat batal tahun lalu; SPR & PPJB = UTJ - batal; akad = (SPR & PPJB + proses bank) x tingkat akad tahun lalu.",
   es: "Memperhalus data lama: bulan terbaru berpengaruh paling besar, hasilnya datar.",
   wma: "Rata-rata beberapa bulan terakhir, bulan terbaru diberi bobot lebih besar, hasilnya datar.",
   mlr: "Garis tren dan pola musiman bulanan, ditambah rata-rata 3 bulan sebelumnya.",
 };
-export const METODE_LIST: Metode[] = ["es", "wma", "mlr"];
-export const parseMetode = (v?: string): Metode => (v === "wma" || v === "mlr" ? v : "es");
+export const METODE_LIST: Metode[] = ["ets", "es", "wma", "mlr"];
+export const parseMetode = (v?: string): Metode => (v === "es" || v === "wma" || v === "mlr" ? v : "ets");
 
 /** Weighted moving average: jendela k terakhir dengan bobot linear (terbaru = k, terlama = 1); k dipilih dari {3,4,6,9,12} yang paling kecil galat satu langkahnya pada riwayat. */
 export function wmaFit(y: number[]): { k: number; value: number } {
@@ -137,6 +139,7 @@ export function multipleLinearRegression(y: number[], h: number, m0 = 0): number
 
 /** Proyeksi UTJ h bulan dengan metode terpilih. m0 = indeks bulan pertama deret (ym). */
 export function forecastUtj(metode: Metode, y: number[], h: number, m0 = 0): number[] {
+  if (metode === "ets") return etsForecast(y, h).map((v) => Math.floor(v + 1e-9));
   if (metode === "wma") return weightedMovingAverage(y, h);
   if (metode === "mlr") return multipleLinearRegression(y, h, m0);
   return exponentialSmoothing(y, h);
@@ -218,6 +221,36 @@ export function pipelineAkad(txns: Txn[], T: string, utjForecast: number[]): num
   return pipelineAkadBatal(txns, T, utjForecast).akad;
 }
 
+/** Tingkat batal dan akad tahun lalu: peristiwa batal (akad) dibagi UTJ pada tahun kalender penuh terakhir sebelum tahun proyeksi (hanya data sampai T). Tanpa tahun penuh: seluruh data. */
+export function tingkatTahunLalu(txns: Txn[], T: string, tahun: number): { batal: number; akad: number; tahunAcuan: number | null } {
+  const t = ym(T);
+  const utj = new Map<number, number>(), batal = new Map<number, number>(), akad = new Map<number, number>();
+  const tambah = (m: Map<number, number>, bulan?: string | null) => { if (bulan && ym(bulan) <= t) { const y = +bulan.slice(0, 4); m.set(y, (m.get(y) ?? 0) + 1); } };
+  for (const x of txns) { tambah(utj, x.utj); tambah(batal, x.batal); tambah(akad, x.akad); }
+  const penuh = [...utj.keys()].filter((y) => y < tahun && ym(`${y}-12`) <= t).sort((a, b) => b - a);
+  if (penuh.length) { const y = penuh[0]; const u = utj.get(y)!; return { batal: (batal.get(y) ?? 0) / u, akad: (akad.get(y) ?? 0) / u, tahunAcuan: y }; }
+  const U = [...utj.values()].reduce((s, v) => s + v, 0) || 1;
+  return { batal: [...batal.values()].reduce((s, v) => s + v, 0) / U, akad: [...akad.values()].reduce((s, v) => s + v, 0) / U, tahunAcuan: null };
+}
+
+/** Rumus Excel (sheet SUMMARY): batal = ROUND(UTJ x tingkat batal), SPR & PPJB = UTJ - batal, akad = ROUND((proses bank bulan lalu + SPR & PPJB) x tingkat akad),
+ *  proses bank = proses bank lalu + UTJ - batal - akad. Seperti di Excel, proses bank dimulai dari 0 pada bulan data terakhir (hanya arus yang diproyeksikan):
+ *  dipakai berkas terbuka nyata sebagai awal, galat uji mundur akad naik dari 4,1 ke 9,7 unit (3 bulan). */
+export function rumusAkadBatal(txns: Txn[], T: string, utj: number[]): { akad: number[]; batal: number[]; spr: number[]; proses: number[]; tahunAcuan: (number | null)[] } {
+  let pb = 0;
+  const akad: number[] = [], batal: number[] = [], spr: number[] = [], proses: number[] = [], acuan: (number | null)[] = [];
+  const cache = new Map<number, ReturnType<typeof tingkatTahunLalu>>();
+  utj.forEach((u, i) => {
+    const th = +addMonths(T, i + 1).slice(0, 4);
+    if (!cache.has(th)) cache.set(th, tingkatTahunLalu(txns, T, th));
+    const r = cache.get(th)!;
+    const b = Math.round(u * r.batal), s = u - b, a = Math.round((pb + s) * r.akad);
+    pb = pb + u - b - a;
+    akad.push(a); batal.push(b); spr.push(s); proses.push(pb); acuan.push(r.tahunAcuan);
+  });
+  return { akad, batal, spr, proses, tahunAcuan: acuan };
+}
+
 export interface BacktestResult {
   origins: number;
   utjMae13: number;      // MAE 1-3 bln, exponential smoothing (metode utama)
@@ -242,7 +275,7 @@ export function backtest(txns: Txn[], start: string, end: string, H = 3, minHist
     fc.forEach((p, i) => { ae13 += Math.abs(p - actU[i]); aeMa += Math.abs(ma[i] - actU[i]); ae13n++; errs[i].push(p - actU[i]); });
     tot += Math.abs(fc.reduce((x, y) => x + y, 0) - actU.reduce((x, y) => x + y, 0));
     const T = u.months[t - 1];
-    const pa = pipelineAkad(txns, T, fc);
+    const pa = metode === "ets" ? rumusAkadBatal(txns, T, fc).akad : pipelineAkad(txns, T, fc);
     atot += Math.abs(pa.reduce((x, y) => x + y, 0) - actA.reduce((x, y) => x + y, 0));
     const maA = movingAverage(a.values.slice(0, t), H, 12);
     mtot += Math.abs(maA.reduce((x, y) => x + y, 0) - actA.reduce((x, y) => x + y, 0));
@@ -280,7 +313,7 @@ export function utjInterval(point: number, horizon: number, errsByH: number[][])
 export const fl = (v: number) => Math.floor(v + 1e-9);
 
 /** utj/utjLo/utjHi mentah dipakai untuk perhitungan; *Int = dibulatkan ke bawah untuk tampilan (UTJ dan akad adalah cacah unit). */
-export interface ForecastRow { bulan: string; utj: number; utjInt: number; utjLo: number; utjHi: number; utjLoInt: number; utjHiInt: number; akad: number; akadInt: number; batal: number; trend: number }
+export interface ForecastRow { bulan: string; utj: number; utjInt: number; utjLo: number; utjHi: number; utjLoInt: number; utjHiInt: number; akad: number; akadInt: number; batal: number; trend: number; batalInt?: number; spr?: number; proses?: number }
 
 export interface BandingMetode { metode: Metode; utjMae13: number; utjMaeTotal3: number; akadMaeTotal3: number }
 
@@ -295,13 +328,14 @@ export function forecast(txns: Txn[], start: string, end: string, H = 12, metode
   const u = monthlySeries(txns, "utj", start, end);
   const base = forecastUtj(metode, u.values, H, ym(start));
   const trend = linearTrend(u.values, H, 24);
-  const pj = pipelineAkadBatal(txns, end, base);
+  const rx = metode === "ets" ? rumusAkadBatal(txns, end, base) : null;
+  const pj = rx ?? pipelineAkadBatal(txns, end, base);
   const akad = pj.akad;
-  const bts = { es: backtest(txns, start, end, 3, 24, "es"), wma: backtest(txns, start, end, 3, 24, "wma"), mlr: backtest(txns, start, end, 3, 24, "mlr") };
+  const bts = { ets: backtest(txns, start, end, 3, 24, "ets"), es: backtest(txns, start, end, 3, 24, "es"), wma: backtest(txns, start, end, 3, 24, "wma"), mlr: backtest(txns, start, end, 3, 24, "mlr") };
   const bt = bts[metode];
   const rows = base.map((p, i) => {
     const { lo, hi } = utjInterval(p, i + 1, bt.errorsByHorizon);
-    return { bulan: addMonths(end, i + 1), utj: p, utjInt: fl(p), utjLo: lo, utjHi: hi, utjLoInt: fl(lo), utjHiInt: fl(hi), akad: akad[i], akadInt: fl(akad[i]), batal: pj.batal[i], trend: trend[i] };
+    return { bulan: addMonths(end, i + 1), utj: p, utjInt: fl(p), utjLo: lo, utjHi: hi, utjLoInt: fl(lo), utjHiInt: fl(hi), akad: akad[i], akadInt: fl(akad[i]), batal: pj.batal[i], trend: trend[i], ...(rx ? { batalInt: rx.batal[i], spr: rx.spr[i], proses: rx.proses[i] } : {}) };
   });
   const bs = mean(base), ts = mean(trend);
   return { rows, bt, trendDivergent: Math.abs(ts - bs) / Math.max(bs, 1) > 0.25, metode, banding: bandingkanMetode(bts) };

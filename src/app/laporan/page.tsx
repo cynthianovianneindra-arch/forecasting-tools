@@ -45,12 +45,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const ctxDari0 = w.n < 12 ? daftarBulan(first, w.dari).slice(-(12 - w.n + 1))[0] ?? w.dari : w.dari;
   const dariGrafik = ctxDari0 < first ? first : ctxDari0;
   const bulanGrafik = daftarBulan(dariGrafik, w.sampai).slice(-36);
-  type Baris = { bulan: string; aktual: boolean; utj: number; akad: number; lo?: number; hi?: number; trend?: number; dalam: boolean };
+  type Baris = { batal?: number; spr?: number; bulan: string; aktual: boolean; utj: number; akad: number; lo?: number; hi?: number; trend?: number; dalam: boolean };
   const baris: Baris[] = bulanGrafik.flatMap((m): Baris[] => {
     const dalam = m >= w.dari && m <= w.sampai;
     if (m <= d.end) { const a = aktualMap.get(m); return a ? [{ bulan: m, aktual: true, utj: a.utj, akad: a.akad, dalam }] : []; }
     const f = frMap.get(m);
-    return f ? [{ bulan: m, aktual: false, utj: f.utjInt, akad: f.akadInt, lo: f.utjLoInt, hi: f.utjHiInt, trend: f.trend, dalam }] : [];
+    return f ? [{ bulan: m, aktual: false, utj: f.utjInt, akad: f.akadInt, batal: f.batalInt, spr: f.spr, lo: f.utjLoInt, hi: f.utjHiInt, trend: f.trend, dalam }] : [];
   });
   const dalamJendela = baris.filter((x) => x.dalam);
   const aktualBulan = dalamJendela.filter((x) => x.aktual).length, proyeksiBulan = dalamJendela.length - aktualBulan;
@@ -200,8 +200,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       {tg && (tg.tUtj > 0 || tg.tAkad > 0) && <Note>{`Target periode${tg.n < dalamJendela.length ? ` (${tg.n} dari ${dalamJendela.length} bulan yang punya target)` : ""}: UTJ ${tg.tUtj}, akad ${tg.tAkad}. Hasil ${proyeksiBulan ? "dan perkiraan " : ""}periode ini: UTJ ${tg.hUtj}${persen(tg.hUtj, tg.tUtj) !== null ? ` (${persen(tg.hUtj, tg.tUtj)}% dari target, ${stTxt(tg.hUtj, tg.tUtj)})` : ""}, akad ${tg.hAkad}${persen(tg.hAkad, tg.tAkad) !== null ? ` (${persen(tg.hAkad, tg.tAkad)}% dari target, ${stTxt(tg.hAkad, tg.tAkad)})` : ""}.`}</Note>}
       {proyeksiBulan > 0 && <Note>{`Cara membaca rentang: angka besar (${tot.utj}) adalah perkiraan terbaik. Rentang ${tot.lo}–${tot.hi} artinya **8 dari 10 kemungkinan**, hasil sebenarnya ada di antara dua angka itu. Rentangnya lebar karena penjualan naik-turun tiap bulan.`}</Note>}
       <Chart bars={bars} title="UTJ dan akad" />
-      <table className="compact" style={{ marginTop: 8 }}><thead><tr><th>Bulan</th><th>Status</th><th className="n">UTJ</th><th className="n">Rentang UTJ</th><th className="n">Akad</th><th className="n">Uang masuk (Rp M)</th></tr></thead><tbody>{(n < 12 ? baris.slice(-6) : dalamJendela).map((x) => <tr key={x.bulan} style={x.dalam ? { fontWeight: 700 } : { color: "#5B6670" }}><td>{labelPanjang(x.bulan)}</td><td>{x.aktual ? "Data nyata" : "Perkiraan"}</td><td className="n">{x.utj}</td><td className="n">{x.aktual ? "-" : `${x.lo}–${x.hi}`}</td><td className="n">{x.akad}</td><td className="n">{f1(x.akad * net)}</td></tr>)}
-        {n > 1 && <tr><td><b>Total periode</b></td><td /><td className="n"><b>{tot.utj}</b></td><td className="n"><b>{proyeksiBulan ? `${tot.lo}–${tot.hi}` : "-"}</b></td><td className="n"><b>{tot.akad}</b></td><td className="n"><b>{f1(tot.pen)}</b></td></tr>}</tbody></table>
+      <table className="compact" style={{ marginTop: 8 }}><thead><tr><th>Bulan</th><th>Status</th><th className="n">UTJ</th><th className="n">Rentang UTJ</th><th className="n">Batal</th><th className="n">SPR & PPJB</th><th className="n">Akad</th><th className="n">Uang masuk (Rp M)</th></tr></thead><tbody>{(n < 12 ? baris.slice(-6) : dalamJendela).map((x) => <tr key={x.bulan} style={x.dalam ? { fontWeight: 700 } : { color: "#5B6670" }}><td>{labelPanjang(x.bulan)}</td><td>{x.aktual ? "Data nyata" : "Perkiraan"}</td><td className="n">{x.utj}</td><td className="n">{x.aktual ? "-" : `${x.lo}–${x.hi}`}</td><td className="n">{x.batal ?? "-"}</td><td className="n">{x.spr ?? "-"}</td><td className="n">{x.akad}</td><td className="n">{f1(x.akad * net)}</td></tr>)}
+        {n > 1 && <tr><td><b>Total periode</b></td><td /><td className="n"><b>{tot.utj}</b></td><td className="n"><b>{proyeksiBulan ? `${tot.lo}–${tot.hi}` : "-"}</b></td><td /><td /><td className="n"><b>{tot.akad}</b></td><td className="n"><b>{f1(tot.pen)}</b></td></tr>}</tbody></table>
       {proyeksiBulan > 0 && <Note>Saat dicoba ke data lama ({bt.origins} kali), perkiraan UTJ rata-rata meleset {f1(bt.utjMae13)} unit per bulan dan perkiraan akad 3 bulan meleset {f1(bt.akadMaeTotal3)} unit.</Note>}
       {proyeksiBulan > 0 && d.f.trendDivergent && <Note>Arah penjualan mungkin berubah: garis tren berbeda cukup jauh dari proyeksi.</Note>}</>)}
 

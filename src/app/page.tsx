@@ -27,7 +27,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     {d.filtered && <p className="warn">Filter aktif: proyeksi dihitung ulang dari {d.nTxn} UTJ saja. Sampel kecil, rentang tidak andal.</p>}
     {d.filtered && d.monthly.slice(-12).every((m) => m.utj === 0) && <p className="err">Tidak ada UTJ pada 12 bulan terakhir untuk filter ini (mungkin stok habis atau tidak dijual lagi). Proyeksi 0 hanya hasil hitungan, bukan ramalan.</p>}
     {capaian && <TargetCard c={capaian} />}
-    <Dashboard metode={metode} monthly={d.monthly} rows={d.f.rows} netPrice={d.netPrice} divergent={d.f.trendDivergent} stok={d.stok} stokHabis={d.stokHabis} stokKurang={d.stokKurang} makro={d.makro} />
+    <Dashboard metode={metode} monthly={d.monthly} rows={d.f.rows} netPrice={d.netPrice} divergent={d.f.trendDivergent} stok={d.stok} stokHabis={d.stokHabis} stokKurang={d.stokKurang} makro={d.makro} outstanding={d.open} />
     <BandingMetodeCard banding={d.f.banding} metode={metode} origins={d.f.bt.origins} />
     {d.kartu && <section className="stack"><h2>Data aktual ({periode})</h2><Cards k={d.kartu} /></section>}
     {!d.mk && d.mkAda && <p className="muted">Tidak ada data marketing (leads dan biaya event) pada periode ini; data marketing tersedia mulai Okt 2025.</p>}
