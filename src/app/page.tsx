@@ -46,7 +46,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     {d.periodeAktif && <p className="warn">Proyeksi dan grafik mengikuti periode: dihitung hanya dari data {labelPenuh(d.periodeAktif.start)} s.d. {labelPenuh(d.periodeAktif.end)} ({d.periodeAktif.n} bulan), lalu diproyeksikan 12 bulan setelah {labelPenuh(d.periodeAktif.end)}.</p>}
     {d.filtered && <p className="warn">Filter aktif: proyeksi dihitung ulang dari {d.nTxn} UTJ saja. Sampel kecil, rentang tidak andal.</p>}
     {d.filtered && d.monthly.slice(-12).every((m) => m.utj === 0) && <p className="err">Tidak ada UTJ pada 12 bulan terakhir untuk filter ini (mungkin stok habis atau tidak dijual lagi). Proyeksi 0 hanya hasil hitungan, bukan ramalan.</p>}
-    <section className="stack" aria-label="Temuan utama">{temuan.map((t) => <Temuan key={t.judul} judul={t.judul} isi={t.isi} aksi={t.aksi} />)}</section>
     {capaian && <TargetCard c={capaian} />}
     <Dashboard metode={metode} monthly={d.monthly} rows={d.f.rows} netPrice={d.netPrice} divergent={d.f.trendDivergent} stok={d.stok} stokHabis={d.stokHabis} stokKurang={d.stokKurang} makro={d.makro} outstanding={d.open} />
     {ringkas && <div className="grid">
@@ -54,6 +53,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         <p className="muted" style={{ fontSize: 12 }}>{Math.round((ringkas.funnel.akad / Math.max(1, ringkas.funnel.utj)) * 100)}% UTJ sudah akad, {Math.round((ringkas.funnel.batal / Math.max(1, ringkas.funnel.utj)) * 100)}% batal.</p></div>
       <div className="card"><h2>Tipe paling laku (akad)</h2><Donat data={ringkas.byType.slice(0, 5).map((t) => ({ label: t.tipe, value: t.akad }))} tengah={String(ringkas.funnel.akad)} sub="akad" />
         <p className="muted" style={{ fontSize: 12 }}>Lima tipe teratas dari seluruh riwayat penjualan.</p></div></div>}
+    <section className="stack" aria-label="Temuan utama"><h2>Temuan utama</h2>{temuan.map((t) => <Temuan key={t.judul} judul={t.judul} isi={t.isi} aksi={t.aksi} />)}</section>
     <section className="stack"><h2>Lihat lebih dalam</h2>
       <div className="linkgrid">{LINK.map(([h, n, s]) => <Link key={h} href={h} className="linkcard"><b>{n}</b><span>{s}</span></Link>)}</div></section>
   </main></>);
