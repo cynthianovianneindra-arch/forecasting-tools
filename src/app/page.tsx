@@ -5,7 +5,8 @@ import { getData } from "@/lib/data";
 import { parseMetode } from "@/lib/forecast";
 import { labelPenuh, labelPanjang, f1 } from "@/lib/format";
 import { addMonths } from "@/lib/forecast";
-import { Temuan } from "@/components/Grafik";
+import { Temuan, Donat } from "@/components/Grafik";
+import { cards } from "@/lib/insights";
 import Link from "next/link";
 import { TargetCard } from "@/components/TargetCard";
 import { hitungCapaian } from "@/lib/target";
@@ -23,6 +24,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const d = await getData("kalender", filter, metode);
   const admin = (await sesiSaatIni())?.rl === "admin";
   const diperbarui = d.uploadInfo ? new Date(d.uploadInfo.uploaded_at).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
+  const ringkas = d.source !== "demo" && !d.filtered ? cards(d.txns) : null;
   const capaian = !d.filtered && !d.periodeAktif && d.source !== "demo" ? hitungCapaian(d.targets, d.monthly, d.f.rows, d.end.slice(0, 4), d.end) : null;
   // Temuan utama: tiga hal yang paling perlu dibaca, dihitung dari data (bukan oleh Claude)
   const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
@@ -47,6 +49,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     <section className="stack" aria-label="Temuan utama">{temuan.map((t) => <Temuan key={t.judul} judul={t.judul} isi={t.isi} aksi={t.aksi} />)}</section>
     {capaian && <TargetCard c={capaian} />}
     <Dashboard metode={metode} monthly={d.monthly} rows={d.f.rows} netPrice={d.netPrice} divergent={d.f.trendDivergent} stok={d.stok} stokHabis={d.stokHabis} stokKurang={d.stokKurang} makro={d.makro} outstanding={d.open} />
+    {ringkas && <div className="grid">
+      <div className="card"><h2>Hasil UTJ sejauh ini</h2><Donat data={[{ label: "Akad", value: ringkas.funnel.akad }, { label: "Batal", value: ringkas.funnel.batal }, { label: "Masih proses", value: Math.max(0, ringkas.funnel.utj - ringkas.funnel.akad - ringkas.funnel.batal) }]} tengah={String(ringkas.funnel.utj)} sub="UTJ" />
+        <p className="muted" style={{ fontSize: 12 }}>{Math.round((ringkas.funnel.akad / Math.max(1, ringkas.funnel.utj)) * 100)}% UTJ sudah akad, {Math.round((ringkas.funnel.batal / Math.max(1, ringkas.funnel.utj)) * 100)}% batal.</p></div>
+      <div className="card"><h2>Tipe paling laku (akad)</h2><Donat data={ringkas.byType.slice(0, 5).map((t) => ({ label: t.tipe, value: t.akad }))} tengah={String(ringkas.funnel.akad)} sub="akad" />
+        <p className="muted" style={{ fontSize: 12 }}>Lima tipe teratas dari seluruh riwayat penjualan.</p></div></div>}
     <section className="stack"><h2>Lihat lebih dalam</h2>
       <div className="linkgrid">{LINK.map(([h, n, s]) => <Link key={h} href={h} className="linkcard"><b>{n}</b><span>{s}</span></Link>)}</div></section>
   </main></>);
