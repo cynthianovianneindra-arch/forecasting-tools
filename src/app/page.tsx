@@ -10,7 +10,7 @@ import { cards } from "@/lib/insights";
 import Link from "next/link";
 import { TargetCard } from "@/components/TargetCard";
 import { hitungCapaian } from "@/lib/target";
-import { onedriveConfigured } from "@/lib/onedrive";
+import { sumberExcel } from "@/lib/sinkronExcel";
 import { sesiSaatIni } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -38,8 +38,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   if (d.source !== "demo" && d.open > 0) temuan.push({ judul: `${d.open} berkas outstanding, potensi Rp ${f1(d.open * d.netPrice)} miliar`, isi: "UTJ yang belum akad dan belum batal.", aksi: "dorong penyelesaian berkas yang sedang diproses bank." });
   return (<><Nav active="/" updated={d.source === "demo" ? "Sumber: fixture" : `Data ${d.end}`} /><main className="wrap stack"><p>{badge(d.source)}</p>
     {q.ok && <p className="ok">{q.ok}</p>}{q.err && <p className="err">{q.err}</p>}
-    {admin && (onedriveConfigured()
-      ? <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}><span>Sumber data: <b>Excel di OneDrive</b>, diperbarui otomatis di latar belakang{diperbarui ? <> (terakhir dibaca {diperbarui})</> : null}.</span>
+    {admin && (sumberExcel()
+      ? <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}><span>Sumber data: <b>Excel di {sumberExcel()}</b>, diperbarui otomatis di latar belakang{diperbarui ? <> (terakhir dibaca {diperbarui})</> : null}.</span>
           <form action="/api/sync" method="post"><button className="btn alt" type="submit">Sinkron Excel sekarang</button></form></div>
       : <p className="warn">Excel belum terhubung ke OneDrive: isi <code>ONEDRIVE_EXCEL_URL</code> (tautan berbagi "Siapa saja yang memiliki link dapat melihat") di pengaturan Vercel, lalu redeploy. Sementara itu data memakai unggahan terakhir (menu cadangan: alamat /data).</p>)}
     <FilterBar opts={d.opts} cur={filter} metode={metode} terbaik={d.f.banding.terbaik} />
