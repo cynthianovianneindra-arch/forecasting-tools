@@ -11,6 +11,7 @@ import { applyFilter, cards, Filter, options, rentangPeriode } from "./insights"
 import { stockSummary, stockoutMonth, stockShortfall } from "./stock";
 import { macroContext, utjMonthMap } from "./macro";
 import { NET_PRICE_MILIAR } from "./whatif";
+import { rapikanMarketing, rapikanTxns, rapikanUnits } from "./rapi";
 
 export const EXCEL_PATH = path.join(process.cwd(), "data", "FORECASTING_UPDATE.xlsx");
 
@@ -45,6 +46,7 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
     report = await importPenjualan(EXCEL_PATH, mode);
     source = "excel";
   }
+  if (report) report = { ...report, txns: rapikanTxns(report.txns), marketing: report.marketing ? rapikanMarketing(report.marketing) : undefined, units: report.units ? rapikanUnits(report.units) : undefined };
   if (report) {
     txns = report.txns;
     const months = txns.map((t) => t.utj).sort();

@@ -25,6 +25,11 @@ export function Analisa({ mk }: { mk: MK }) {
         <p className="muted" style={{ fontSize: 12 }}>Porsi UTJ mencakup seluruh riwayat: bandingkan porsi, bukan konversi.</p>
         <h2 style={{ marginTop: 12 }}>Struktur biaya</h2>
         <table><tbody>{mk.kategori.map((x) => <tr key={x.kategori}><td>{x.kategori}</td><td className="n">Rp {f1(x.biaya / 1e6)} jt ({f1(x.porsi)}%)</td></tr>)}</tbody></table></div>
+      <div className="card"><h2>Leads yang jadi UTJ</h2>
+        <p className="muted" style={{ fontSize: 12 }}>Dicocokkan lewat nama dan marketing (atau nomor telepon bila ada kolom nomor di sheet PENJUALAN). Nama dan nomor tidak disimpan. Banyak lead hanya bernama depan atau tanpa nama, jadi angka ini batas bawah.</p>
+        <table><thead><tr><th>Database</th><th className="n">Leads</th><th className="n">UTJ pasti</th><th className="n">Kemungkinan</th><th className="n">Konversi</th></tr></thead>
+          <tbody>{mk.konversiLeads.map((x) => <tr key={x.database}><td>{x.database}</td><td className="n">{x.leads}</td><td className="n">{x.utj}</td><td className="n">{x.kira}</td><td className="n">{f1(x.persen)}%</td></tr>)}</tbody></table>
+        <p className="muted" style={{ fontSize: 12 }}>Total: {mk.leadsJadiUtj.pasti} pasti dan {mk.leadsJadiUtj.kira} kemungkinan dari {s.leads} leads. Kualitas nomor telepon: {mk.telepon.ada ? `${f1(mk.telepon.persenValid)}% valid setelah diseragamkan ke format 62, ${mk.telepon.ganda} nomor ganda (${f1(mk.telepon.persenGanda)}%)` : "tidak ada data nomor"}.</p></div>
       <div className="card" style={{ gridColumn: "1 / -1" }}><h2>Temuan dan tindakan marketing</h2>
         {mk.findings.length === 0 ? <p className="muted">Tidak ada temuan yang melewati ambang aturan pada periode ini.</p> : mk.findings.map((f, i) => (
           <div key={f.id} style={{ borderTop: i ? "1px solid #DEDDDB" : "none", padding: "8px 0" }}>

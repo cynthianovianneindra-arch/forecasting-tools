@@ -1,8 +1,10 @@
 import ExcelJS from "exceljs";
 import type { Txn } from "./forecast";
+import { normalisasiTelepon } from "./rapi";
+import { cocokkanLeads, normNama } from "./leads";
 
 /** Leads diagregasi (tanpa nama/telepon) dan biaya event; sumber: sheet LEADS dan EVENT MARKETING. */
-export interface LeadAgg { bulan: string; database: string; asal: string; marketing: string; status: string; n: number; survey: number }
+export interface LeadAgg { bulan: string; database: string; asal: string; marketing: string; status: string; n: number; survey: number; utj?: number; utjKira?: number; telp?: number; telpValid?: number; ganda?: number }
 export interface EventCost { bulan: string; kategori: string; kegiatan: string; biaya: number }
 export interface MarketingData { leads: LeadAgg[]; events: EventCost[] }
 
@@ -68,8 +70,11 @@ export async function importPenjualan(input: string | Buffer | ArrayBuffer, mode
   const ws = wb.getWorksheet("PENJUALAN");
   if (!ws) throw new Error("Sheet PENJUALAN tidak ditemukan");
   const txns: Txn[] = [];
+  const utjNama: { nama: string; bulan: string; marketing: string; telp?: string | null }[] = []; // hanya di memori untuk mencocokkan leads; tidak disimpan
   const warnings: string[] = [];
   let rows = 0;
+  let kolomTelp = 0; // kolom nomor telepon di PENJUALAN (opsional; hanya dipakai di memori untuk mencocokkan leads)
+  for (let r = 1; r <= 3 && !kolomTelp; r++) ws.getRow(r).eachCell((cell, c) => { if (!kolomTelp && /\b(no\.?\s*(tlp|telp|hp|wa)|telepon|telp|tlp|hp|whatsapp)\b/i.test(text(cell.value))) kolomTelp = c; });
   ws.eachRow({ includeEmpty: false }, (row, n) => {
     if (n < FIRST_ROW) return;
     rows++;
@@ -82,6 +87,7 @@ export async function importPenjualan(input: string | Buffer | ArrayBuffer, mode
     if (a.m && b.m) warnings.push(`Baris ${n}: akad dan batal sama-sama terisi`);
     const banks = BANK_COLS.map((c) => ({ bank: normName(row.getCell(c).value), hari: num(row.getCell(c + 3).value), status: text(row.getCell(c + 4).value).toUpperCase() })).filter((x) => x.bank);
     const unitId = normName(row.getCell(2).value);
+    utjNama.push({ nama: normNama(text(row.getCell(8).value)), bulan: u.m, marketing: normName(row.getCell(C.marketing).value), telp: kolomTelp ? normalisasiTelepon(row.getCell(kolomTelp).value) : null });
     txns.push({
       utj: u.m, akad: a.m, batal: b.m, ...(unitId ? { unit: unitId } : {}),
       spr: hasValue(row.getCell(C.spr).value),
@@ -96,7 +102,7 @@ export async function importPenjualan(input: string | Buffer | ArrayBuffer, mode
       banks,
     });
   });
-  const marketing = parseMarketing(wb);
+  const marketing = parseMarketing(wb, utjNama);
   const units = parseUnits(wb), macro = parseMacro(wb);
   if (units) {
     const byId = new Map(units.map((x) => [x.unit, x]));
@@ -113,11 +119,12 @@ export async function importPenjualan(input: string | Buffer | ArrayBuffer, mode
 
 const val = (c: ExcelJS.Cell) => { const x = c.value; return x && typeof x === "object" && !(x instanceof Date) && "result" in x ? (x as { result: unknown }).result : x; };
 
-/** Baca LEADS (kolom B database, C asal, D tanggal, I marketing, M status, L tanggal survey) dan EVENT MARKETING (B tanggal, C kegiatan, D kategori, H biaya). Kolom nama dan telepon tidak dibaca. */
-export function parseMarketing(wb: ExcelJS.Workbook): MarketingData | undefined {
+/** Baca LEADS (kolom B database, C asal, D tanggal, I marketing, M status, L tanggal survey) dan EVENT MARKETING (B tanggal, C kegiatan, D kategori, H biaya). Nama dan telepon hanya dibaca di memori (untuk mencocokkan UTJ dan mendeteksi nomor ganda) dan tidak pernah disimpan. */
+export function parseMarketing(wb: ExcelJS.Workbook, utjNama: { nama: string; bulan: string; marketing: string; telp?: string | null }[] = []): MarketingData | undefined {
   const L = wb.getWorksheet("LEADS"), E = wb.getWorksheet("EVENT MARKETING");
   if (!L && !E) return undefined;
   const agg = new Map<string, LeadAgg>();
+  const baris: { k: string; nama: string; bulan: string; marketing: string; telp: string | null; ada: boolean }[] = [];
   if (L) for (let r = 4; r <= L.rowCount; r++) {
     const row = L.getRow(r);
     const bulan = cellToMonth(val(row.getCell(4))).m;
@@ -125,9 +132,24 @@ export function parseMarketing(wb: ExcelJS.Workbook): MarketingData | undefined 
     const database = normName(val(row.getCell(2))) || "(KOSONG)", asal = normName(val(row.getCell(3))) || "(KOSONG)";
     const marketing = normName(val(row.getCell(9))) || "(KOSONG)", status = normName(val(row.getCell(13)));
     const k = [bulan, database, asal, marketing, status].join("|");
-    const e = agg.get(k) ?? { bulan, database, asal, marketing, status, n: 0, survey: 0 };
+    const e = agg.get(k) ?? { bulan, database, asal, marketing, status, n: 0, survey: 0, utj: 0, utjKira: 0, telp: 0, telpValid: 0, ganda: 0 };
     e.n++; if (cellToMonth(val(row.getCell(12))).m) e.survey++;
     agg.set(k, e);
+    // nama dan telepon hanya dibaca di memori: untuk mencocokkan UTJ dan mendeteksi nomor ganda, lalu dibuang
+    const mentahTelp = val(row.getCell(6));
+    const ada = mentahTelp !== null && mentahTelp !== undefined && String(mentahTelp).trim() !== "";
+    baris.push({ k, nama: normNama(val(row.getCell(5))), bulan, marketing, telp: normalisasiTelepon(mentahTelp), ada });
+  }
+  if (baris.length) {
+    const cocok = utjNama.length ? cocokkanLeads(baris.map((b) => ({ nama: b.nama, bulan: b.bulan, marketing: b.marketing, telp: b.telp })), utjNama) : new Map<number, "pasti" | "kira">();
+    const lihat = new Set<string>();
+    baris.forEach((b, i) => {
+      const e = agg.get(b.k)!;
+      if (b.ada) e.telp = (e.telp ?? 0) + 1;
+      if (b.telp) { e.telpValid = (e.telpValid ?? 0) + 1; if (lihat.has(b.telp)) e.ganda = (e.ganda ?? 0) + 1; else lihat.add(b.telp); }
+      const c = cocok.get(i);
+      if (c === "pasti") e.utj = (e.utj ?? 0) + 1; else if (c === "kira") e.utjKira = (e.utjKira ?? 0) + 1;
+    });
   }
   const events: EventCost[] = [];
   if (E) for (let r = 5; r <= E.rowCount; r++) {

@@ -6,7 +6,9 @@ import { Analisa } from "@/components/Analisa";
 import { getData } from "@/lib/data";
 import { parseMetode } from "@/lib/forecast";
 import { BandingMetodeCard } from "@/components/Metode";
-import { rentangPeriode } from "@/lib/insights";
+import { applyFilter, rentangPeriode } from "@/lib/insights";
+import { performaTim } from "@/lib/marketing";
+import { PerformaTim } from "@/components/PerformaTim";
 import { labelPenuh } from "@/lib/format";
 import { TargetCard } from "@/components/TargetCard";
 import { hitungCapaian } from "@/lib/target";
@@ -21,6 +23,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const r = rentangPeriode(filter);
   const periode = r.dari || r.sampai ? (r.dari === r.sampai ? labelPenuh(r.dari!) : `${r.dari ? labelPenuh(r.dari) : "awal data"} s.d. ${r.sampai ? labelPenuh(r.sampai) : "akhir data"}`) : "seluruh periode";
   const capaian = !d.filtered && !d.periodeAktif && d.source !== "demo" ? hitungCapaian(d.targets, d.monthly, d.f.rows, d.end.slice(0, 4), d.end) : null;
+  const txPeriode = d.source === "demo" ? [] : applyFilter(d.txns, filter, false);
+  const pm = txPeriode.length ? performaTim(txPeriode, "marketing") : null, pa = txPeriode.length ? performaTim(txPeriode, "agent") : null;
   return (<><Nav active="/" updated={d.source === "demo" ? "Sumber: fixture" : `Data ${d.end}`} /><main className="wrap stack"><p>{badge(d.source)}</p>
     <FilterBar opts={d.opts} cur={filter} metode={metode} terbaik={d.f.banding.terbaik} />
     {d.periodeAktif && <p className="warn">Proyeksi dan grafik mengikuti periode: dihitung hanya dari data {labelPenuh(d.periodeAktif.start)} s.d. {labelPenuh(d.periodeAktif.end)} ({d.periodeAktif.n} bulan), lalu diproyeksikan 12 bulan setelah {labelPenuh(d.periodeAktif.end)}.{d.periodeAktif.n < 12 ? " Periode kurang dari 12 bulan: rentang proyeksi diperkirakan dan kurang andal." : ""}{!d.stok && d.units ? " Kartu stok disembunyikan karena stok adalah kondisi terkini." : ""}</p>}
@@ -30,6 +34,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     <Dashboard metode={metode} monthly={d.monthly} rows={d.f.rows} netPrice={d.netPrice} divergent={d.f.trendDivergent} stok={d.stok} stokHabis={d.stokHabis} stokKurang={d.stokKurang} makro={d.makro} outstanding={d.open} />
     <BandingMetodeCard banding={d.f.banding} metode={metode} origins={d.f.bt.origins} />
     {d.kartu && <section className="stack"><h2>Data aktual ({periode})</h2><Cards k={d.kartu} /></section>}
+    {pm && pa && <PerformaTim marketing={pm.baris} agent={pa.baris} rataAkad={pm.rataAkad} rataBatal={pm.rataBatal} />}
     {!d.mk && d.mkAda && <p className="muted">Tidak ada data marketing (leads dan biaya event) pada periode ini; data marketing tersedia mulai Okt 2025.</p>}
     {d.mk && <section className="stack"><h2>Analisa marketing ({periode})</h2><Analisa mk={d.mk} /></section>}</main></>);
 }

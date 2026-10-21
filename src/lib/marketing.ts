@@ -41,20 +41,26 @@ export function marketingInsights(m: MarketingData, txns: Txn[]) {
   const noStatus = sum(m.leads.filter((l) => !l.status).map((l) => l.n));
   const mk = new Map<string, { n: number; filled: number }>();
   for (const l of m.leads) { const e = mk.get(l.marketing) ?? { n: 0, filled: 0 }; e.n += l.n; if (l.status) e.filled += l.n; mk.set(l.marketing, e); }
-  const statusPerMarketing = [...mk].map(([nama, e]) => ({ marketing: nama, leads: e.n, terisi: pct(e.filled, e.n) })).filter((x) => x.leads >= 30 && x.marketing !== "(KOSONG)").sort((a, b) => b.terisi - a.terisi);
+  const statusPerMarketing = [...mk].map(([nama, e]) => ({ marketing: nama, leads: e.n, terisi: pct(e.filled, e.n) })).filter((x) => x.leads >= 30 && x.marketing.toUpperCase() !== "(KOSONG)").sort((a, b) => b.terisi - a.terisi);
 
   const db = new Map<string, { leads: number; survey: number }>();
   for (const l of m.leads) { const e = db.get(l.database) ?? { leads: 0, survey: 0 }; e.leads += l.n; e.survey += l.survey; db.set(l.database, e); }
   const utjDb = new Map<string, number>();
   for (const t of txns) if (t.database) utjDb.set(t.database.toUpperCase(), (utjDb.get(t.database.toUpperCase()) ?? 0) + 1);
   const utjTotalDb = sum([...utjDb.values()]);
-  const sumber = [...db].map(([nama, e]) => ({ database: nama, porsiLeads: pct(e.leads, leads), porsiSurvey: pct(e.survey, sum([...db.values()].map((x) => x.survey))), surveyPerLeads: pct(e.survey, e.leads), porsiUtj: pct(utjDb.get(nama) ?? 0, utjTotalDb) })).sort((a, b) => b.porsiLeads - a.porsiLeads).slice(0, 6);
+  const sumber = [...db].map(([nama, e]) => ({ database: nama, porsiLeads: pct(e.leads, leads), porsiSurvey: pct(e.survey, sum([...db.values()].map((x) => x.survey))), surveyPerLeads: pct(e.survey, e.leads), porsiUtj: pct(utjDb.get(nama.toUpperCase()) ?? 0, utjTotalDb) })).sort((a, b) => b.porsiLeads - a.porsiLeads).slice(0, 6);
 
-  const inh = (t: Txn) => t.agent === "INHOUSE";
+  const inh = (t: Txn) => t.agent?.toUpperCase() === "INHOUSE";
   const batalIn = { n: txns.filter(inh).length, b: txns.filter((t) => inh(t) && t.batal).length };
   const batalOut = { n: txns.filter((t) => !inh(t)).length, b: txns.filter((t) => !inh(t) && t.batal).length };
   const batalInPct = pct(batalIn.b, batalIn.n), batalOutPct = pct(batalOut.b, batalOut.n);
 
+  const kv = new Map<string, { leads: number; utj: number; kira: number }>();
+  for (const l of m.leads) { const e = kv.get(l.database) ?? { leads: 0, utj: 0, kira: 0 }; e.leads += l.n; e.utj += l.utj ?? 0; e.kira += l.utjKira ?? 0; kv.set(l.database, e); }
+  const konversiLeads = [...kv].map(([database, e]) => ({ database, leads: e.leads, utj: e.utj, kira: e.kira, persen: pct(e.utj + e.kira, e.leads) })).filter((x) => x.leads >= 20).sort((a, b) => b.leads - a.leads).slice(0, 6);
+  const tel = { ada: sum(m.leads.map((l) => l.telp ?? 0)), valid: sum(m.leads.map((l) => l.telpValid ?? 0)), ganda: sum(m.leads.map((l) => l.ganda ?? 0)) };
+  const telepon = { ...tel, persenValid: pct(tel.valid, tel.ada), persenGanda: pct(tel.ganda, tel.valid) };
+  const leadsJadiUtj = { pasti: sum(m.leads.map((l) => l.utj ?? 0)), kira: sum(m.leads.map((l) => l.utjKira ?? 0)) };
   const rBiayaLeads = pearson(perBulan.map((x) => x.biaya), perBulan.map((x) => x.leads));
   const rBiayaUtj = pearson(perBulan.map((x) => x.biaya), perBulan.map((x) => x.utj));
   const med = median(perBulan.map((x) => x.biaya));
@@ -91,5 +97,24 @@ export function marketingInsights(m: MarketingData, txns: Txn[]) {
   const rec = txns.filter((t) => t.batal && t.alasanBatal).length;
   if (cov && rec / cov < 0.5) f.push({ id: "alasan", judul: "Alasan batal belum lengkap", label: "data",
     temuan: `Alasan batal baru tercatat untuk ${rec} dari ${cov} kasus.`, tindakan: "Wajibkan alasan batal saat tanggal batal diisi.", ukuran: "Alasan batal terisi untuk semua kasus baru.", prioritas: "Tinggi" });
-  return { stats, perBulan, kategori, statusPerMarketing, sumber, findings: f.slice(0, 5) };
+  return { stats, perBulan, kategori, statusPerMarketing, sumber, konversiLeads, telepon, leadsJadiUtj, findings: f.slice(0, 5) };
+}
+
+export type Mutu = "Bagus" | "Cukup" | "Perlu perhatian" | "Sampel kecil";
+export interface BarisTim { nama: string; utj: number; akad: number; batal: number; outstanding: number; persenAkad: number; persenBatal: number; mutu: Mutu }
+
+/** Mutu berkas per marketing atau agent: bandingkan persen batal dan persen akad dengan rata-rata seluruh tim.
+ *  Bagus = batal tidak di atas rata-rata dan akad tidak di bawah rata-rata; Perlu perhatian = batal lebih dari 10 poin di atas rata-rata atau akad lebih dari 15 poin di bawah; UTJ < 5 = sampel kecil. */
+export function performaTim(txns: Txn[], bidang: "marketing" | "agent"): { baris: BarisTim[]; rataAkad: number; rataBatal: number } {
+  const tot = { u: txns.length, a: txns.filter((t) => t.akad).length, b: txns.filter((t) => t.batal).length };
+  const rataAkad = pct(tot.a, tot.u), rataBatal = pct(tot.b, tot.u);
+  const g = new Map<string, Txn[]>();
+  for (const t of txns) { const k = t[bidang]; if (k) g.set(k, [...(g.get(k) ?? []), t]); }
+  const baris = [...g].map(([nama, xs]): BarisTim => {
+    const utj = xs.length, akad = xs.filter((t) => t.akad).length, batal = xs.filter((t) => t.batal).length;
+    const pa = pct(akad, utj), pb = pct(batal, utj);
+    const mutu: Mutu = utj < 5 ? "Sampel kecil" : pb > rataBatal + 10 || pa < rataAkad - 15 ? "Perlu perhatian" : pb <= rataBatal && pa >= rataAkad ? "Bagus" : "Cukup";
+    return { nama, utj, akad, batal, outstanding: utj - akad - batal, persenAkad: pa, persenBatal: pb, mutu };
+  }).sort((a, b) => b.utj - a.utj);
+  return { baris, rataAkad, rataBatal };
 }
