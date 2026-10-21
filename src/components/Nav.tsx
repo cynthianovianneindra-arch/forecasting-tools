@@ -28,7 +28,7 @@ export async function Nav({ active, updated }: { active: string; updated: string
         {sesi && (
           <div className="sideuser">
             <Link href="/akun" className="who" title="Akun saya"><b>{sesi.nm}</b><small>{sesi.rl === "admin" ? "Admin" : "Pengguna"} · {sesi.em}</small></Link>
-            <form method="post" action="/api/auth/logout"><button type="submit" className="btn alt keluar">Keluar</button></form>
+            <form method="post" action="/api/auth/logout"><button type="submit" className="keluar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4.5H6.5a1.5 1.5 0 0 0-1.5 1.5v12a1.5 1.5 0 0 0 1.5 1.5H10M14.5 8l4 4-4 4M18.5 12H9.5" /></svg>Log Out</button></form>
           </div>)}
         <div className="sidefoot">PT Neo Pudji Jaya</div>
       </aside>
