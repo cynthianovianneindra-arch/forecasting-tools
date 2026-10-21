@@ -15,6 +15,14 @@ export interface BerkasExcel { buffer: ArrayBuffer; nama: string; sidik: string;
 export const miripXlsx = (b: ArrayBuffer) => { const u = new Uint8Array(b.slice(0, 2)); return u[0] === 0x50 && u[1] === 0x4b; };
 export const sidikBerkas = (b: ArrayBuffer) => createHash("sha256").update(Buffer.from(b)).digest("hex").slice(0, 10);
 
+/** Env bisa berisi kode iframe lengkap, tanda kutip, atau spasi: ambil alamat https-nya saja (atribut src bila ada). */
+export function bersihkanTautan(mentah: string): string {
+  const t = mentah.trim();
+  const src = t.match(/src\s*=\s*["']([^"']+)["']/i)?.[1];
+  const u = src ?? t.match(/https?:\/\/[^\s"'<>]+/i)?.[0] ?? t.replace(/^["']|["']$/g, "");
+  return u.replace(/&amp;/g, "&").trim();
+}
+
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
 /** Alamat unduhan langsung dari tautan lama/embed OneDrive pribadi (onedrive.live.com dengan resid): /download?cid&resid&authkey. Selain itu null. */
@@ -36,8 +44,10 @@ export function kandidatUnduhan(url: string): string[] {
 }
 
 export async function unduhDariOneDrive(f: typeof fetch = fetch): Promise<BerkasExcel> {
-  const url = process.env.ONEDRIVE_EXCEL_URL;
-  if (!url) throw new Error("ONEDRIVE_EXCEL_URL belum diset di Vercel");
+  const mentah = process.env.ONEDRIVE_EXCEL_URL;
+  if (!mentah) throw new Error("ONEDRIVE_EXCEL_URL belum diset di Vercel");
+  const url = bersihkanTautan(mentah);
+  if (!/^https?:\/\//i.test(url)) throw new Error("ONEDRIVE_EXCEL_URL tidak berisi alamat https yang valid");
   const galat: string[] = [];
   const cara = kandidatUnduhan(url);
   // Tautan pendek (1drv.ms): ikuti pengalihan satu langkah untuk mendapat alamat onedrive.live.com yang memuat resid
