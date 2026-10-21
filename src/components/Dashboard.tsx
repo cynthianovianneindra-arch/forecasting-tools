@@ -68,9 +68,6 @@ export function Dashboard({ metode = "ets", monthly, rows, netPrice, divergent, 
           {stok && <div className="card"><h2>Stok tersedia dijual</h2><div className="kpi">{stok.open} unit</div><p className="muted">status Open dari {stok.total} unit (sheet UNIT). Belum dibangun (Close): {stok.belumDibangun} unit, bisa dijual setelah dibangun.</p>
             {stokHabis !== null && stokHabis !== undefined ? <p className="err">Pada laju proyeksi (UTJ dikurangi batal), stok Open habis di bulan ke-{stokHabis} dan kurang sekitar {stokKurang} unit dalam 12 bulan. Proyeksi di atas mengasumsikan unit tersedia; unit belum dibangun (Close) perlu dibangun.</p> : <p className="muted">Stok cukup untuk seluruh 12 bulan proyeksi.</p>}
             <table><thead><tr><th>Tipe</th><th className="n">Open</th><th className="n">Belum dibangun</th></tr></thead><tbody>{stockByType(stok).map((x) => <tr key={x.tipe}><td>{x.tipe}</td><td className="n">{x.open}</td><td className="n">{x.belum}</td></tr>)}</tbody></table></div>}
-          {makro && <div className="card"><h2>Konteks ekonomi</h2>
-            <table><thead><tr><th>Indikator</th><th className="n">Terakhir</th><th className="n">Korelasi UTJ</th></tr></thead><tbody>{makro.map((m) => <tr key={m.indikator}><td>{m.indikator}</td><td className="n">{m.nilaiTerakhir === null ? "-" : m.nilaiTerakhir.toLocaleString("id-ID", { maximumFractionDigits: 2 })}<span className="muted"> ({m.terakhir ?? "-"})</span></td><td className="n">{m.korelasi === null ? "-" : m.korelasi.toLocaleString("id-ID")}</td></tr>)}</tbody></table>
-            <p className="muted" style={{ fontSize: 12 }}>Korelasi bulanan lemah (di bawah 0,3): hanya konteks, bukan penggerak proyeksi.</p></div>}
         </div>
       </div>
     </div>

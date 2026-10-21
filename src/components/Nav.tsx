@@ -2,17 +2,22 @@ import Link from "next/link";
 import { sesiSaatIni } from "@/lib/auth";
 const ic = {
   "/": <><rect x="3.5" y="3.5" width="7" height="7" rx="2" /><rect x="13.5" y="3.5" width="7" height="7" rx="2" /><rect x="3.5" y="13.5" width="7" height="7" rx="2" /><rect x="13.5" y="13.5" width="7" height="7" rx="2" /></>,
-  "/simulasi": <><path d="M5 20V10M12 20V4M19 20v-7" /></>,
+  "/simulasi": <><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></>,
+  "/pasar": <><path d="M3.5 4v16.5H20M7 16l4-5 3 3 5-7" /></>,
+  "/marketing": <><path d="M4 10v4h3l7 4V6L7 10zM17 9a4 4 0 0 1 0 6" /></>,
+  "/bank": <><path d="M3.5 9.5L12 4l8.5 5.5M5.5 10.5v6.5M10 10.5v6.5M14 10.5v6.5M18.5 10.5v6.5M3.5 19.5h17" /></>,
+  "/produk": <><path d="M4 11l8-6.5L20 11v8.5H4zM10 19.5v-5h4v5" /></>,
+  "/penjualan": <><path d="M5 19.5V13M10 19.5V8M15 19.5v-9M20 19.5v-12" /></>,
   "/laporan": <><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 7 20z" /><path d="M14 3.5V8h4M9.5 13h5M9.5 16.5h5" /></>,
   "/data": <><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></>,
   "/pengguna": <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M16 5.2a3 3 0 0 1 0 5.6M17.5 14.3c2 .6 3.5 2.3 3.5 4.7" /></>,
   "/akun": <><circle cx="12" cy="8.5" r="3.5" /><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" /></>,
 } as Record<string, React.ReactNode>;
-const dasar = [["/", "Dashboard"], ["/simulasi", "Simulasi"], ["/laporan", "Laporan PDF"], ["/data", "Data & Integrasi"]];
+const dasar = [["/", "Dashboard"], ["/pasar", "Pasar & Ekonomi"], ["/marketing", "Marketing & Leads"], ["/bank", "Proses Bank"], ["/produk", "Produk & Stok"], ["/penjualan", "Penjualan"], ["/simulasi", "Simulasi"], ["/laporan", "Laporan PDF"]];
 const NAMA_HALAMAN: Record<string, string> = { "/akun": "Akun saya", "/pengguna": "Pengguna" };
 export async function Nav({ active, updated }: { active: string; updated: string }) {
   const sesi = await sesiSaatIni();
-  const items = sesi?.rl === "admin" ? [...dasar, ["/pengguna", "Pengguna"]] : dasar;
+  const items = sesi?.rl === "admin" ? [...dasar, ["/data", "Data & Integrasi"], ["/pengguna", "Pengguna"]] : dasar;
   const nama = items.find(([h]) => h === active)?.[1] ?? NAMA_HALAMAN[active] ?? "Dashboard";
   return (
     <>

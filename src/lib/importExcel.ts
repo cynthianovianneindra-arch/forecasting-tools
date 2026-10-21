@@ -9,7 +9,7 @@ export interface EventCost { bulan: string; kategori: string; kegiatan: string; 
 export interface MarketingData { leads: LeadAgg[]; events: EventCost[] }
 
 export interface UnitRow { unit: string; tipe: string; tahap: string; cluster: string; status: string }
-export interface MacroRow { bulan: string; emas: number | null; ihsg: number | null; inflasi: number | null; ihpr: number | null; birate: number | null }
+export interface MacroRow { bulan: string; emas: number | null; ihsg: number | null; inflasi: number | null; ihpr: number | null; birate: number | null; umrJatim?: number | null; umkSby?: number | null; umkSda?: number | null; nikah?: number | null; lahir?: number | null }
 
 export interface ImportReport {
   units?: UnitRow[];
@@ -99,6 +99,9 @@ export async function importPenjualan(input: string | Buffer | ArrayBuffer, mode
       database: text(row.getCell(44).value) || undefined,
       alasanBatal: text(row.getCell(C.alasan).value) || undefined,
       netPrice: ((v) => (v !== null && v > 1e7 ? v : undefined))(num(row.getCell(14).value)),
+      promo: text(row.getCell(15).value).toUpperCase() || undefined,
+      harga: ((v) => (v !== null && v > 1e7 ? v : undefined))(num(row.getCell(11).value)),
+      diskon: ((v) => (v !== null && v > 0 ? v : undefined))(num(row.getCell(12).value)),
       banks,
     });
   });
@@ -174,7 +177,7 @@ export function parseUnits(wb: ExcelJS.Workbook): UnitRow[] | undefined {
   return out;
 }
 
-/** Sheet INSTRUMEN EKONOMI (kolom P bulan, Q emas, R IHSG, S inflasi, T IHPR, Z BI Rate). Pernikahan/kelahiran/UMR tahunan sengaja tidak diambil (bukan sinyal bulanan). */
+/** Sheet INSTRUMEN EKONOMI (kolom P bulan, Q emas, R IHSG, S inflasi, T IHPR, U UMR Jatim, V UMK Surabaya, W UMK Sidoarjo, X pernikahan, Y kelahiran, Z BI Rate). UMR/UMK dan pernikahan/kelahiran bersifat tahunan (diulang tiap bulan) dan dipakai sebagai konteks daya beli, bukan sinyal bulanan. */
 export function parseMacro(wb: ExcelJS.Workbook): MacroRow[] | undefined {
   const I = wb.getWorksheet("INSTRUMEN EKONOMI");
   if (!I) return undefined;
@@ -182,7 +185,7 @@ export function parseMacro(wb: ExcelJS.Workbook): MacroRow[] | undefined {
   for (let r = 4; r <= I.rowCount; r++) {
     const row = I.getRow(r), bulan = cellToMonth(val(row.getCell(16))).m;
     if (!bulan) continue;
-    out.push({ bulan, emas: num(val(row.getCell(17))), ihsg: num(val(row.getCell(18))), inflasi: num(val(row.getCell(19))), ihpr: num(val(row.getCell(20))), birate: num(val(row.getCell(26))) });
+    out.push({ bulan, emas: num(val(row.getCell(17))), ihsg: num(val(row.getCell(18))), inflasi: num(val(row.getCell(19))), ihpr: num(val(row.getCell(20))), birate: num(val(row.getCell(26))), umrJatim: num(val(row.getCell(21))), umkSby: num(val(row.getCell(22))), umkSda: num(val(row.getCell(23))), nikah: num(val(row.getCell(24))), lahir: num(val(row.getCell(25))) });
   }
   return out;
 }
