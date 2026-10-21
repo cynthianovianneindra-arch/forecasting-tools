@@ -9,6 +9,8 @@ import { Temuan } from "@/components/Grafik";
 import Link from "next/link";
 import { TargetCard } from "@/components/TargetCard";
 import { hitungCapaian } from "@/lib/target";
+import { onedriveConfigured } from "@/lib/onedrive";
+import { sesiSaatIni } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const filter = { tipe: q.tipe || undefined, agent: q.agent || undefined, marketing: q.marketing || undefined, cluster: q.cluster || undefined, tahap: q.tahap || undefined, tahun: q.tahun || undefined, dari: q.dari || undefined, sampai: q.sampai || undefined };
   const metode = parseMetode(q.metode);
   const d = await getData("kalender", filter, metode);
+  const admin = (await sesiSaatIni())?.rl === "admin";
+  const diperbarui = d.uploadInfo ? new Date(d.uploadInfo.uploaded_at).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
   const capaian = !d.filtered && !d.periodeAktif && d.source !== "demo" ? hitungCapaian(d.targets, d.monthly, d.f.rows, d.end.slice(0, 4), d.end) : null;
   // Temuan utama: tiga hal yang paling perlu dibaca, dihitung dari data (bukan oleh Claude)
   const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
@@ -31,6 +35,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   if (d.stokHabis !== null && d.stokHabis !== undefined) temuan.push({ judul: `Stok Open habis di bulan ke-${d.stokHabis} (${labelPanjang(addMonths(d.end, d.stokHabis))})`, isi: "Pada laju proyeksi (UTJ dikurangi batal).", aksi: "siapkan order bangun, lihat rekomendasinya di Produk & Stok." });
   if (d.source !== "demo" && d.open > 0) temuan.push({ judul: `${d.open} berkas outstanding, potensi Rp ${f1(d.open * d.netPrice)} miliar`, isi: "UTJ yang belum akad dan belum batal.", aksi: "dorong penyelesaian berkas yang sedang diproses bank." });
   return (<><Nav active="/" updated={d.source === "demo" ? "Sumber: fixture" : `Data ${d.end}`} /><main className="wrap stack"><p>{badge(d.source)}</p>
+    {q.ok && <p className="ok">{q.ok}</p>}{q.err && <p className="err">{q.err}</p>}
+    {admin && (onedriveConfigured()
+      ? <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}><span>Sumber data: <b>Excel di OneDrive</b>, diperbarui otomatis di latar belakang{diperbarui ? <> (terakhir dibaca {diperbarui})</> : null}.</span>
+          <form action="/api/sync" method="post"><button className="btn alt" type="submit">Sinkron Excel sekarang</button></form></div>
+      : <p className="warn">Excel belum terhubung ke OneDrive: isi <code>ONEDRIVE_EXCEL_URL</code> (tautan berbagi "Siapa saja yang memiliki link dapat melihat") di pengaturan Vercel, lalu redeploy. Sementara itu data memakai unggahan terakhir (menu cadangan: alamat /data).</p>)}
     <FilterBar opts={d.opts} cur={filter} metode={metode} terbaik={d.f.banding.terbaik} />
     {d.periodeAktif && <p className="warn">Proyeksi dan grafik mengikuti periode: dihitung hanya dari data {labelPenuh(d.periodeAktif.start)} s.d. {labelPenuh(d.periodeAktif.end)} ({d.periodeAktif.n} bulan), lalu diproyeksikan 12 bulan setelah {labelPenuh(d.periodeAktif.end)}.</p>}
     {d.filtered && <p className="warn">Filter aktif: proyeksi dihitung ulang dari {d.nTxn} UTJ saja. Sampel kecil, rentang tidak andal.</p>}
