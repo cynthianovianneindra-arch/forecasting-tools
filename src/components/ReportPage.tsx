@@ -1,8 +1,9 @@
-export function ReportPage({ n, total, title, children }: { n: number; total: number; title: string; children: React.ReactNode }) {
+export function ReportPage({ n, total, title, temuan, children }: { n: number; total: number; title: string; temuan?: string; children: React.ReactNode }) {
   return (
     <section className="page rp">
       <div className="rp-top"><span className="rp-brand">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/logo.png" alt="" />Laporan Proyeksi Penjualan · Shaistanaya City</span><span>{String(n).padStart(2, "0")} / {String(total).padStart(2, "0")}</span></div>
       <h2 className="rp-title">{title}</h2><span className="rp-bar" />
+      {temuan && <p className="rp-lead"><Hl t={temuan} /></p>}
       {children}
       <div className="rp-foot">Semua angka dihitung mesin forecast dari data penjualan.</div>
     </section>

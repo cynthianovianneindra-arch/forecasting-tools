@@ -2,7 +2,7 @@ import { Nav, badge } from "@/components/Nav";
 import { Chart } from "@/components/Chart";
 import { ReportPage, Note, Kpi, Kpis, Hl } from "@/components/ReportPage";
 import { getData, f1, labelBulan, labelPanjang } from "@/lib/data";
-import { forecast, parseMetode, METODE_NAMA, METODE_PENJELASAN } from "@/lib/forecast";
+import { forecast, parseMetode, METODE_NAMA, METODE_PENJELASAN, addMonths } from "@/lib/forecast";
 import { MetodeSelect } from "@/components/Metode";
 import { UnduhPdf } from "@/components/UnduhPdf";
 import { persen, statusTarget } from "@/lib/target";
@@ -14,6 +14,10 @@ import { avgNetPrice, priceByType, rekomendasiDari, ringkasanDetail, RingkasInpu
 import { describeScenario, parseScenario } from "@/lib/whatif";
 import { analisisSkenario } from "@/lib/analisis";
 import { referensiDari } from "@/lib/referensi";
+import { dayaBeli, sinyalPasar, analisaPromo, skenarioTanpaPpn, minatUnit, rekomendasiOrderBangun } from "@/lib/analisaLanjut";
+import { performaTim } from "@/lib/marketing";
+import { hitungCapaian } from "@/lib/target";
+import { Garis } from "@/components/Grafik";
 import { cariNarasi, claudeConfigured, narasiLaporan } from "@/lib/claude";
 import { filterMarketing, marketingInsights } from "@/lib/marketing";
 import { applyFilter, cards } from "@/lib/insights";
@@ -126,14 +130,43 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
   const tahunPilihan = Array.from({ length: +d.end.slice(0, 4) + 4 - +first.slice(0, 4) }, (_, i) => String(+first.slice(0, 4) + i));
 
   // Daftar halaman: nomor halaman dan daftar isi dibuat dari urutan ini.
-  const P: string[] = ["Sampul", "Daftar isi", "Ringkasan", "Hasil dan perkiraan periode", "Dari UTJ sampai akad", "Stok rumah", "Tipe, harga, dan agent", "Proses bank dan ekonomi", "Hasil marketing", "Temuan marketing", "Skenario \"bagaimana jika\"", "Rekomendasi", "Cara menghitung dan batasannya"];
+  const P: string[] = ["Sampul", "Daftar isi", "Ringkasan", "Hasil dan perkiraan periode", "Daya beli masyarakat", "Dari UTJ sampai akad", "Efektivitas marketing", "Stok dan order bangun", "Tipe, harga, dan agent", "Proses bank", "Skenario \"bagaimana jika\"", "Rekomendasi", "Cara menghitung dan batasannya"];
   const T = P.length, no = (j: string) => P.findIndex((x) => x === j) + 1;
-  const pg = (j: string, children: React.ReactNode) => <ReportPage key={j} n={no(j)} total={T} title={j}>{children}</ReportPage>;
+  const pg = (j: string, children: React.ReactNode, temuan?: string) => <ReportPage key={j} n={no(j)} total={T} title={j} temuan={temuan}>{children}</ReportPage>;
   const tanggal = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
   const selisih = (a: number, b: number) => (b > 0 ? `${a >= b ? "+" : ""}${Math.round(((a - b) / b) * 100)}% vs ${n} bln terakhir` : undefined);
   const MAKS_BUTIR = 3;
-  const kartu = (b: { judul: string; butir: string[] }) => <div key={b.judul} className="rp-card"><b>{b.judul}</b><ul>{b.butir.slice(0, MAKS_BUTIR).map((x) => <li key={x}><Hl t={x} /></li>)}</ul></div>;
+  const kartu = (b: { judul: string; butir: string[] }, maks = MAKS_BUTIR) => <div key={b.judul} className="rp-card"><b>{b.judul}</b><ul>{b.butir.slice(0, maks).map((x) => <li key={x}><Hl t={x} /></li>)}</ul></div>;
 
+  // ---- Bahan untuk pertanyaan manajemen (semua angka dihitung mesin) ----
+  const dasarTx = txDasar.length >= 20 ? txDasar : txns;                 // periode laporan bila datanya cukup, kalau tidak seluruh data
+  const db = real ? dayaBeli(d.macroRows, net) : null;
+  const sinyal = real ? sinyalPasar(d.macroRows) : [];
+  const promo = real ? analisaPromo(dasarTx) : null;
+  const ppn = real ? skenarioTanpaPpn(txns, d.end, r12.map((r) => ({ utj: r.utjInt, akad: r.akadInt })), net) : null;
+  const tim = real && dasarTx.length ? performaTim(dasarTx, "marketing") : null, timAgent = real && dasarTx.length ? performaTim(dasarTx, "agent") : null;
+  const minat = real ? minatUnit(txns, d.units) : null;
+  const utj12 = sum(r12.map((r) => r.utjInt));
+  const batalPersen = txns.length ? Math.round((txns.filter((t) => t.batal).length / txns.length) * 100) : 0;
+  const habis12 = d.stok ? stockoutMonth(r12.map((r) => r.utjInt), d.stok.open, 0, r12.map((r) => r.batalInt ?? r.batal)) : null;
+  const order = real ? rekomendasiOrderBangun(txns, d.end, utj12, batalPersen, d.units, habis12) : null;
+  const capaian = real ? hitungCapaian(d.targets, d.monthly, d.f.rows, d.end.slice(0, 4), d.end) : null;
+  const nmPromo = (c: string) => (c.length <= 2 ? `Promo ${c}` : c);
+  const efektif = promo?.baris.filter((b) => b.vonis === "Efektif") ?? [], perluUbah = promo?.baris.filter((b) => b.vonis === "Perlu diubah") ?? [];
+  const rata12 = sum(d.monthly.slice(-12).map((m) => m.utj)) / 12;
+  const depan = r12[0];
+  const gebrakan = !!depan && (depan.utjInt < rata12 * 0.85 || capaian?.utj.status === "di bawah");
+  const pbBangun = order?.baris.filter((b) => b.bangun > 0).slice(0, 3).map((b) => `${b.tipe} ${b.bangun}`) ?? [];
+  const mulaiTxt = !order ? "" : order.mulaiBulan === null ? "tidak mendesak dalam 12 bulan" : order.mulaiBulan === 0 ? "sekarang" : `paling lambat ${labelPanjang(addMonths(d.end, order.mulaiBulan))}`;
+  const bagus = (tim?.baris.filter((b) => b.mutu === "Bagus").slice(0, 3).map((b) => b.nama) ?? []);
+  const tanya: [string, string][] = [
+    ["Bagaimana daya beli masyarakat sekarang dan ke depan?", !db ? "Data ekonomi belum ada." : `**${db.status}.** ${db.tahunUpah !== null ? `Satu rumah setara ${db.tahunUpah} tahun upah ${db.acuan?.nama ?? "minimum"}; perkiraan tahun depan ${db.tahunUpahDepan ?? "-"} tahun. ` : ""}BI Rate ${db.biRate?.nilai ?? "-"}%, inflasi ${db.inflasi ? f1(db.inflasi.nilai) : "-"}%.`],
+    ["Apa yang perlu dilakukan divisi marketing?", !promo ? "Menunggu data." : `${efektif.length ? `**Pertahankan ${efektif.slice(0, 2).map((b) => nmPromo(b.promo)).join(" dan ")}**` : "**Uji satu promo per periode**"}${perluUbah.length ? `, ubah atau hentikan ${perluUbah.slice(0, 2).map((b) => nmPromo(b.promo)).join(", ")}` : ""}; wajibkan status leads diisi${mk && mk.stats.persenLeadsTanpaStatus >= 50 ? ` (${f1(mk.stats.persenLeadsTanpaStatus)}% kosong)` : ""}.`],
+    ["Rekomendasi stock order bangun: unit apa?", !order ? "Data unit belum ada." : order.totalBangun > 0 ? `**Bangun ${order.totalBangun} unit**: ${pbBangun.join(", ")}.${order.kurangTanpaLahan > 0 ? ` ${order.kurangTanpaLahan} unit lain dibutuhkan tetapi tidak ada unit Close.` : ""}` : "Belum ada unit Close yang perlu dibangun."],
+    ["Bulan depan dipertahankan atau perlu gebrakan baru?", !depan ? "Menunggu data." : gebrakan ? `**Perlu gebrakan baru**: perkiraan bulan depan ${depan.utjInt} UTJ, di bawah rata-rata 12 bulan terakhir (${f1(rata12)})${capaian?.utj.status === "di bawah" ? " dan perkiraan akhir tahun di bawah target" : ""}.` : `**Pertahankan**: perkiraan bulan depan ${depan.utjInt} UTJ, setara rata-rata 12 bulan terakhir (${f1(rata12)}).`],
+    ["Butuh order bangun lagi kapan?", !order ? "Data unit belum ada." : `**${mulaiTxt}.** Stok Open ${order.stokHabisBulan === null ? "cukup 12 bulan" : `habis bulan ke-${order.stokHabisBulan}`}; bangun memakan sekitar ${order.leadBulan} bulan.`],
+    ["Promo apa yang paling berdampak di periode ini?", !promo || !promo.baris.length ? "Belum ada data promo." : `**${nmPromo((efektif[0] ?? promo.baris[0]).promo)}**: ${(efektif[0] ?? promo.baris[0]).utj} UTJ, batal ${(efektif[0] ?? promo.baris[0]).persenBatal ?? "-"}% (rata-rata ${promo.rataBatal}%).`],
+  ];
   return (<><Nav active="/laporan" updated="Pratinjau laporan" />
     <div className="wrap noprint">
       <form method="get" action="/laporan" className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
@@ -159,7 +192,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       <div className="c-bottom"><h4>INFORMASI</h4>
         <div className="c-grid">
           <div><b>Tanggal cetak</b><br />{tanggal}</div><div><b>Data penjualan sampai</b><br />{labelPanjang(d.end)}</div>
-          <div><b>Cara hitung UTJ</b><br />{METODE_NAMA[metode]}</div><div><b>Cara hitung akad</b><br />Dari UTJ yang sedang berjalan</div>
+          <div><b>Cara hitung UTJ</b><br />{METODE_NAMA[metode]}</div><div><b>Cara hitung akad</b><br />{metode === "ets" ? "(SPR & PPJB + proses bank) x tingkat akad" : "Dari UTJ yang sedang berjalan"}</div>
           <div><b>Sumber data</b><br />{real ? "Penjualan, unit, leads, event, ekonomi" : "Data demo"}</div><div><b>Pembulatan</b><br />UTJ dan akad dibulatkan ke bawah</div>
         </div></div></section>
 
@@ -186,10 +219,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
         {d.stok && <Kpi l="Stok Open" v={d.stok.open} s={hz <= 0 ? "kondisi terkini" : stokHabis === null ? `cukup ${hz} bulan` : `habis bulan ke-${stokHabis}`} />}
       </Kpis>
       {narasi?.ringkasan && <p className="rp-quote"><Hl t={narasi.ringkasan} /></p>}
-      <h3>Sorotan</h3>
-      <div className="rp-cols">{detail.map(kartu)}</div>
-      {jenis === "tahunan" && <><h3 style={{ margin: "10px 0 4px" }}>Antar tahun (data nyata)</h3><table className="compact">{th("Tahun", "UTJ", "Akad")}<tbody>{[...years].map(([y, v]) => <tr key={y}><td>{y}{y === "2022" ? " (mulai Apr)" : y === d.end.slice(0, 4) ? " (s.d. " + labelBulan(d.end) + ")" : ""}</td><td className="n">{v.utj}</td><td className="n">{v.akad}</td></tr>)}</tbody></table></>}</>)}
-
+      <h3>Jawaban untuk pertanyaan manajemen</h3>
+      <table className="compact qa"><tbody>{tanya.map(([q, a]) => <tr key={q}><td style={{ width: 168 }}><b>{q}</b></td><td><Hl t={a} /></td></tr>)}</tbody></table>
+      <h3>Temuan utama</h3><div className="rp-cols">{detail.map((b) => kartu(b, 2))}</div>
+</>, `UTJ ${tot.utj} dan akad ${tot.akad} pada ${periodeProyeksi}${proyeksiBulan ? " (sebagian perkiraan)" : ""}; ${gebrakan ? "perlu gebrakan baru" : "arah penjualan bisa dipertahankan"}.`)}
     {pg("Hasil dan perkiraan periode", <>
       <Kpis>
         <Kpi a l="UTJ" v={tot.utj} s={proyeksiBulan ? `kemungkinan besar ${tot.lo}–${tot.hi}` : "data nyata"} />
@@ -203,50 +236,59 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       <table className="compact" style={{ marginTop: 8 }}><thead><tr><th>Bulan</th><th>Status</th><th className="n">UTJ</th><th className="n">Rentang UTJ</th><th className="n">Batal</th><th className="n">SPR & PPJB</th><th className="n">Akad</th><th className="n">Uang masuk (Rp M)</th></tr></thead><tbody>{(n < 12 ? baris.slice(-6) : dalamJendela).map((x) => <tr key={x.bulan} style={x.dalam ? { fontWeight: 700 } : { color: "#5B6670" }}><td>{labelPanjang(x.bulan)}</td><td>{x.aktual ? "Data nyata" : "Perkiraan"}</td><td className="n">{x.utj}</td><td className="n">{x.aktual ? "-" : `${x.lo}–${x.hi}`}</td><td className="n">{x.batal ?? "-"}</td><td className="n">{x.spr ?? "-"}</td><td className="n">{x.akad}</td><td className="n">{f1(x.akad * net)}</td></tr>)}
         {n > 1 && <tr><td><b>Total periode</b></td><td /><td className="n"><b>{tot.utj}</b></td><td className="n"><b>{proyeksiBulan ? `${tot.lo}–${tot.hi}` : "-"}</b></td><td /><td /><td className="n"><b>{tot.akad}</b></td><td className="n"><b>{f1(tot.pen)}</b></td></tr>}</tbody></table>
       {proyeksiBulan > 0 && <Note>Saat dicoba ke data lama ({bt.origins} kali), perkiraan UTJ rata-rata meleset {f1(bt.utjMae13)} unit per bulan dan perkiraan akad 3 bulan meleset {f1(bt.akadMaeTotal3)} unit.</Note>}
-      {proyeksiBulan > 0 && d.f.trendDivergent && <Note>Arah penjualan mungkin berubah: garis tren berbeda cukup jauh dari proyeksi.</Note>}</>)}
-
+      {proyeksiBulan > 0 && d.f.trendDivergent && <Note>Arah penjualan mungkin berubah: garis tren berbeda cukup jauh dari proyeksi.</Note>}</>, `${selisih(tot.akad, l12.akad) ? `Akad ${selisih(tot.akad, l12.akad)}` : `Akad ${tot.akad}`}; uang masuk sekitar Rp ${f1(tot.pen)} miliar.`)}
+    {pg("Daya beli masyarakat", !db ? <Note>Data ekonomi (sheet INSTRUMEN EKONOMI) belum ada di unggahan ini.</Note> : <>
+      <Kpis>
+        <Kpi a l={db.acuan?.nama ?? "UMK"} v={db.acuan ? `Rp ${(db.acuan.nilai / 1e6).toFixed(2)} jt` : "-"} s={db.pertumbuhanUmk === null ? undefined : `${db.pertumbuhanUmk >= 0 ? "+" : ""}${db.pertumbuhanUmk}% vs tahun lalu`} />
+        <Kpi l="BI Rate" v={db.biRate ? `${db.biRate.nilai}%` : "-"} s={db.biRate ? labelBulan(db.biRate.bulan) : undefined} />
+        <Kpi l="Inflasi tahunan" v={db.inflasi ? `${f1(db.inflasi.nilai)}%` : "-"} s={db.inflasi ? labelBulan(db.inflasi.bulan) : undefined} />
+        <Kpi l="Tahun upah per rumah" v={db.tahunUpah === null ? "-" : db.tahunUpah} s={db.tahunUpahDepan === null ? undefined : `perkiraan tahun depan ${db.tahunUpahDepan}`} />
+      </Kpis>
+      <div className="rp-cols">
+        <div><h3>BI Rate (%)</h3><Garis labels={(d.macroRows ?? []).filter((m) => m.birate !== null).slice(-24).map((m) => labelBulan(m.bulan))} deret={[{ nama: "BI Rate", nilai: (d.macroRows ?? []).filter((m) => m.birate !== null).slice(-24).map((m) => m.birate) }]} lebar={300} tinggi={120} judul="BI Rate" /></div>
+        <div><h3>Inflasi tahunan (%)</h3><Garis labels={(d.macroRows ?? []).filter((m) => m.inflasi !== null).slice(-24).map((m) => labelBulan(m.bulan))} deret={[{ nama: "Inflasi", nilai: (d.macroRows ?? []).filter((m) => m.inflasi !== null).slice(-24).map((m) => (Math.abs(m.inflasi as number) <= 0.2 ? (m.inflasi as number) * 100 : (m.inflasi as number))) }]} lebar={300} tinggi={120} judul="Inflasi tahunan" /></div></div>
+      <h3>Isu terkini yang bisa memengaruhi penjualan</h3>
+      {sinyal.length ? <table className="compact"><tbody>{sinyal.map((x) => <tr key={x.judul}><td style={{ width: 70 }}><b>{x.arah === "menekan" ? "Menekan" : x.arah === "mendukung" ? "Mendukung" : "Netral"}</b></td><td><b>{x.judul}.</b> {x.keterangan}</td></tr>)}</tbody></table> : <Note>Tidak ada perubahan besar pada indikator dalam beberapa bulan terakhir.</Note>}
+      <Note>{`Satu rumah dengan harga bersih rata-rata Rp ${net2} M setara **${db.tahunUpah ?? "-"} tahun upah** ${db.acuan?.nama ?? "minimum"}. Perkiraan tahun depan: UMK Rp ${db.proyeksiUmk ? (db.proyeksiUmk / 1e6).toFixed(2) + " juta" : "-"} dan tahun upah ${db.tahunUpahDepan ?? "-"}. Hubungan indikator dengan UTJ lemah, jadi ini bahan pertimbangan, bukan penggerak proyeksi.`}</Note></>, db ? `Daya beli ${db.status.toLowerCase()}: satu rumah setara ${db.tahunUpah ?? "-"} tahun upah ${db.acuan?.nama ?? "minimum"}.` : undefined)}
     {pg("Dari UTJ sampai akad", <>
       <Note>Data dasar: {dasarLabel}{aktualBulan ? "" : ` (periode laporan belum punya data nyata, jadi dipakai ${n} bulan terakhir)`}.</Note>
       {[["UTJ", k.funnel.utj], ["SPR & PPJB", k.funnel.spr], ["Akad", k.funnel.akad], ["Pencairan", k.funnel.cair], ["Batal", k.funnel.batal]].map(([a, b]) => (
         <div key={a as string} className="rp-fbar"><span className="l">{a}</span><span className="t"><i style={{ width: `${Math.min(100, pot(b as number))}%`, background: a === "Batal" ? "#C0584F" : undefined }} /></span><span className="v"><b>{b}</b> ({pot(b as number)}%)</span></div>))}
       <h3>Alasan batal</h3>
       <table>{th("Alasan batal", "Jumlah")}<tbody>{k.alasan.rinci.map((x) => <tr key={x.alasan}><td>{x.alasan}</td><td className="n">{x.jml}</td></tr>)}</tbody></table>
-      <Note>Alasan batal baru tercatat untuk {k.alasan.tercatat} dari {k.alasan.total} kasus, jadi polanya masih dugaan.</Note></>)}
-
-    {pg("Stok rumah", !d.stok ? <Note>Data unit (sheet UNIT) belum ada di unggahan ini.</Note> : <>
-      <Kpis><Kpi a l="Stok Open" v={d.stok.open} s="tersedia dijual" /><Kpi l="Belum dibangun" v={d.stok.belumDibangun} s="status Close" /><Kpi l="Total unit" v={d.stok.total} /><Kpi l="Stok habis" v={hz <= 0 ? "-" : stokHabis === null ? "-" : `bulan ke-${stokHabis}`} s={hz <= 0 ? "kondisi terkini" : stokKurang ? `kurang ${stokKurang} unit` : `cukup ${hz} bulan`} /></Kpis>
-      <h3>Per tipe</h3>
-      <table>{th("Tipe", "Open", "Belum dibangun")}<tbody>{stockByType(d.stok).map((x) => <tr key={x.tipe}><td>{x.tipe}</td><td className="n">{x.open}</td><td className="n">{x.belum}</td></tr>)}<tr><td><b>Total</b></td><td className="n"><b>{d.stok.open}</b></td><td className="n"><b>{d.stok.belumDibangun}</b></td></tr></tbody></table>
-      <Note>Unit yang UTJ-nya batal kembali jadi stok, jadi pemakaian stok dihitung UTJ dikurangi batal.</Note></>)}
-
+      <Note>Alasan batal baru tercatat untuk {k.alasan.tercatat} dari {k.alasan.total} kasus, jadi polanya masih dugaan.</Note>      {jenis === "tahunan" && <><h3 style={{ margin: "10px 0 4px" }}>Antar tahun (data nyata)</h3><table className="compact">{th("Tahun", "UTJ", "Akad")}<tbody>{[...years].map(([y, v]) => <tr key={y}><td>{y}{y === "2022" ? " (mulai Apr)" : y === d.end.slice(0, 4) ? " (s.d. " + labelBulan(d.end) + ")" : ""}</td><td className="n">{v.utj}</td><td className="n">{v.akad}</td></tr>)}</tbody></table></>}
+      </>, `${pot(k.funnel.akad)}% UTJ sampai akad dan ${pot(k.funnel.batal)}% batal${k.alasan.rinci[0] ? `; alasan batal terbanyak: ${k.alasan.rinci[0].alasan}` : ""}.`)}
+    {pg("Efektivitas marketing", !promo ? <Note>Data transaksi belum ada.</Note> : <>
+      {mk && <Kpis><Kpi a l="Biaya event" v={`${f1(mk.stats.biayaJuta)} jt`} s={mk.stats.periode} /><Kpi l="Leads" v={mk.stats.leads} s={`${f1(mk.stats.persenLeadsTanpaStatus)}% tanpa status`} /><Kpi l="UTJ" v={mk.stats.utj} /><Kpi l="Per UTJ" v={mk.stats.biayaPerUtjJuta === null ? "-" : `Rp ${f1(mk.stats.biayaPerUtjJuta)} jt`} /></Kpis>}
+      <h3>Promo: kualitas pembeli</h3>
+      <table className="compact">{th("Promo", "UTJ", "% Batal", "Diskon", "Penilaian")}<tbody>{promo.baris.slice(0, 6).map((b) => <tr key={b.promo}><td>{nmPromo(b.promo)}{b.ppn ? " ★" : ""}</td><td className="n">{b.utj}</td><td className="n">{b.persenBatal === null ? "-" : `${b.persenBatal}%`}</td><td className="n">{b.diskonPersen === null ? "-" : `${b.diskonPersen}%`}</td><td className="n">{b.vonis}</td></tr>)}</tbody></table>
+      <Note>{`★ = PPN DTP. % batal dari UTJ yang sudah selesai; rata-rata ${promo.rataBatal}%, tanpa promo ${promo.tanpaPromo.persenBatal ?? "-"}%. Diskon rata-rata terhadap harga tercantum di kolom Diskon.`}</Note>
+      {ppn && ppn.adaPpn && <><h3>Jika tidak ada PPN DTP</h3>
+        <table className="compact">{th("Skenario", "UTJ 12 bln", "Akad", "Rp M")}<tbody><tr style={{ fontWeight: 700 }}><td>Proyeksi dasar</td><td className="n">{ppn.basis.utj}</td><td className="n">{ppn.basis.akad}</td><td className="n">{f1(ppn.basis.penerimaanM)}</td></tr>{ppn.skenario.map((x) => <tr key={x.nama}><td>{x.nama}</td><td className="n">{x.utj}</td><td className="n">{x.akad}</td><td className="n">{f1(x.penerimaanM)}</td></tr>)}</tbody></table>
+        <Note>{`${ppn.porsiPpn12}% UTJ 12 bulan terakhir memakai promo PPN DTP. Ini hipotesis berdasarkan porsi tersebut, bukan ramalan.`}</Note></>}
+      {tim && <><h3>Mutu berkas per marketing</h3>
+        <table className="compact">{th("Marketing", "UTJ", "% Akad", "% Batal", "Mutu")}<tbody>{tim.baris.slice(0, 5).map((b) => <tr key={b.nama}><td>{b.nama}</td><td className="n">{b.utj}</td><td className="n">{b.persenAkad}%</td><td className="n">{b.persenBatal}%</td><td className="n">{b.mutu}</td></tr>)}</tbody></table></>}</>,
+      promo && promo.baris.length ? `${nmPromo((efektif[0] ?? promo.baris[0]).promo)} paling berdampak; ${perluUbah.length ? `${perluUbah.slice(0, 2).map((b) => nmPromo(b.promo)).join(", ")} perlu ditinjau` : "belum ada promo yang jelas buruk"}.` : undefined)}
+    {pg("Stok dan order bangun", !d.stok || !order ? <Note>Data unit (sheet UNIT) belum ada di unggahan ini.</Note> : <>
+      <Kpis><Kpi a l="Stok Open" v={d.stok.open} s="tersedia dijual" /><Kpi l="Belum dibangun" v={d.stok.belumDibangun} s="status Close" /><Kpi l="Stok habis" v={order.stokHabisBulan === null ? "-" : `bulan ke-${order.stokHabisBulan}`} s={order.stokHabisBulan === null ? "cukup 12 bulan" : labelPanjang(addMonths(d.end, order.stokHabisBulan))} /><Kpi l="Mulai order bangun" v={order.mulaiBulan === null ? "-" : order.mulaiBulan === 0 ? "sekarang" : labelBulan(addMonths(d.end, order.mulaiBulan))} s={`lama bangun ±${order.leadBulan} bulan`} /></Kpis>
+      <h3>Rekomendasi unit yang dibangun</h3>
+      <table className="compact">{th("Tipe", "Porsi UTJ", "Kebutuhan", "Open", "Kurang", "Close", "Bangun")}<tbody>{order.baris.filter((b) => b.kebutuhan > 0 || b.open > 0).slice(0, 9).map((b) => <tr key={b.tipe} style={b.bangun > 0 ? { fontWeight: 700 } : undefined}><td>{b.tipe}</td><td className="n">{b.porsi}%</td><td className="n">{b.kebutuhan}</td><td className="n">{b.open}</td><td className="n">{b.kurang}</td><td className="n">{b.belum}</td><td className="n">{b.bangun}</td></tr>)}</tbody></table>
+      <Note>{`Kebutuhan = proyeksi UTJ 12 bulan (${utj12}) x porsi UTJ tipe itu x (1 − batal ${batalPersen}%). Bangun = yang lebih kecil antara kekurangan dan unit Close. ${order.kurangTanpaLahan > 0 ? `**${order.kurangTanpaLahan} unit dibutuhkan tetapi tidak ada unit Close** untuk tipe itu.` : ""} Perkiraan, bukan perintah.`}</Note>
+      {minat && <><h3>Unit yang paling banyak diminati</h3>
+        <div className="rp-cols"><div><table className="compact">{th("Tipe", "UTJ", "% Akad")}<tbody>{minat.perTipe.slice(0, 5).map((t) => <tr key={t.tipe}><td>{t.tipe}</td><td className="n">{t.utj}</td><td className="n">{t.persenAkad}%</td></tr>)}</tbody></table></div>
+          <div><table className="compact">{th("Unit", "Tipe", "Peminat")}<tbody>{minat.unitTop.slice(0, 5).map((u) => <tr key={u.unit}><td>{u.unit}</td><td>{u.tipe}</td><td className="n">{u.peminat}</td></tr>)}</tbody></table></div></div></>}</>,
+      order ? `${order.totalBangun > 0 ? `Bangun ${order.totalBangun} unit` : "Belum ada unit Close yang perlu dibangun"}; ${order.mulaiBulan === null ? "stok cukup 12 bulan" : order.mulaiBulan === 0 ? "mulai sekarang" : `mulai paling lambat ${labelPanjang(addMonths(d.end, order.mulaiBulan))}`}.` : undefined)}
     {pg("Tipe, harga, dan agent", <>
       <div className="rp-cols">
         <div><h3>Penjualan per tipe</h3><table>{th("Tipe", "UTJ", "Akad")}<tbody>{k.byType.map((x) => <tr key={x.tipe}><td>{x.tipe}</td><td className="n">{x.utj}</td><td className="n">{x.akad}</td></tr>)}</tbody></table></div>
         <div><h3>Harga bersih (akad)</h3>{harga.length > 0 ? <table>{th("Tipe", "Akad", "Rp M", "Porsi")}<tbody>{harga.map((x) => <tr key={x.tipe}><td>{x.tipe}</td><td className="n">{x.akad}</td><td className="n">{(x.rata / 1e9).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td className="n">{x.porsi}%</td></tr>)}</tbody></table> : <p className="muted" style={{ fontSize: 12 }}>Data harga belum ada.</p>}</div></div>
       <h3>Performa agent</h3>
       <table>{th("Agent", "UTJ", "Akad", "Jadi akad")}<tbody>{k.byAgent.map((x) => <tr key={x.agent}><td>{x.agent}</td><td className="n">{x.utj}</td><td className="n">{x.akad}</td><td className="n">{x.konversi}%</td></tr>)}</tbody></table>
-      <Note>Jumlah data per agent masih sedikit, jadi perbandingannya masih dugaan.</Note></>)}
-
-    {pg("Proses bank dan ekonomi", <>
+      <Note>Jumlah data per agent masih sedikit, jadi perbandingannya masih dugaan.</Note></>, k.byType[0] ? `${k.byType[0].tipe} paling banyak UTJ (${k.byType[0].utj})${bagus.length ? `; marketing dengan berkas bagus: ${bagus.join(", ")}` : ""}.` : undefined)}
+    {pg("Proses bank", <>
       <h3>Proses bank</h3>
       <table>{th("Bank", "Berkas", "Approve", "Rata-rata hari")}<tbody>{k.bank.map((x) => <tr key={x.bank}><td>{x.bank}</td><td className="n">{x.berkas}</td><td className="n">{x.approve}%</td><td className="n">{x.hari === null ? "-" : f1(x.hari)}</td></tr>)}</tbody></table>
-      <h3>Indikator ekonomi</h3>
-      {d.makro ? <><table>{th("Indikator", "Data terakhir", "Nilai", "Hubungan dg UTJ")}<tbody>{d.makro.map((m) => <tr key={m.indikator}><td>{m.indikator}</td><td className="n">{m.terakhir ?? "-"}</td><td className="n">{m.nilaiTerakhir === null ? "-" : m.nilaiTerakhir.toLocaleString("id-ID", { maximumFractionDigits: 4 })}</td><td className="n">{m.korelasi === null ? "-" : m.korelasi.toLocaleString("id-ID")}</td></tr>)}</tbody></table>
-      <Note>Hubungan indikator ekonomi dengan UTJ lemah, jadi hanya bahan pertimbangan.</Note></> : <Note>Data ekonomi belum ada di unggahan ini.</Note>}</>)}
-
-    {pg("Hasil marketing", !mk ? <Note>Data LEADS dan EVENT MARKETING belum ada untuk periode ini (datanya baru ada sejak Okt 2025).</Note> : <>
-      <Kpis><Kpi a l="Biaya event (Rp)" v={`${f1(mk.stats.biayaJuta)} jt`} s={mk.stats.periode} /><Kpi l="Leads" v={mk.stats.leads} /><Kpi l="UTJ" v={mk.stats.utj} /><Kpi l="Per lead" v={mk.stats.biayaPerLeadRibu === null ? "-" : `Rp ${f1(mk.stats.biayaPerLeadRibu)} rb`} /><Kpi l="Per UTJ" v={mk.stats.biayaPerUtjJuta === null ? "-" : `Rp ${f1(mk.stats.biayaPerUtjJuta)} jt`} /></Kpis>
-      <table>{th("Bulan", "Biaya (Rp jt)", "Leads", "UTJ")}<tbody>{mk.perBulan.map((x) => <tr key={x.bulan}><td>{labelPanjang(x.bulan)}</td><td className="n">{f1(x.biaya / 1e6)}</td><td className="n">{x.leads}</td><td className="n">{x.utj}</td></tr>)}</tbody></table>
-      <div className="rp-cols">
-        <div><h3>Struktur biaya</h3><table>{th("Kategori", "Rp jt", "Porsi")}<tbody>{mk.kategori.map((x) => <tr key={x.kategori}><td>{x.kategori}</td><td className="n">{f1(x.biaya / 1e6)}</td><td className="n">{f1(x.porsi)}%</td></tr>)}</tbody></table></div>
-        <div><h3>Per sumber leads</h3><table>{th("Sumber", "Leads", "Survey", "UTJ")}<tbody>{mk.sumber.map((x) => <tr key={x.database}><td>{x.database}</td><td className="n">{f1(x.porsiLeads)}%</td><td className="n">{f1(x.surveyPerLeads)}%</td><td className="n">{f1(x.porsiUtj)}%</td></tr>)}</tbody></table></div></div>
-      <Note>Data baru {mk.stats.jumlahBulan} bulan, jadi hubungan biaya dengan leads ({mk.stats.korelasiBiayaLeads ?? "-"}) dan UTJ ({mk.stats.korelasiBiayaUtj ?? "-"}) hanya petunjuk awal, bukan bukti sebab-akibat.</Note></>)}
-
-    {pg("Temuan marketing", !mk ? <Note>Menunggu data marketing.</Note> : <>{mk.findings.length === 0 ? <p>Tidak ada temuan yang melewati ambang aturan pada data ini.</p> : mk.findings.map((f, i) => (
-      <div key={f.id} className="rp-card" style={{ marginBottom: 10 }}>
-        <b>{i + 1}. {f.judul}</b> <span className="muted" style={{ fontSize: 10.5 }}>· prioritas {f.prioritas} · {f.label === "hipotesis" ? "hipotesis" : "dari data"}</span>
-        <ul><li><b>Temuan:</b> <Hl t={f.temuan} /></li><li><b>Yang dilakukan:</b> <Hl t={f.tindakan} /></li><li><b>Tanda berhasil:</b> <Hl t={f.ukuran} /></li></ul></div>))}</>)}
-
+      <Note>{`Berkas outstanding (UTJ belum akad dan belum batal): **${d.open} berkas**, potensi pendapatan kotor sekitar Rp ${f1(d.open * net)} miliar bila semuanya akad pada harga rata-rata.`}</Note></>, k.bank[0] ? `${[...k.bank].sort((a, b) => b.approve - a.approve)[0].bank} paling sering menyetujui berkas; ${d.open} berkas masih outstanding.` : undefined)}
     {pg("Skenario \"bagaimana jika\"", !skenario || !an ? <p className="muted">Tidak ada skenario dipilih. Buat di menu Simulasi, lalu pilih "Cetak skenario di laporan".</p> : <>
       <Kpis><Kpi a l="UTJ skenario" v={an.totals.utjScn} s={`${an.totals.utjScn - an.totals.utjBase >= 0 ? "+" : ""}${an.totals.utjScn - an.totals.utjBase} vs dasar`} /><Kpi l="Akad skenario" v={an.totals.akadScn} s={`${an.totals.akadScn - an.totals.akadBase >= 0 ? "+" : ""}${an.totals.akadScn - an.totals.akadBase} vs dasar`} /><Kpi l="Uang masuk" v={`Rp ${f1(an.totals.penScn)} M`} s={`dasar Rp ${f1(an.totals.penBase)} M`} /></Kpis>
       <div className="rp-cols">
@@ -258,14 +300,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
 
     {pg("Rekomendasi", <>
       {narasi?.rekomendasi && <p className="rp-quote"><Hl t={narasi.rekomendasi} /></p>}
-      {rekom.length === 0 ? <p className="muted">Tidak ada rekomendasi yang melewati ambang aturan pada data ini.</p> : <table>{th("Prioritas", "Tindakan dan alasan")}<tbody>{rekom.map((x, i) => <tr key={i}><td style={{ width: 70 }}><b>{x.prioritas}</b></td><td style={{ fontSize: 12 }}><b><Hl t={x.tindakan} /></b><br /><span className="muted">{x.alasan}</span></td></tr>)}</tbody></table>}</>)}
-
+      {rekom.length === 0 ? <p className="muted">Tidak ada rekomendasi yang melewati ambang aturan pada data ini.</p> : <table>{th("Prioritas", "Tindakan dan alasan")}<tbody>{rekom.map((x, i) => <tr key={i}><td style={{ width: 70 }}><b>{x.prioritas}</b></td><td style={{ fontSize: 12 }}><b><Hl t={x.tindakan} /></b><br /><span className="muted">{x.alasan}</span></td></tr>)}</tbody></table>}</>, rekom[0] ? rekom[0].tindakan.replace(/\*\*/g, "") : undefined)}
     {pg("Cara menghitung dan batasannya", <>
       {narasi?.risiko && <p className="rp-quote"><Hl t={narasi.risiko} /></p>}
       <div className="rp-cols">
         <div><h3>Cara angka dibuat</h3><ul style={{ paddingLeft: 16, fontSize: 12 }}>
           <li>UTJ: {METODE_NAMA[metode]}. {METODE_PENJELASAN[metode]} Hasilnya dibulatkan ke bawah; bulan yang sudah lewat memakai data nyata.</li>
-          <li>Akad: dari UTJ yang sedang berjalan, dilihat berapa yang biasanya jadi akad atau batal.</li>
+          <li>{metode === "ets" ? "Batal: UTJ x tingkat batal tahun lalu. SPR & PPJB: UTJ dikurangi batal. Akad: (SPR & PPJB + proses bank) x tingkat akad tahun lalu. Proses bank: bulan lalu + UTJ - batal - akad (mulai dari 0, seperti di Excel)." : "Akad: dari UTJ yang sedang berjalan, dilihat berapa yang biasanya jadi akad atau batal."}</li>
           <li>Rentang: dari seberapa jauh perkiraan meleset saat dicoba ke data lama ({bt.origins} kali).</li>
           <li>Uang masuk: akad × harga rata-rata.</li>
           <li>Stok: UTJ dikurangi batal, dibanding unit Open.</li>
