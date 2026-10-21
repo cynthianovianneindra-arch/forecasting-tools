@@ -18,7 +18,8 @@ export interface Txn {
   unit?: string; // ID unit (bukan data pribadi)
   alasanBatal?: string;
   netPrice?: number; // rupiah
-  promo?: string; // kode promo (mis. PPNDTP1)
+  promo?: string; // semua promo, digabung " + " (untuk tampilan)
+  promos?: string[]; // promo satu per satu (sheet PENJUALAN punya sampai 10 kolom promo)
   harga?: number; // rupiah, sebelum diskon
   diskon?: number; // rupiah
   banks?: BankCase[];
