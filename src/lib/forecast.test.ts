@@ -98,18 +98,19 @@ describe("tiga metode proyeksi UTJ", () => {
     expect(f[5]).toBeGreaterThan(y[y.length - 1] * 0.8);
   });
   it("forecast dengan metode apa pun menghasilkan 12 baris berhingga dan ada perbandingan tiga metode", () => {
-    for (const m of ["es", "wma", "mlr"] as const) {
+    for (const m of ["ets", "es", "wma", "mlr"] as const) {
       const f = forecast(txns, start, end, 12, m);
       expect(f.rows).toHaveLength(12);
       expect(f.rows.every((r) => Number.isFinite(r.utj) && Number.isFinite(r.akad))).toBe(true);
       expect(f.metode).toBe(m);
-      expect(f.banding.baris).toHaveLength(3);
-      expect(["es", "wma", "mlr"]).toContain(f.banding.terbaik);
+      expect(f.banding.baris).toHaveLength(4);
+      expect(["ets", "es", "wma", "mlr"]).toContain(f.banding.terbaik);
       expect(f.bt.utjMae13).toBeCloseTo(f.banding.baris.find((b) => b.metode === m)!.utjMae13, 10);
     }
   });
-  it("parseMetode: nilai tidak dikenal memakai exponential smoothing", () => {
-    expect(parseMetode("xyz")).toBe("es");
+  it("parseMetode: nilai tidak dikenal memakai rumus Excel (ETS)", () => {
+    expect(parseMetode("xyz")).toBe("ets");
+    expect(parseMetode("es")).toBe("es");
     expect(parseMetode("wma")).toBe("wma");
   });
 });

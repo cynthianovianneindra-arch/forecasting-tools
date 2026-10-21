@@ -1,3 +1,4 @@
+import { rapikan } from "./rapi";
 import type { Txn } from "./forecast";
 
 export interface Filter { tipe?: string; agent?: string; marketing?: string; cluster?: string; tahap?: string; tahun?: string; dari?: string; sampai?: string; bulan?: string }
@@ -48,7 +49,7 @@ export function cards(t: Txn[]) {
   }
   const bank = [...bankMap].map(([nama, e]) => ({ bank: nama, berkas: e.berkas, approve: pct(e.approve, e.berkas), hari: e.hari.length ? e.hari.reduce((a, c) => a + c, 0) / e.hari.length : null })).sort((a, b) => b.berkas - a.berkas).slice(0, 6);
   const batal = t.filter((x) => x.batal);
-  const alasanMap = count(batal, (x) => x.alasanBatal?.toUpperCase());
+  const alasanMap = count(batal, (x) => (x.alasanBatal ? rapikan(x.alasanBatal) : undefined));
   const alasan = { tercatat: batal.filter((x) => x.alasanBatal).length, total: batal.length, rinci: [...alasanMap].map(([alasan, jml]) => ({ alasan, jml })).sort((a, b) => b.jml - a.jml).slice(0, 6) };
   return { funnel, byType, byAgent, leads, bank, alasan };
 }
