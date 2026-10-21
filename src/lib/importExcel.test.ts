@@ -20,3 +20,17 @@ it("impor workbook sintetis", async () => {
   expect(r).toMatchObject({ utj: 2, akad: 1, batal: 1 });
   expect(r.txns[0]).toMatchObject({ utj: "2024-01", akad: "2024-03", batal: null });
 });
+it("kolom dicari dari judul: promo 1 sampai 10 dan kolom bank bergeser", async () => {
+  const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet("PENJUALAN");
+  const judul: [number, string, string][] = [[2, "Unit", "Unit"], [8, "Nama User", "Nama User"], [11, "Harga", "Harga"], [12, "Total Diskon", "Total Diskon"], [14, "Net Price", "Net Price"], [25, "Proses Bank", "Nama Bank"], [28, "Proses Bank", "Durasi (Hari)"], [29, "Proses Bank", "Status Berkas"], [50, "Nama Marketing", "Nama Marketing"], [55, "Tanggal", "UTJ"], [56, "Tanggal", "Batal"], [57, "Tanggal", "SPR & PPJB"], [58, "Tanggal", "Pencairan"], [59, "Tanggal", "Akad"]];
+  for (const [c, g, s] of judul) { ws.getCell(1, c).value = g; ws.getCell(2, c).value = s; }
+  for (let i = 1; i <= 10; i++) { ws.getCell(1, 14 + i).value = "Promo"; ws.getCell(2, 14 + i).value = `Promo ${i}`; }
+  const r = ws.getRow(4);
+  r.getCell(2).value = "F1-01"; r.getCell(11).value = 800e6; r.getCell(12).value = 40e6; r.getCell(14).value = 760e6;
+  r.getCell(15).value = "Kanopi"; r.getCell(17).value = "PPN DTP"; r.getCell(25).value = "BTN"; r.getCell(28).value = 20; r.getCell(29).value = "Approved";
+  r.getCell(50).value = "Eki"; r.getCell(55).value = new Date(Date.UTC(2026, 7, 3)); r.getCell(59).value = new Date(Date.UTC(2026, 8, 20));
+  const out = await importPenjualan((await wb.xlsx.writeBuffer()) as ArrayBuffer);
+  expect(out).toMatchObject({ utj: 1, akad: 1, batal: 0 });
+  expect(out.txns[0]).toMatchObject({ utj: "2026-08", akad: "2026-09", marketing: "EKI", unit: "F1-01", harga: 800e6, diskon: 40e6, netPrice: 760e6, promos: ["KANOPI", "PPN DTP"], promo: "KANOPI + PPN DTP" });
+  expect(out.txns[0].banks).toEqual([{ bank: "BTN", hari: 20, status: "APPROVED" }]);
+});

@@ -12,6 +12,9 @@ const jmlBulan = (a: string, b: string) => ym(b) - ym(a) + 1;
 export type VonisPromo = "Efektif" | "Cukup" | "Perlu diubah" | "Sampel kecil";
 export interface BarisPromo { promo: string; utj: number; porsiUtj: number; akad: number; batal: number; proses: number; persenBatal: number | null; diskonPersen: number | null; bulanAktif: number; ppn: boolean; vonis: VonisPromo }
 
+/** Promo satu transaksi; satu UTJ bisa memakai beberapa promo, dan dihitung di tiap promo itu. */
+const daftarPromo = (t: Txn): string[] => t.promos ?? (t.promo ? [t.promo] : []);
+
 const batalSelesai = (xs: Txn[]) => { const b = xs.filter((t) => t.batal).length, a = xs.filter((t) => t.akad).length; return b + a ? Math.round((b / (a + b)) * 1000) / 10 : null; };
 
 /** Promo per kode: UTJ, porsi UTJ, batal, rata-rata diskon, lama aktif. Mutu dinilai dari persen batal pada UTJ yang sudah selesai (akad atau batal), karena UTJ baru yang masih diproses belum bisa batal.
@@ -22,7 +25,7 @@ export function analisaPromo(txns: Txn[]) {
   const rataUtjBulan = txns.length / jmlBulan(ms[0], ms[ms.length - 1]);
   const rataBatal = batalSelesai(txns) ?? 0;
   const g = new Map<string, Txn[]>();
-  for (const t of txns) if (t.promo) g.set(t.promo, [...(g.get(t.promo) ?? []), t]);
+  for (const t of txns) for (const pr of daftarPromo(t)) g.set(pr, [...(g.get(pr) ?? []), t]);
   const baris = [...g].map(([promo, xs]): BarisPromo => {
     const bln = xs.map((t) => t.utj).sort();
     const utj = xs.length, batal = xs.filter((t) => t.batal).length, akad = xs.filter((t) => t.akad).length;
@@ -43,7 +46,7 @@ export interface SkenarioPpn { adaPpn: boolean; akhirData: string; porsiPpn12: n
 export function skenarioTanpaPpn(txns: Txn[], akhirData: string, proyeksi: { utj: number; akad: number }[], netPriceMiliar: number): SkenarioPpn {
   const mulai = addMonths(akhirData, -11);
   const r12 = txns.filter((t) => t.utj >= mulai && t.utj <= akhirData);
-  const ppn = (t: Txn) => !!t.promo && t.promo.startsWith("PPN");
+  const ppn = (t: Txn) => daftarPromo(t).some((x) => x.startsWith("PPN"));
   const utjPpn = r12.filter(ppn).length;
   const bulanPpn = new Set(txns.filter(ppn).map((t) => t.utj));
   const semuaBulan = [...new Set(txns.map((t) => t.utj))].sort();

@@ -21,10 +21,37 @@ export interface ImportReport {
   warnings: string[];
 }
 
-const COL = { status: 10, utj: 46, batal: 47, akad: 50 }; // J, AT, AU, AX (SPEC 6.1)
 const FIRST_ROW = 4;
-const C = { tipe: 3, marketing: 42, agent: 43, leads: 45, spr: 48, cair: 49, alasan: 51 };
-const BANK_COLS = [16, 21, 26, 31, 36]; // nama bank; +3 durasi, +4 status berkas
+
+/** Posisi kolom sheet PENJUALAN (nomor kolom, mulai 1). Dicari dari judul kolom supaya tetap benar bila kolom bertambah (mis. promo 1 sampai 10); bila judul tidak ketemu, dipakai susunan lama. */
+export interface KolomPenjualan {
+  unit: number; tipe: number; nama: number; harga: number; diskon: number; net: number; promo: number[];
+  bank: number[]; // kolom "Nama Bank"; durasi = +3, status berkas = +4
+  marketing: number; agent: number; database: number; leads: number;
+  utj: number; batal: number; spr: number; cair: number; akad: number; alasan: number;
+}
+const KOLOM_LAMA: KolomPenjualan = { unit: 2, tipe: 3, nama: 8, harga: 11, diskon: 12, net: 14, promo: [15], bank: [16, 21, 26, 31, 36], marketing: 42, agent: 43, database: 44, leads: 45, utj: 46, batal: 47, spr: 48, cair: 49, akad: 50, alasan: 51 };
+
+export function petaKolomPenjualan(ws: ExcelJS.Worksheet): KolomPenjualan {
+  const k: KolomPenjualan = { ...KOLOM_LAMA, promo: [...KOLOM_LAMA.promo], bank: [...KOLOM_LAMA.bank] };
+  const lab: { r: number; c: number; t: string }[] = [];
+  for (let r = 1; r <= 3; r++) ws.getRow(r).eachCell({ includeEmpty: false }, (cell, c) => { const t = text(cell.value).toLowerCase(); if (t) lab.push({ r, c, t }); });
+  const cari = (re: RegExp, dari = 0) => lab.filter((x) => x.r <= 2 && x.c > dari && re.test(x.t)).sort((a, b) => a.c - b.c)[0]?.c;
+  const set = (key: Exclude<keyof KolomPenjualan, "promo" | "bank">, re: RegExp) => { const c = cari(re); if (c) k[key] = c; };
+  set("unit", /^unit$/); set("tipe", /^tipe rumah$/); set("nama", /^nama user$/); set("harga", /^harga$/); set("diskon", /^(total )?diskon/); set("net", /^net price/);
+  set("marketing", /^nama marketing$/); set("agent", /^agent$/); set("database", /^database$/); set("leads", /^asal leads$/); set("alasan", /^ket batal$/);
+  // tanggal tahap: baris yang memuat "UTJ" di kolom kanan, lalu cari yang lain di baris itu
+  const u = lab.find((x) => x.r <= 2 && x.t === "utj" && x.c > 30);
+  if (u) {
+    const dibaris = (t: string) => lab.find((x) => x.r === u.r && x.c >= u.c && x.t === t)?.c;
+    k.utj = u.c; k.batal = dibaris("batal") ?? k.batal; k.spr = dibaris("spr & ppjb") ?? k.spr; k.cair = dibaris("pencairan") ?? k.cair; k.akad = dibaris("akad") ?? k.akad;
+  }
+  const promo = [...new Set(lab.filter((x) => x.r <= 2 && /^promo\b/.test(x.t)).map((x) => x.c))].sort((a, b) => a - b);
+  if (promo.length) k.promo = promo;
+  const bank = [...new Set(lab.filter((x) => x.r <= 2 && x.t === "nama bank").map((x) => x.c))].sort((a, b) => a - b);
+  if (bank.length) k.bank = bank;
+  return k;
+}
 
 const text = (v: unknown): string => {
   if (v && typeof v === "object" && "result" in v) return text((v as { result: unknown }).result);
@@ -75,33 +102,35 @@ export async function importPenjualan(input: string | Buffer | ArrayBuffer, mode
   let rows = 0;
   let kolomTelp = 0; // kolom nomor telepon di PENJUALAN (opsional; hanya dipakai di memori untuk mencocokkan leads)
   for (let r = 1; r <= 3 && !kolomTelp; r++) ws.getRow(r).eachCell((cell, c) => { if (!kolomTelp && /\b(no\.?\s*(tlp|telp|hp|wa)|telepon|telp|tlp|hp|whatsapp)\b/i.test(text(cell.value))) kolomTelp = c; });
+  const K = petaKolomPenjualan(ws);
   ws.eachRow({ includeEmpty: false }, (row, n) => {
     if (n < FIRST_ROW) return;
     rows++;
-    const u = cellToMonth(row.getCell(COL.utj).value, mode);
-    const b = cellToMonth(row.getCell(COL.batal).value, mode);
-    const a = cellToMonth(row.getCell(COL.akad).value, mode);
+    const u = cellToMonth(row.getCell(K.utj).value, mode);
+    const b = cellToMonth(row.getCell(K.batal).value, mode);
+    const a = cellToMonth(row.getCell(K.akad).value, mode);
     for (const [nama, r] of [["UTJ", u], ["batal", b], ["akad", a]] as const)
       if (r.bad) warnings.push(`Baris ${n}: tanggal ${nama} tidak valid (${r.bad}), diabaikan`);
     if (!u.m) { if (a.m || b.m) warnings.push(`Baris ${n}: ada akad/batal tanpa tanggal UTJ, baris dilewati`); return; }
     if (a.m && b.m) warnings.push(`Baris ${n}: akad dan batal sama-sama terisi`);
-    const banks = BANK_COLS.map((c) => ({ bank: normName(row.getCell(c).value), hari: num(row.getCell(c + 3).value), status: text(row.getCell(c + 4).value).toUpperCase() })).filter((x) => x.bank);
-    const unitId = normName(row.getCell(2).value);
-    utjNama.push({ nama: normNama(text(row.getCell(8).value)), bulan: u.m, marketing: normName(row.getCell(C.marketing).value), telp: kolomTelp ? normalisasiTelepon(row.getCell(kolomTelp).value) : null });
+    const banks = K.bank.map((c) => ({ bank: normName(row.getCell(c).value), hari: num(row.getCell(c + 3).value), status: text(row.getCell(c + 4).value).toUpperCase() })).filter((x) => x.bank);
+    const promos = [...new Set(K.promo.map((c) => text(row.getCell(c).value).toUpperCase()).filter(Boolean))];
+    const unitId = normName(row.getCell(K.unit).value);
+    utjNama.push({ nama: normNama(text(row.getCell(K.nama).value)), bulan: u.m, marketing: normName(row.getCell(K.marketing).value), telp: kolomTelp ? normalisasiTelepon(row.getCell(kolomTelp).value) : null });
     txns.push({
       utj: u.m, akad: a.m, batal: b.m, ...(unitId ? { unit: unitId } : {}),
-      spr: hasValue(row.getCell(C.spr).value),
-      cair: cellToMonth(row.getCell(C.cair).value).m !== null,
-      tipe: text(row.getCell(C.tipe).value) || undefined,
-      marketing: normName(row.getCell(C.marketing).value) || undefined,
-      agent: normName(row.getCell(C.agent).value) || undefined,
-      leads: text(row.getCell(C.leads).value) || undefined,
-      database: text(row.getCell(44).value) || undefined,
-      alasanBatal: text(row.getCell(C.alasan).value) || undefined,
-      netPrice: ((v) => (v !== null && v > 1e7 ? v : undefined))(num(row.getCell(14).value)),
-      promo: text(row.getCell(15).value).toUpperCase() || undefined,
-      harga: ((v) => (v !== null && v > 1e7 ? v : undefined))(num(row.getCell(11).value)),
-      diskon: ((v) => (v !== null && v > 0 ? v : undefined))(num(row.getCell(12).value)),
+      spr: hasValue(row.getCell(K.spr).value),
+      cair: cellToMonth(row.getCell(K.cair).value).m !== null,
+      tipe: text(row.getCell(K.tipe).value) || undefined,
+      marketing: normName(row.getCell(K.marketing).value) || undefined,
+      agent: normName(row.getCell(K.agent).value) || undefined,
+      leads: text(row.getCell(K.leads).value) || undefined,
+      database: text(row.getCell(K.database).value) || undefined,
+      alasanBatal: text(row.getCell(K.alasan).value) || undefined,
+      netPrice: ((v) => (v !== null && v > 1e7 ? v : undefined))(num(row.getCell(K.net).value)),
+      ...(promos.length ? { promo: promos.join(" + "), promos } : {}),
+      harga: ((v) => (v !== null && v > 1e7 ? v : undefined))(num(row.getCell(K.harga).value)),
+      diskon: ((v) => (v !== null && v > 0 ? v : undefined))(num(row.getCell(K.diskon).value)),
       banks,
     });
   });

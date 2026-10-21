@@ -40,7 +40,7 @@ export function putusanAkses(a: { path: string; method: string; sesi: Sesi | nul
   const { path, method, sesi, adaAuthHeader } = a;
   if (path === "/login" || (path === "/api/auth/login" && method === "POST") || (path === "/api/auth/logout" && method === "POST")) return "izinkan";
   // Endpoint yang memeriksa sendiri kredensialnya (cron Vercel dan API narasi memakai header Authorization: Bearer ...)
-  if (adaAuthHeader && ((method === "GET" && (path === "/api/sync" || path === "/api/macro-sync")) || (method === "POST" && path === "/api/narasi"))) return "izinkan";
+  if (adaAuthHeader && ((method === "GET" && (path === "/api/sync" || path === "/api/macro-sync")) || (method === "POST" && (path === "/api/narasi" || path === "/api/excel-masuk")))) return "izinkan";
   const api = path.startsWith("/api/");
   if (!sesi) return api ? "401" : "login";
   const adminSaja = path === "/pengguna" || path.startsWith("/api/pengguna") || path === "/api/upload" || path === "/api/manual" || path === "/api/target" || ((path === "/api/macro-sync" || path === "/api/sync") && method === "POST");

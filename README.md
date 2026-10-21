@@ -82,6 +82,42 @@ Saat Dari/Sampai bulan dipilih, deret UTJ untuk exponential smoothing dibatasi k
 
 ## Hemat biaya Claude
 - **Excel terhubung ke OneDrive (sumber data utama):** isi env `ONEDRIVE_EXCEL_URL` di Vercel dengan tautan berbagi file Excel (di OneDrive: Bagikan → "Siapa saja yang memiliki link" → hak **lihat saja** → salin tautan). Dashboard membaca ulang file itu otomatis di latar belakang bila datanya lebih dari 30 menit (dan tiap hari lewat cron `/api/sync`); data hanya diperbarui bila isi file berubah. Admin juga bisa menekan "Sinkron Excel sekarang" di Dashboard. Hanya transaksi anonim yang disimpan (nama pembeli dan nomor telepon tidak pernah disimpan). Menu Data & Integrasi dihapus dari sidebar; halamannya tetap ada di alamat `/data` sebagai cadangan (unggah manual) untuk admin. Data BPS (UMR/UMK Sidoarjo dan Surabaya, pernikahan, kelahiran) dan BI (IHPR) dibaca dari sheet INSTRUMEN EKONOMI di Excel yang sama.
+- **Google Sheets + Apps Script (dikirim ke aplikasi):** alternatif bila tautan OneDrive tidak bisa diunduh server. Impor Excel ke Google Sheets (nama sheet tetap: PENJUALAN, LEADS, UNIT, dst.), isi env `EXCEL_PUSH_SECRET` di Vercel (kata acak minimal 24 karakter, jangan dibagikan), lalu di Sheets buka **Ekstensi → Apps Script** dan pasang skrip ini (ganti `ALAMAT_APLIKASI`; simpan kuncinya di **Project Settings → Script properties** dengan nama `KUNCI`, bukan di kode):
+
+```js
+function kirimKeAplikasi() {
+  const kunci = PropertiesService.getScriptProperties().getProperty('KUNCI');
+  const berkas = DriveApp.getFileById(SpreadsheetApp.getActive().getId()).getAs(MimeType.MICROSOFT_EXCEL);
+  const r = UrlFetchApp.fetch('https://ALAMAT_APLIKASI/api/excel-masuk', {
+    method: 'post', contentType: 'application/octet-stream', payload: berkas.getBytes(), muteHttpExceptions: true,
+    headers: { Authorization: 'Bearer ' + kunci, 'x-nama-berkas': SpreadsheetApp.getActive().getName() + '.xlsx' },
+  });
+  Logger.log(r.getResponseCode() + ' ' + r.getContentText());
+}
+```
+Jalankan sekali untuk memberi izin, lalu tambahkan pemicu waktu (**Triggers → Add trigger → kirimKeAplikasi → Time-driven**, mis. tiap 15 menit atau tiap jam). Aplikasi hanya menyimpan dataset baru bila isi berubah. Batas ukuran 4,3 MB. Rumus Excel yang tidak ada di Sheets (mis. FORECAST.ETS di sheet SUMMARY) tidak memengaruhi aplikasi, yang membaca data mentah.
+- **Office Script di Excel (tanpa memindahkan data):** Office Scripts hanya ada di **Excel untuk web dengan akun Microsoft 365 kantor atau sekolah** (tidak tersedia di akun Microsoft pribadi), dan pemanggilan alamat luar (`fetch`) bisa dibatasi admin. Bila tersedia, isi env `EXCEL_PUSH_SECRET`, lalu di Excel web buka **Automate → New Script**, tempel skrip berikut (ganti `ALAMAT_APLIKASI` dan `KUNCI`; kunci tersimpan di dalam skrip, jadi hanya bagikan skrip ke orang tepercaya) dan klik **Run** setiap selesai memperbarui data, atau jadwalkan lewat Power Automate (**Run script**):
+
+```ts
+async function main(workbook: ExcelScript.Workbook) {
+  const sheets: Record<string, (string | number | boolean)[][]> = {};
+  for (const nama of ["PENJUALAN", "LEADS", "UNIT", "EVENT MARKETING", "INSTRUMEN EKONOMI"]) {
+    const ws = workbook.getWorksheet(nama);
+    const ur = ws ? ws.getUsedRange() : undefined;
+    if (!ws || !ur) continue;
+    const baris = ur.getRowIndex() + ur.getRowCount(), kolom = ur.getColumnIndex() + ur.getColumnCount();
+    // mulai dari A1 agar posisi kolom sama; buang sel kosong di ujung baris supaya kiriman kecil
+    sheets[nama] = ws.getRangeByIndexes(0, 0, baris, kolom).getValues().map((r) => { let n = r.length; while (n > 0 && r[n - 1] === "") n--; return r.slice(0, n); });
+  }
+  const r = await fetch("https://ALAMAT_APLIKASI/api/excel-masuk", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer KUNCI" },
+    body: JSON.stringify({ nama: workbook.getName(), sheets }),
+  });
+  console.log(r.status + " " + (await r.text()));
+}
+```
+Hanya sheet PENJUALAN, LEADS, UNIT, EVENT MARKETING, dan INSTRUMEN EKONOMI yang dikirim dan dibaca; batas ukuran kiriman 4,3 MB.
 - **Target penjualan:** admin mengisi target UTJ dan akad per bulan (atau total setahun yang dibagi rata) di menu Data & Integrasi. Dashboard menampilkan kartu "Target vs realisasi" (realisasi sampai bulan data terakhir, perkiraan akhir tahun, dan kebutuhan per bulan untuk sisa tahun), dan laporan memuat catatan target untuk rentang yang dipilih. Buat tabelnya sekali di SQL Editor:
 
 ```sql

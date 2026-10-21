@@ -39,8 +39,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   return (<><Nav active="/" updated={d.source === "demo" ? "Sumber: fixture" : `Data ${d.end}`} /><main className="wrap stack"><p>{badge(d.source)}</p>
     {q.ok && <p className="ok">{q.ok}</p>}{q.err && <p className="err">{q.err}</p>}
     {admin && (sumberExcel()
-      ? <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}><span>Sumber data: <b>Excel di {sumberExcel()}</b>, diperbarui otomatis di latar belakang{diperbarui ? <> (terakhir dibaca {diperbarui})</> : null}.</span>
-          <form action="/api/sync" method="post"><button className="btn alt" type="submit">Sinkron Excel sekarang</button></form></div>
+      ? <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}><span>Sumber data: <b>{sumberExcel() === "Apps Script" ? "data dikirim skrip (Apps Script atau Office Script)" : `Excel di ${sumberExcel()}`}</b>, {sumberExcel() === "Apps Script" ? "dikirim saat skrip dijalankan" : "diperbarui otomatis di latar belakang"}{diperbarui ? <> (terakhir dibaca {diperbarui})</> : null}.</span>
+          {sumberExcel() !== "Apps Script" && <form action="/api/sync" method="post"><button className="btn alt" type="submit">Sinkron Excel sekarang</button></form>}</div>
       : <p className="warn">Excel belum terhubung ke OneDrive: isi <code>ONEDRIVE_EXCEL_URL</code> (tautan berbagi "Siapa saja yang memiliki link dapat melihat") di pengaturan Vercel, lalu redeploy. Sementara itu data memakai unggahan terakhir (menu cadangan: alamat /data).</p>)}
     <FilterBar opts={d.opts} cur={filter} metode={metode} terbaik={d.f.banding.terbaik} />
     {d.periodeAktif && <p className="warn">Proyeksi dan grafik mengikuti periode: dihitung hanya dari data {labelPenuh(d.periodeAktif.start)} s.d. {labelPenuh(d.periodeAktif.end)} ({d.periodeAktif.n} bulan), lalu diproyeksikan 12 bulan setelah {labelPenuh(d.periodeAktif.end)}.</p>}
