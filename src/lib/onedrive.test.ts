@@ -1,6 +1,7 @@
 import { it, expect, beforeEach, afterEach } from "vitest";
 import { kodeBerbagi, miripXlsx, unduhDariOneDrive, sidikBerkas, unduhanLangsung, kandidatUnduhan, bersihkanTautan } from "./onedrive";
-import { sinkronOneDrive } from "./sinkronExcel";
+import { sinkronOneDrive, kunciCocok, dorongConfigured, sumberExcel } from "./sinkronExcel";
+import { putusanAkses } from "./session";
 
 const URL_BAGI = "https://1drv.ms/x/c/abc/XYZ?e=123";
 const zip = () => new Uint8Array([0x50, 0x4b, 3, 4, 1, 2, 3]).buffer;
@@ -81,4 +82,44 @@ it("unduh: env berisi kode iframe tetap dipakai dengan alamat di dalamnya", asyn
   await unduhDariOneDrive(f);
   expect(dipanggil.every((u) => !u.includes("iframe"))).toBe(true);
   expect(dipanggil.some((u) => u.includes("api.onedrive.com"))).toBe(true);
+});
+
+it("kunci Apps Script: hanya kunci persis dan minimal 24 karakter", () => {
+  const k = "k".repeat(30);
+  expect(kunciCocok(k, k)).toBe(true);
+  expect(kunciCocok(k + "x", k)).toBe(false);
+  expect(kunciCocok("salah", k)).toBe(false);
+  expect(kunciCocok(null, k)).toBe(false);
+  expect(kunciCocok("pendek", "pendek")).toBe(false);   // kunci terlalu pendek ditolak
+  expect(kunciCocok(k, undefined)).toBe(false);
+});
+
+it("sumber Apps Script aktif hanya bila EXCEL_PUSH_SECRET diset dan tidak ada sumber tarik", () => {
+  delete process.env.ONEDRIVE_EXCEL_URL; delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON; delete process.env.EXCEL_PUSH_SECRET;
+  expect(dorongConfigured()).toBe(false); expect(sumberExcel()).toBeNull();
+  process.env.EXCEL_PUSH_SECRET = "k".repeat(30);
+  expect(dorongConfigured()).toBe(true); expect(sumberExcel()).toBe("Apps Script");
+  delete process.env.EXCEL_PUSH_SECRET;
+});
+
+it("gerbang: /api/excel-masuk lewat middleware hanya untuk POST dengan header Authorization (kuncinya diperiksa rutenya)", () => {
+  expect(putusanAkses({ path: "/api/excel-masuk", method: "POST", sesi: null, adaAuthHeader: true })).toBe("izinkan");
+  expect(putusanAkses({ path: "/api/excel-masuk", method: "POST", sesi: null, adaAuthHeader: false })).toBe("401");
+  expect(putusanAkses({ path: "/api/excel-masuk", method: "GET", sesi: null, adaAuthHeader: true })).toBe("401");
+});
+
+it("kiriman JSON (Office Script) disusun jadi xlsx yang terbaca importer", async () => {
+  const { bukuDariLembar } = await import("./lembarMasuk");
+  const { importPenjualan } = await import("./importExcel");
+  const serial = (y: number, m: number, d: number) => Math.round(Date.UTC(y, m - 1, d) / 86400000) + 25569;
+  const kosong = (n: number) => Array(n).fill("");
+  const baris = (utj: number | "", akad: number | "") => { const r: (string | number)[] = kosong(52); r[1] = "A-01"; r[2] = "Gwen"; r[45] = utj; r[49] = akad; return r; };
+  const sheets = { PENJUALAN: [kosong(52), kosong(52), kosong(52), baris(serial(2026, 1, 15), serial(2026, 2, 20)), baris(serial(2026, 2, 3), "")], LAINNYA: [[1]] };
+  const rep = await importPenjualan(await bukuDariLembar(sheets), "kalender");
+  expect(rep.utj).toBe(2);
+  expect(rep.akad).toBe(1);
+  expect(rep.txns[0].utj).toBe("2026-01");
+  await expect(bukuDariLembar({ LAINNYA: [[1]] })).rejects.toThrow(/sheet yang dikenal/);
+  await expect(bukuDariLembar({ PENJUALAN: "x" })).rejects.toThrow(/daftar baris/);
+  await expect(bukuDariLembar(null)).rejects.toThrow(/sheets/);
 });
