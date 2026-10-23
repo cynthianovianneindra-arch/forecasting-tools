@@ -96,3 +96,30 @@ it("jagaLonjakan menolak lonjakan besar dan menahan penyimpanan", () => {
   expect(r.hasil.find((h) => h.indikator === "birate")).toMatchObject({ ok: false });
   expect(jagaLonjakan(rows, hasil, [{ bulan: "2026-08", indikator: "birate", nilai: 9.0 }]).rows).toHaveLength(2);
 });
+
+import { bacaTabelSemua, isiBulanBerlanjut } from "./macroLive";
+
+const TABEL_BI = `Tanggal BI-Rate 21 Oktober 2026 4,75 % 17 September 2026 5,00 % 20 Agustus 2026 5,00 % 16 Juli 2026 5,25 % 19 Februari 2026 5,50 % 18 Desember 2025 5,75 %`;
+
+it("bacaTabelSemua: satu nilai per bulan, urut dari terlama", () => {
+  const r = bacaTabelSemua(TABEL_BI, "birate");
+  expect(r.map((x) => `${x.bulan}:${x.nilai}`)).toEqual(["2025-12:5.75", "2026-02:5.5", "2026-07:5.25", "2026-08:5", "2026-09:5", "2026-10:4.75"]);
+});
+
+it("isiBulanBerlanjut: bulan tanpa keputusan memakai nilai sebelumnya, sampai bulan yang diminta", () => {
+  const r = isiBulanBerlanjut(bacaTabelSemua(TABEL_BI, "birate"), "2026-12");
+  expect(r).toHaveLength(13);
+  expect(r.find((x) => x.bulan === "2026-04")?.nilai).toBe(5.5);
+  expect(r[r.length - 1]).toEqual({ bulan: "2026-12", nilai: 4.75 });
+  expect(isiBulanBerlanjut([])).toEqual([]);
+});
+
+it("syncLive: BI Rate menyimpan riwayat bulanan, bukan hanya nilai terbaru", async () => {
+  const f = async (u: string) => (String(u).includes("BI-Rate") ? new Response(TABEL_BI) : new Response("x", { status: 500 }));
+  const { rows, hasil } = await syncLive({ fetch: f as unknown as typeof fetch, call: async () => "{}" });
+  const bi = rows.filter((r) => r.indikator === "birate");
+  expect(bi.length).toBeGreaterThanOrEqual(10);
+  expect(new Set(bi.map((r) => r.bulan)).size).toBe(bi.length); // tidak ada bulan ganda
+  expect(bi.find((r) => r.bulan === "2026-10")?.nilai).toBe(4.75);
+  expect(hasil.find((h) => h.indikator === "birate")).toMatchObject({ ok: true, bulan: "2026-10", nilai: 4.75 });
+});

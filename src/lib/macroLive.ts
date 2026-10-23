@@ -97,6 +97,38 @@ export function bacaTabelDeterministik(teks: string, indikator: "inflasi" | "bir
   return best ? { bulan: best.bulan, nilai: best.nilai } : null;
 }
 
+/**
+ * Semua baris tabel (bukan hanya yang terbaru): satu nilai per bulan (baris dengan tanggal terakhir di bulan itu), urut dari bulan terlama.
+ * Dipakai untuk mengisi riwayat 1 tahun BI Rate dan inflasi.
+ */
+export function bacaTabelSemua(teks: string, indikator: "inflasi" | "birate"): { bulan: string; nilai: number }[] {
+  if (indikator === "inflasi" && /\b(mtm|month[\s-]*to[\s-]*month|bulanan)\b/i.test(teks)) return [];
+  const re = new RegExp(`\\b(?:(\\d{1,2})\\s+)?(${NAMA_BULAN})\\b[\\s,.-]*(\\d{4})\\b[^\\d]{0,8}(\\d{1,2}[.,]\\d{1,2})\\s*%?`, "gi");
+  const perBulan = new Map<string, { key: number; nilai: number }>();
+  const [lo, hi] = RENTANG[indikator];
+  for (const m of teks.matchAll(re)) {
+    const bln = noBulan(m[2]), th = Number(m[3]), nilai = angkaId(m[4]);
+    if (!bln || th < 2000 || th > 2100 || nilai < lo || nilai > hi) continue;
+    const bulan = `${th}-${String(bln).padStart(2, "0")}`, key = th * 10000 + bln * 100 + (m[1] ? Number(m[1]) : 0);
+    const ada = perBulan.get(bulan);
+    if (!ada || key > ada.key) perBulan.set(bulan, { key, nilai });
+  }
+  return [...perBulan].map(([bulan, v]) => ({ bulan, nilai: v.nilai })).sort((a, b) => a.bulan.localeCompare(b.bulan));
+}
+
+const geser = (bulan: string, n: number) => { const [y, m] = bulan.split("-").map(Number); const t = y * 12 + (m - 1) + n; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`; };
+
+/** Isi bulan yang kosong dengan nilai terakhir yang berlaku (BI Rate tetap sama sampai ada keputusan baru), sampai bulan `sampai` bila diberikan. */
+export function isiBulanBerlanjut(data: { bulan: string; nilai: number }[], sampai?: string): { bulan: string; nilai: number }[] {
+  if (!data.length) return [];
+  const urut = [...data].sort((a, b) => a.bulan.localeCompare(b.bulan)), peta = new Map(urut.map((d) => [d.bulan, d.nilai]));
+  const akhir = sampai && sampai > urut[urut.length - 1].bulan ? sampai : urut[urut.length - 1].bulan;
+  const out: { bulan: string; nilai: number }[] = [];
+  let nilai = urut[0].nilai;
+  for (let b = urut[0].bulan; b <= akhir; b = geser(b, 1)) { nilai = peta.get(b) ?? nilai; out.push({ bulan: b, nilai }); }
+  return out;
+}
+
 /** Angka harus muncul berdekatan (±200 karakter) dengan nama bulan dan tahun yang dilaporkan, bukan sekadar ada di halaman. */
 export function berdekatan(teks: string, bulan: string, nilai: number, jarak = 200): boolean {
   const [th, bl] = bulan.split("-");
@@ -158,7 +190,13 @@ export async function syncLive(deps: { fetch?: typeof fetch; call?: (system: str
     for (const [url, sumber] of urls) {
       try {
         const halaman = await fetchPage(url, f);
-        let v = bacaTabelDeterministik(halaman, ind), cara = "";
+        const semua = bacaTabelSemua(halaman, ind);
+        let v = semua.length ? semua[semua.length - 1] : bacaTabelDeterministik(halaman, ind), cara = "";
+        if (semua.length > 1) {
+          // Riwayat: 18 bulan terakhir; BI Rate juga diisi untuk bulan tanpa keputusan baru sampai bulan ini
+          const riwayat = ind === "birate" ? isiBulanBerlanjut(semua.slice(-18), new Date().toISOString().slice(0, 7)) : semua.slice(-18);
+          for (const r of riwayat) if (r.bulan !== v!.bulan) rows.push({ bulan: r.bulan, indikator: ind, nilai: r.nilai, sumber });
+        }
         if (!v) {
           // Format tabel tidak dikenali: cadangan memakai Claude (dengan penjaga angka dan bulan).
           if (!deps.call && !process.env.ANTHROPIC_API_KEY) throw new Error("Tabel tidak terbaca dan ANTHROPIC_API_KEY belum diset (dibutuhkan sebagai cadangan)");
