@@ -1,4 +1,5 @@
 import type { BarisTim, Mutu } from "@/lib/marketing";
+import { Tumpuk } from "./Grafik";
 
 const KELAS: Record<Mutu, string> = { Bagus: "ok", Cukup: "", "Perlu perhatian": "neg", "Sampel kecil": "" };
 
@@ -21,6 +22,12 @@ export function PerformaTim({ marketing, agent, rataAkad, rataBatal }: { marketi
     <section className="stack"><h2>Performa marketing dan agent</h2>
       <p className="muted" style={{ margin: 0 }}>Berkas bagus = UTJ banyak, batal rendah, akad banyak. Pembanding: rata-rata seluruh tim akad {rataAkad}% dan batal {rataBatal}%. Nama dengan UTJ kurang dari 5 ditandai sampel kecil.
         {bm.length ? <> Marketing dengan berkas bagus: <b>{bm.join(", ")}</b>.</> : null}{ba.length ? <> Agent: <b>{ba.join(", ")}</b>.</> : null}</p>
+      <div className="pair">
+        <div className="card"><h2>Hasil UTJ per marketing</h2><Tumpuk baris={marketing.slice(0, 8).map((b) => ({ label: b.nama, nilai: [b.akad, b.batal, b.outstanding] }))} seri={["Akad", "Batal", "Proses"]} />
+          <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>8 marketing dengan UTJ terbanyak. Makin panjang bagian gelap (akad), makin bagus.</p></div>
+        <div className="card"><h2>Hasil UTJ per agent</h2><Tumpuk baris={agent.slice(0, 8).map((b) => ({ label: b.nama, nilai: [b.akad, b.batal, b.outstanding] }))} seri={["Akad", "Batal", "Proses"]} />
+          <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>8 agent dengan UTJ terbanyak.</p></div>
+      </div>
       <div className="grid"><Tabel judul="Per marketing" baris={marketing} /><Tabel judul="Per agent" baris={agent} /></div>
     </section>
   );
