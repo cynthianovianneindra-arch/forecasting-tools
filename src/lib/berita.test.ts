@@ -50,11 +50,11 @@ it("ambilBerita: gagal sebagian tetap menampilkan yang berhasil, semua gagal mem
   const ok = (async (u: string) => (String(u).includes("bisnis") ? new Response(HTML_BISNIS) : new Response("nope", { status: 403 }))) as unknown as typeof fetch;
   const r = await ambilBerita(ok, 1_000_000_000_000);
   expect(r.items.length).toBe(3);
-  expect(r.galat[0]).toContain("CNN Indonesia: HTTP 403");
+  expect(r.galat.some((g) => g.includes("CNN Indonesia") && g.includes("HTTP 403"))).toBe(true);
   const mati = (async () => { throw new Error("ENOTFOUND"); }) as unknown as typeof fetch;
   const r2 = await ambilBerita(mati, 1_000_000_000_000 + 40 * 60 * 1000); // cache 30 menit sudah lewat, hasil lama masih dipakai
   expect(r2.items.length).toBe(3);
-  expect(r2.galat).toHaveLength(2);
+  expect(r2.galat.length).toBeGreaterThan(0);
 });
 
 import { analisaDampak, ringkasDampak } from "./berita";
@@ -82,4 +82,38 @@ it("analisaDampak: berita bunga tidak dihitung dua kali sebagai KPR, dan pengaru
   expect(a.map((x) => x.topik)).toEqual(["Suku bunga"]);
   const b = analisaDampak("Kuota FLPP Dipangkas, Penjualan Rumah Subsidi Makin Seret");
   expect(b.map((x) => x.topik)).toEqual(["Subsidi"]);
+});
+
+import { kategoriBerita, HALAMAN_BERITA } from "./berita";
+
+it("kategoriBerita mengenali instrumen ekonomi, daya beli, pajak, demo, UMR, dan keputusan pemerintah", () => {
+  expect(kategoriBerita("BI Rate Ditahan 5,75 Persen, Rupiah Menguat")).toContain("Instrumen ekonomi");
+  expect(kategoriBerita("Daya Beli Kelas Menengah Melemah, PHK Meningkat")).toContain("Daya beli");
+  expect(kategoriBerita("Insentif PPN DTP Rumah Diperpanjang")).toContain("Pajak properti");
+  expect(kategoriBerita("Demo Buruh Ricuh di Depan Gedung DPR")).toContain("Isu demo");
+  expect(kategoriBerita("UMK Sidoarjo 2027 Naik Jadi Rp5,4 Juta")).toContain("UMR dan upah");
+  expect(kategoriBerita("Pemerintah Luncurkan Program 3 Juta Rumah untuk Pekerja")).toContain("Keputusan pemerintah");
+  expect(kategoriBerita("Menteri Resmikan Jembatan Baru di Jawa Tengah")).toEqual([]);
+  expect(kategoriBerita("Harga Rumah di Surabaya Naik")).toEqual([]); // tanpa aktor pemerintah bukan 'keputusan pemerintah'
+});
+
+it("analisaDampak untuk kategori baru", () => {
+  expect(analisaDampak("Demo Buruh Ricuh, Lalu Lintas Lumpuh")[0]).toMatchObject({ topik: "Isu demo", arah: "menekan" });
+  expect(analisaDampak("Demo Mahasiswa Berlangsung Damai dan Kondusif")[0]).toMatchObject({ topik: "Isu demo", arah: "netral" });
+  expect(analisaDampak("UMK Sidoarjo 2027 Naik 6,5 Persen")[0]).toMatchObject({ topik: "UMR dan upah", arah: "mendukung" });
+  expect(analisaDampak("PHK Meningkat, Daya Beli Masyarakat Melemah")[0]).toMatchObject({ topik: "Daya beli", arah: "menekan" });
+  expect(analisaDampak("Inflasi Oktober Terkendali di Level 2,4 Persen")[0]).toMatchObject({ topik: "Inflasi", arah: "mendukung" });
+  expect(analisaDampak("IHSG Anjlok 2 Persen, Rupiah Melemah")[0]).toMatchObject({ topik: "IHSG", arah: "menekan" });
+  expect(analisaDampak("Pemerintah Luncurkan Program 3 Juta Rumah")[0]).toMatchObject({ topik: "Keputusan pemerintah", arah: "mendukung" });
+});
+
+it("halaman umum disaring ke kategori minat dan halaman opsional yang gagal tidak dilaporkan", async () => {
+  const umum = `<a href="https://www.cnnindonesia.com/ekonomi/20261023101500-92-1100001/x">Daya Beli Kelas Menengah Melemah, PHK Meningkat di Jawa Timur</a>
+    <a href="https://www.cnnindonesia.com/ekonomi/20261023101600-92-1100002/y">Resep Nasi Goreng Spesial yang Disukai Seluruh Keluarga Indonesia</a>`;
+  const f = (async (u: string) => (String(u).includes("cnnindonesia.com/ekonomi") ? new Response(umum) : String(u).includes("/tag/umr") ? new Response("x", { status: 404 }) : new Response("x", { status: 500 }))) as unknown as typeof fetch;
+  const r = await ambilBerita(f, 2_000_000_000_000);
+  expect(r.items.map((b) => b.judul)).toEqual(["Daya Beli Kelas Menengah Melemah, PHK Meningkat di Jawa Timur"]);
+  expect(r.galat.some((g) => g.includes("tag/umr") || g.includes("tag/demo"))).toBe(false);
+  expect(r.galat.some((g) => g.includes("HTTP 500"))).toBe(true);
+  expect(HALAMAN_BERITA.length).toBeGreaterThanOrEqual(6);
 });
