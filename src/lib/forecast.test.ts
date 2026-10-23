@@ -98,13 +98,13 @@ describe("tiga metode proyeksi UTJ", () => {
     expect(f[5]).toBeGreaterThan(y[y.length - 1] * 0.8);
   });
   it("forecast dengan metode apa pun menghasilkan 12 baris berhingga dan ada perbandingan tiga metode", () => {
-    for (const m of ["ets", "es", "wma", "mlr"] as const) {
+    for (const m of ["ets", "etsx", "es", "wma", "mlr"] as const) {
       const f = forecast(txns, start, end, 12, m);
       expect(f.rows).toHaveLength(12);
       expect(f.rows.every((r) => Number.isFinite(r.utj) && Number.isFinite(r.akad))).toBe(true);
       expect(f.metode).toBe(m);
-      expect(f.banding.baris).toHaveLength(4);
-      expect(["ets", "es", "wma", "mlr"]).toContain(f.banding.terbaik);
+      expect(f.banding.baris).toHaveLength(5);
+      expect(["ets", "etsx", "es", "wma", "mlr"]).toContain(f.banding.terbaik);
       expect(f.bt.utjMae13).toBeCloseTo(f.banding.baris.find((b) => b.metode === m)!.utjMae13, 10);
     }
   });

@@ -32,11 +32,15 @@ function jalankan(y: number[], m: number, trend: boolean, a: number, b: number, 
   return { sse, L, T, S };
 }
 
-export function etsFit(y: number[]): EtsFit | null {
+/** mode "aicc": periode musiman dipilih dengan kriteria AICc (hati-hati terhadap pola kebetulan). mode "excel": semua periode 2 sampai n/2 dicoba dan dipilih yang galat kuadratnya terkecil, tanpa penalti, mirip deteksi musiman otomatis FORECAST.ETS di Excel (bisa menangkap siklus kebetulan). */
+export type ModeEts = "aicc" | "excel";
+
+export function etsFit(y: number[], mode: ModeEts = "aicc"): EtsFit | null {
   const n = y.length;
   if (n < 4) return null;
   let best: EtsFit | null = null;
-  for (const m of PERIODE) {
+  const periode = mode === "excel" ? [1, ...Array.from({ length: Math.floor(n / 2) - 1 }, (_, i) => i + 2)] : PERIODE;
+  for (const m of periode) {
     if (m > 1 && n < 2 * m) continue;
     for (const trend of [false, true]) {
       const k = 2 + (trend ? 2 : 0) + (m > 1 ? 1 + m : 0);
@@ -44,7 +48,7 @@ export function etsFit(y: number[]): EtsFit | null {
       const bs = trend ? BETA : [0], gs = m > 1 ? GAMMA : [0];
       for (const a of ALPHA) for (const b of bs) for (const g of gs) {
         const r = jalankan(y, m, trend, a, b, g);
-        const aicc = n * Math.log(r.sse / n + 1e-9) + 2 * k + (2 * k * (k + 1)) / (n - k - 1);
+        const aicc = mode === "excel" ? r.sse : n * Math.log(r.sse / n + 1e-9) + 2 * k + (2 * k * (k + 1)) / (n - k - 1);
         if (!best || aicc < best.aicc) best = { m, trend, alpha: a, beta: b, gamma: g, level: r.L, trendVal: r.T, season: r.S, sse: r.sse, aicc };
       }
     }
@@ -53,8 +57,8 @@ export function etsFit(y: number[]): EtsFit | null {
 }
 
 /** Proyeksi h langkah ke depan (tidak negatif). Data terlalu pendek: rata-rata data. */
-export function etsForecast(y: number[], h: number): number[] {
-  const f = etsFit(y);
+export function etsForecast(y: number[], h: number, mode: ModeEts = "aicc"): number[] {
+  const f = etsFit(y, mode);
   if (!f) { const mu = y.length ? y.reduce((s, x) => s + x, 0) / y.length : 0; return Array(h).fill(mu); }
   const n = y.length;
   return Array.from({ length: h }, (_, i) => {

@@ -74,16 +74,19 @@ export function linearTrend(y: number[], h: number, k = 24): number[] {
   return Array.from({ length: h }, (_, j) => Math.max(0, a + b * (n + j)));
 }
 
-export type Metode = "ets" | "es" | "wma" | "mlr";
-export const METODE_NAMA: Record<Metode, string> = { ets: "Rumus Excel (FORECAST.ETS)", es: "Exponential smoothing", wma: "Weighted moving average", mlr: "Multiple linear regression" };
+export type Metode = "ets" | "etsx" | "es" | "wma" | "mlr";
+/** Metode yang memakai rumus ala Excel untuk batal, SPR & PPJB, akad, dan proses bank. */
+export const rumusExcel = (m: Metode) => m === "ets" || m === "etsx";
+export const METODE_NAMA: Record<Metode, string> = { ets: "ETS (musiman dipilih statistik)", etsx: "ETS gaya Excel (musiman otomatis)", es: "Exponential smoothing", wma: "Weighted moving average", mlr: "Multiple linear regression" };
 export const METODE_PENJELASAN: Record<Metode, string> = {
-  ets: "Seperti rumus di Excel: UTJ dari exponential smoothing dengan pola musiman otomatis (dibulatkan ke bawah). Batal = UTJ x tingkat batal tahun lalu; SPR & PPJB = UTJ - batal; akad = (SPR & PPJB + proses bank) x tingkat akad tahun lalu.",
+  ets: "Rumus gaya Excel dengan pola musiman yang dipilih secara statistik (hati-hati terhadap pola kebetulan), biasanya lebih datar. UTJ dibulatkan ke bawah. Batal = UTJ x tingkat batal tahun lalu; SPR & PPJB = UTJ - batal; akad = (SPR & PPJB + proses bank) x tingkat akad tahun lalu.",
+  etsx: "Meniru FORECAST.ETS di Excel: periode musiman dicari otomatis dari 2 bulan sampai separuh panjang data dan dipilih yang paling cocok dengan data lama, sehingga bisa menangkap siklus kebetulan (mis. 25 bulan) dan hasilnya naik turun. Angkanya mendekati Excel tetapi tidak persis sama. Batal, SPR & PPJB, akad, dan proses bank memakai rumus yang sama dengan ETS biasa.",
   es: "Memperhalus data lama: bulan terbaru berpengaruh paling besar, hasilnya datar.",
   wma: "Rata-rata beberapa bulan terakhir, bulan terbaru diberi bobot lebih besar, hasilnya datar.",
   mlr: "Garis tren dan pola musiman bulanan, ditambah rata-rata 3 bulan sebelumnya.",
 };
-export const METODE_LIST: Metode[] = ["ets", "es", "wma", "mlr"];
-export const parseMetode = (v?: string): Metode => (v === "es" || v === "wma" || v === "mlr" ? v : "ets");
+export const METODE_LIST: Metode[] = ["ets", "etsx", "es", "wma", "mlr"];
+export const parseMetode = (v?: string): Metode => (v === "etsx" || v === "es" || v === "wma" || v === "mlr" ? v : "ets");
 
 /** Weighted moving average: jendela k terakhir dengan bobot linear (terbaru = k, terlama = 1); k dipilih dari {3,4,6,9,12} yang paling kecil galat satu langkahnya pada riwayat. */
 export function wmaFit(y: number[]): { k: number; value: number } {
@@ -143,7 +146,7 @@ export function multipleLinearRegression(y: number[], h: number, m0 = 0): number
 
 /** Proyeksi UTJ h bulan dengan metode terpilih. m0 = indeks bulan pertama deret (ym). */
 export function forecastUtj(metode: Metode, y: number[], h: number, m0 = 0): number[] {
-  if (metode === "ets") return etsForecast(y, h).map((v) => Math.floor(v + 1e-9));
+  if (metode === "ets" || metode === "etsx") return etsForecast(y, h, metode === "etsx" ? "excel" : "aicc").map((v) => Math.floor(v + 1e-9));
   if (metode === "wma") return weightedMovingAverage(y, h);
   if (metode === "mlr") return multipleLinearRegression(y, h, m0);
   return exponentialSmoothing(y, h);
@@ -279,7 +282,7 @@ export function backtest(txns: Txn[], start: string, end: string, H = 3, minHist
     fc.forEach((p, i) => { ae13 += Math.abs(p - actU[i]); aeMa += Math.abs(ma[i] - actU[i]); ae13n++; errs[i].push(p - actU[i]); });
     tot += Math.abs(fc.reduce((x, y) => x + y, 0) - actU.reduce((x, y) => x + y, 0));
     const T = u.months[t - 1];
-    const pa = metode === "ets" ? rumusAkadBatal(txns, T, fc).akad : pipelineAkad(txns, T, fc);
+    const pa = rumusExcel(metode) ? rumusAkadBatal(txns, T, fc).akad : pipelineAkad(txns, T, fc);
     atot += Math.abs(pa.reduce((x, y) => x + y, 0) - actA.reduce((x, y) => x + y, 0));
     const maA = movingAverage(a.values.slice(0, t), H, 12);
     mtot += Math.abs(maA.reduce((x, y) => x + y, 0) - actA.reduce((x, y) => x + y, 0));
@@ -332,10 +335,10 @@ export function forecast(txns: Txn[], start: string, end: string, H = 12, metode
   const u = monthlySeries(txns, "utj", start, end);
   const base = forecastUtj(metode, u.values, H, ym(start));
   const trend = linearTrend(u.values, H, 24);
-  const rx = metode === "ets" ? rumusAkadBatal(txns, end, base) : null;
+  const rx = rumusExcel(metode) ? rumusAkadBatal(txns, end, base) : null;
   const pj = rx ?? pipelineAkadBatal(txns, end, base);
   const akad = pj.akad;
-  const bts = { ets: backtest(txns, start, end, 3, 24, "ets"), es: backtest(txns, start, end, 3, 24, "es"), wma: backtest(txns, start, end, 3, 24, "wma"), mlr: backtest(txns, start, end, 3, 24, "mlr") };
+  const bts = { ets: backtest(txns, start, end, 3, 24, "ets"), etsx: backtest(txns, start, end, 3, 24, "etsx"), es: backtest(txns, start, end, 3, 24, "es"), wma: backtest(txns, start, end, 3, 24, "wma"), mlr: backtest(txns, start, end, 3, 24, "mlr") };
   const bt = bts[metode];
   const rows = base.map((p, i) => {
     const { lo, hi } = utjInterval(p, i + 1, bt.errorsByHorizon);
