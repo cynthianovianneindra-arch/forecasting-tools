@@ -45,7 +45,7 @@ export function Garis({ labels, deret, tinggi = 170, lebar = 400, area = true, f
   const semua = deret.flatMap((d) => d.nilai.filter((v): v is number => v !== null));
   if (!semua.length || labels.length < 2) return <p className="muted">Belum ada data.</p>;
   const lo = Math.min(...semua), hi = Math.max(...semua), pad = (hi - lo || Math.abs(hi) || 1) * 0.1;
-  const y0 = lo - pad, y1 = hi + pad;
+  const y0 = lo >= 0 ? Math.max(0, lo - pad) : lo - pad, y1 = hi + pad; // data tidak negatif: sumbu tidak turun di bawah 0
   const X = (i: number) => pl + (i * (W - pl - pr)) / (labels.length - 1), Y = (v: number) => pt + ((y1 - v) * (H - pt - pb)) / (y1 - y0);
   const tick = [0, 1, 2, 3].map((k) => y0 + ((y1 - y0) * k) / 3);
   const langkah = Math.max(1, Math.ceil(labels.length / (W > 450 ? 8 : 5)));

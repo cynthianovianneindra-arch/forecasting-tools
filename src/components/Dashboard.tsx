@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Chart, Legend, Bar } from "./Chart";
+import { Garis, BatangH } from "./Grafik";
 import { f1, labelBulan, labelPenuh, tampilLabel } from "@/lib/format";
 import { stockByType } from "@/lib/stock";
 import { METODE_NAMA, Metode } from "@/lib/forecast";
@@ -13,9 +14,10 @@ interface Props {
   monthly: { bulan: string; utj: number; akad: number }[]; rows: Row[]; netPrice: number; divergent: boolean;
   stok?: { open: number; total: number; belumDibangun: number; perTipe: { tipe: string; n: number }[]; belumDibangunPerTipe: { tipe: string; n: number }[] } | null;
   stokHabis?: number | null; stokKurang?: number | null; makro?: Makro[] | null; outstanding?: number;
+  bawahKiri?: React.ReactNode; // kartu tambahan di bawah kolom kiri (mis. donat hasil UTJ dan tipe laku)
 }
 
-export function Dashboard({ metode = "ets", monthly, rows, netPrice, divergent, stok, stokHabis, stokKurang, makro, outstanding }: Props) {
+export function Dashboard({ metode = "ets", monthly, rows, netPrice, divergent, stok, stokHabis, stokKurang, makro, outstanding, bawahKiri }: Props) {
   const [mode, setMode] = useState<"bulanan" | "tahunan">("bulanan");
   let bars: Bar[];
   if (mode === "bulanan") {
@@ -33,6 +35,9 @@ export function Dashboard({ metode = "ets", monthly, rows, netPrice, divergent, 
   const utjP = sum(rows.map((r) => r.utjInt)), akadP = sum(rows.map((r) => r.akadInt));
   const utjA = sum(monthly.slice(-12).map((m) => m.utj)), akadA = sum(monthly.slice(-12).map((m) => m.akad));
   const delta = (p: number, a: number) => (a > 0 ? Math.round(((p - a) / a) * 100) : null);
+  const labelRows = rows.map((r) => labelBulan(r.bulan));
+  const sisaStok = stok && rinci ? (() => { let sisa = stok.open; return rows.map((r) => (sisa = Math.max(0, sisa - (r.utjInt - (r.batalInt ?? 0))))); })() : null;
+  const perTahun = (() => { const m = new Map<string, number>(); for (const x of monthly) m.set(x.bulan.slice(0, 4), (m.get(x.bulan.slice(0, 4)) ?? 0) + x.utj); return [...m].slice(-5).map(([y, v], i, a) => ({ label: y, value: v, catatan: i === a.length - 1 ? "s.d. data terakhir" : undefined })); })();
   const Chg = ({ v }: { v: number | null }) => (v === null ? null : <span className={"chg" + (v < 0 ? " neg" : "")}>{v >= 0 ? "+" : ""}{v}% vs 12 bln terakhir</span>);
   return (
     <div className="stack">
@@ -60,6 +65,13 @@ export function Dashboard({ metode = "ets", monthly, rows, netPrice, divergent, 
               <tbody>{table.map((r) => <tr key={r.bulan}><td>{labelPenuh(r.bulan)}</td><td className="n">{r.utjInt} ({r.utjLoInt}–{r.utjHiInt})</td><td className="n">{r.akadInt}</td><td className="n">{f1(r.akadInt * netPrice)}</td></tr>)}</tbody></table>}
             {rinci && <p className="muted" style={{ fontSize: 12 }}>Rumus seperti di Excel: batal = UTJ x tingkat batal tahun lalu; SPR & PPJB = UTJ - batal; akad = (proses bank bulan lalu + SPR & PPJB) x tingkat akad tahun lalu; proses bank = proses bank lalu + UTJ - batal - akad (dimulai dari 0).</p>}
           </div>
+          <div className="pair">
+            <div className="card"><h2>Penerimaan proyeksi per bulan</h2><Garis labels={labelRows} deret={[{ nama: "Penerimaan (Rp M)", nilai: rows.map((r) => r.akadInt * netPrice) }]} format={(v) => f1(v)} judul="Penerimaan proyeksi per bulan, Rp miliar" lebar={420} tinggi={190} />
+              <p className="muted" style={{ fontSize: 12 }}>Akad proyeksi x harga bersih rata-rata, Rp miliar per bulan.</p></div>
+            {rinci && <div className="card"><h2>Berkas di bank (proyeksi)</h2><Garis labels={labelRows} deret={[{ nama: "Proses bank", nilai: rows.map((r) => r.proses ?? 0) }, { nama: "Akad", nilai: rows.map((r) => r.akadInt), putus: true }]} judul="Berkas proses bank dan akad per bulan" lebar={420} tinggi={190} />
+              <p className="muted" style={{ fontSize: 12 }}>Proses bank = berkas yang masih menunggu akad; makin tinggi, makin lama uang tertahan.</p></div>}
+          </div>
+          {bawahKiri}
         </div>
         <div className="stack">
           {outstanding !== undefined && <div className="card"><h2>Berkas outstanding</h2><div className="kpi">{outstanding} berkas</div>
@@ -68,6 +80,9 @@ export function Dashboard({ metode = "ets", monthly, rows, netPrice, divergent, 
           {stok && <div className="card"><h2>Stok tersedia dijual</h2><div className="kpi">{stok.open} unit</div><p className="muted">status Open dari {stok.total} unit (sheet UNIT). Belum dibangun (Close): {stok.belumDibangun} unit, bisa dijual setelah dibangun.</p>
             {stokHabis !== null && stokHabis !== undefined ? <p className="err">Pada laju proyeksi (UTJ dikurangi batal), stok Open habis di bulan ke-{stokHabis} dan kurang sekitar {stokKurang} unit dalam 12 bulan. Proyeksi di atas mengasumsikan unit tersedia; unit belum dibangun (Close) perlu dibangun.</p> : <p className="muted">Stok cukup untuk seluruh 12 bulan proyeksi.</p>}
             <table><thead><tr><th>Tipe</th><th className="n">Open</th><th className="n">Belum dibangun</th></tr></thead><tbody>{stockByType(stok).map((x) => <tr key={x.tipe}><td>{x.tipe}</td><td className="n">{x.open}</td><td className="n">{x.belum}</td></tr>)}</tbody></table></div>}
+          {sisaStok && <div className="card"><h2>Sisa stok Open per bulan</h2><Garis labels={labelRows} deret={[{ nama: "Unit Open", nilai: sisaStok }]} judul="Sisa stok Open per bulan pada laju proyeksi" lebar={300} tinggi={170} />
+            <p className="muted" style={{ fontSize: 12 }}>Stok Open dikurangi UTJ bersih (UTJ dikurangi batal) tiap bulan.</p></div>}
+          {perTahun.length > 1 && <div className="card"><h2>UTJ per tahun</h2><BatangH baris={perTahun} /></div>}
         </div>
       </div>
     </div>
