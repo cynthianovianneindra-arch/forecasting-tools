@@ -12,7 +12,8 @@ export async function BeritaProperti({ porsiPpn = null, biRate = null, umk = nul
   const semua = mentah.map((b) => ({ ...b, dampak: analisaDampak(b.judul) }));
   const hitung = new Map<string, number>();
   for (const b of semua) for (const k of b.kategori) hitung.set(k, (hitung.get(k) ?? 0) + 1);
-  const pilih = kategori && hitung.has(kategori) ? kategori : null;
+  // Fokus properti Jawa Timur: tanpa pilihan, tampilkan berita Jawa Timur bila ada; "semua" menampilkan seluruh berita.
+  const pilih = kategori === "semua" ? null : kategori && hitung.has(kategori) ? kategori : hitung.has("Jawa Timur") ? "Jawa Timur" : null;
   const items = (pilih ? semua.filter((b) => b.kategori.includes(pilih)) : semua).slice(0, 14);
   const ringkas = ringkasDampak(items);
   // Kaitan dengan data sendiri: topik yang paling relevan bagi Shaistanaya City
@@ -22,10 +23,10 @@ export async function BeritaProperti({ porsiPpn = null, biRate = null, umk = nul
     "UMR dan upah": umk !== null ? `UMK Sidoarjo di data saat ini ${rp(umk)} per bulan.` : "",
     "Daya beli": statusDayaBeli ? `Status daya beli di data saat ini: ${statusDayaBeli}.` : "",
   };
-  const href = (k: string | null) => `/pasar${k ? `?berita=${encodeURIComponent(k)}` : ""}#berita`;
+  const href = (k: string | null) => `/pasar?berita=${encodeURIComponent(k ?? "semua")}#berita`;
   return (
-    <div className="card" id="berita"><h2>Berita yang berpengaruh ke penjualan</h2>
-      <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>Dari Bisnis.com dan CNN Indonesia: properti, instrumen ekonomi, daya beli, pajak properti, isu demo, UMR, dan keputusan pemerintah. Klik judul untuk membaca di situs aslinya. Arah dan sasaran pengaruh diperkirakan dari kata kunci judul (bukan dari isi berita), jadi anggap sebagai hipotesis dan cocokkan dengan data penjualan.</p>
+    <div className="card" id="berita"><h2>Berita properti Jawa Timur</h2>
+      <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>Fokus properti Jawa Timur dari Berita Jatim dan Jawa Pos, dilengkapi berita properti nasional dari Bisnis.com dan CNN Indonesia. Klik judul untuk membaca di situs aslinya. Arah dan sasaran pengaruh diperkirakan dari kata kunci judul (bukan dari isi berita), jadi anggap sebagai hipotesis dan cocokkan dengan data penjualan.</p>
       {semua.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }} aria-label="Saring berita menurut kategori">
         <a href={href(null)} className={"tgt-badge" + (pilih ? "" : " ok")} style={{ textDecoration: "none" }}>Semua ({semua.length})</a>
         {KATEGORI.filter((k) => hitung.has(k.nama)).map((k) => <a key={k.nama} href={href(k.nama)} className={"tgt-badge" + (pilih === k.nama ? " ok" : "")} style={{ textDecoration: "none" }}>{k.nama} ({hitung.get(k.nama)})</a>)}

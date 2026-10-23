@@ -86,20 +86,17 @@ it("analisaDampak: berita bunga tidak dihitung dua kali sebagai KPR, dan pengaru
 
 import { kategoriBerita, HALAMAN_BERITA } from "./berita";
 
-it("kategoriBerita mengenali instrumen ekonomi, daya beli, pajak, demo, UMR, dan keputusan pemerintah", () => {
+it("kategoriBerita mengenali Jawa Timur, instrumen ekonomi, daya beli, pajak, UMR, dan keputusan pemerintah", () => {
   expect(kategoriBerita("BI Rate Ditahan 5,75 Persen, Rupiah Menguat")).toContain("Instrumen ekonomi");
   expect(kategoriBerita("Daya Beli Kelas Menengah Melemah, PHK Meningkat")).toContain("Daya beli");
   expect(kategoriBerita("Insentif PPN DTP Rumah Diperpanjang")).toContain("Pajak properti");
-  expect(kategoriBerita("Demo Buruh Ricuh di Depan Gedung DPR")).toContain("Isu demo");
   expect(kategoriBerita("UMK Sidoarjo 2027 Naik Jadi Rp5,4 Juta")).toContain("UMR dan upah");
   expect(kategoriBerita("Pemerintah Luncurkan Program 3 Juta Rumah untuk Pekerja")).toContain("Keputusan pemerintah");
   expect(kategoriBerita("Menteri Resmikan Jembatan Baru di Jawa Tengah")).toEqual([]);
-  expect(kategoriBerita("Harga Rumah di Surabaya Naik")).toEqual([]); // tanpa aktor pemerintah bukan 'keputusan pemerintah'
+  expect(kategoriBerita("Harga Rumah di Surabaya Naik")).toEqual(["Jawa Timur"]); // tanpa aktor pemerintah bukan 'keputusan pemerintah'
 });
 
 it("analisaDampak untuk kategori baru", () => {
-  expect(analisaDampak("Demo Buruh Ricuh, Lalu Lintas Lumpuh")[0]).toMatchObject({ topik: "Isu demo", arah: "menekan" });
-  expect(analisaDampak("Demo Mahasiswa Berlangsung Damai dan Kondusif")[0]).toMatchObject({ topik: "Isu demo", arah: "netral" });
   expect(analisaDampak("UMK Sidoarjo 2027 Naik 6,5 Persen")[0]).toMatchObject({ topik: "UMR dan upah", arah: "mendukung" });
   expect(analisaDampak("PHK Meningkat, Daya Beli Masyarakat Melemah")[0]).toMatchObject({ topik: "Daya beli", arah: "menekan" });
   expect(analisaDampak("Inflasi Oktober Terkendali di Level 2,4 Persen")[0]).toMatchObject({ topik: "Inflasi", arah: "mendukung" });
@@ -107,13 +104,32 @@ it("analisaDampak untuk kategori baru", () => {
   expect(analisaDampak("Pemerintah Luncurkan Program 3 Juta Rumah")[0]).toMatchObject({ topik: "Keputusan pemerintah", arah: "mendukung" });
 });
 
-it("halaman umum disaring ke kategori minat dan halaman opsional yang gagal tidak dilaporkan", async () => {
-  const umum = `<a href="https://www.cnnindonesia.com/ekonomi/20261023101500-92-1100001/x">Daya Beli Kelas Menengah Melemah, PHK Meningkat di Jawa Timur</a>
-    <a href="https://www.cnnindonesia.com/ekonomi/20261023101600-92-1100002/y">Resep Nasi Goreng Spesial yang Disukai Seluruh Keluarga Indonesia</a>`;
-  const f = (async (u: string) => (String(u).includes("cnnindonesia.com/ekonomi") ? new Response(umum) : String(u).includes("/tag/umr") ? new Response("x", { status: 404 }) : new Response("x", { status: 500 }))) as unknown as typeof fetch;
+it("halaman umum Berita Jatim disaring ke berita properti, dan halaman opsional yang gagal tidak dilaporkan", async () => {
+  const umum = `<a href="https://beritajatim.com/ekonomi/harga-rumah-subsidi-di-sidoarjo-naik-pengembang-minta-kuota-tambahan/">Harga Rumah Subsidi di Sidoarjo Naik, Pengembang Minta Kuota Tambahan</a><span>23 Oktober 2026</span>
+    <a href="https://beritajatim.com/olahraga/persebaya-menang-telak-atas-tamunya-di-gelora-bung-tomo-malam-ini/">Persebaya Menang Telak atas Tamunya di Gelora Bung Tomo Malam Ini</a>`;
+  const f = (async (u: string) => (String(u) === "https://beritajatim.com/" ? new Response(umum) : String(u).includes("/tag/properti") ? new Response("x", { status: 404 }) : new Response("x", { status: 500 }))) as unknown as typeof fetch;
   const r = await ambilBerita(f, 2_000_000_000_000);
-  expect(r.items.map((b) => b.judul)).toEqual(["Daya Beli Kelas Menengah Melemah, PHK Meningkat di Jawa Timur"]);
-  expect(r.galat.some((g) => g.includes("tag/umr") || g.includes("tag/demo"))).toBe(false);
+  expect(r.items.map((b) => b.judul)).toEqual(["Harga Rumah Subsidi di Sidoarjo Naik, Pengembang Minta Kuota Tambahan"]);
+  expect(r.items[0]).toMatchObject({ sumber: "Berita Jatim", tanggal: "2026-10-23" });
+  expect(r.items[0].kategori).toContain("Jawa Timur");
+  expect(r.galat.some((g) => g.includes("Berita Jatim") && (g.includes("tag/properti") || g.includes("/ekonomi")))).toBe(false);
   expect(r.galat.some((g) => g.includes("HTTP 500"))).toBe(true);
-  expect(HALAMAN_BERITA.length).toBeGreaterThanOrEqual(6);
+  expect(HALAMAN_BERITA.some((h) => h.url.includes("jawapos.com/properti"))).toBe(true);
+});
+
+it("parseBerita Jawa Pos: alamat bernomor, tanggal dari teks di dekat tautan", () => {
+  const html = `<div><a href="/properti/015123456/pasar-hunian-surabaya-barat-masih-diminati-meski-bunga-kpr-naik"><h3>Pasar Hunian Surabaya Barat Masih Diminati Meski Bunga KPR Naik</h3></a><time datetime="2026-10-22T09:00:00+07:00">22 Okt 2026</time></div>
+    <a href="/properti">Properti</a><a href="/olahraga/015999999/liga-1-persebaya">Liga 1 Persebaya Kalahkan Arema di Kandang Sendiri Malam Ini</a>`;
+  const b = parseBerita(html, SUMBER_BERITA[3]);
+  expect(b.map((x) => x.judul)).toContain("Pasar Hunian Surabaya Barat Masih Diminati Meski Bunga KPR Naik");
+  const h = b.find((x) => x.judul.startsWith("Pasar Hunian"))!;
+  expect(h).toMatchObject({ sumber: "Jawa Pos", tanggal: "2026-10-22", url: "https://www.jawapos.com/properti/015123456/pasar-hunian-surabaya-barat-masih-diminati-meski-bunga-kpr-naik" });
+  expect(h.kategori).toContain("Jawa Timur");
+});
+
+it("cariTanggal membaca datetime dan tanggal Indonesia", async () => {
+  const { cariTanggal } = await import("./berita");
+  expect(cariTanggal('<time datetime="2026-10-22T09:00:00">x</time>')).toBe("2026-10-22");
+  expect(cariTanggal("Rabu, 5 Agustus 2026 pukul 10.00")).toBe("2026-08-05");
+  expect(cariTanggal("tanpa tanggal")).toBeNull();
 });
