@@ -14,7 +14,9 @@ async function run(paksa = false) {
   const ada = await listMacroLive();
   for (const ind of ["inflasi", "birate"]) {
     const t = Math.max(0, ...ada.filter((x) => x.indikator === ind).map((x) => Date.parse(x.diambil) || 0));
-    if (Date.now() - t < TUJUH_HARI) lewati.add(ind);
+    // BI Rate dan inflasi dilewati hanya bila baru diambil dan riwayatnya sudah cukup (10 bulan atau lebih); bila belum, ambil lagi agar riwayat 1 tahun terisi.
+    const bulanTersimpan = new Set(ada.filter((x) => x.indikator === ind).map((x) => x.bulan)).size;
+    if (Date.now() - t < TUJUH_HARI && bulanTersimpan >= 10) lewati.add(ind);
   }
   const mentah = await syncLive({ lewati: paksa ? new Set<string>() : lewati });
   const { rows, hasil } = jagaLonjakan(mentah.rows, mentah.hasil, ada);
