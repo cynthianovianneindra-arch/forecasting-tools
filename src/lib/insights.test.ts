@@ -30,3 +30,16 @@ it("applyFilter memakai rentang bulan untuk kartu tetapi tidak untuk proyeksi", 
   expect(applyFilter(tx, { dari: "2025-02", sampai: "2025-05" }, false)).toHaveLength(1);
   expect(applyFilter(tx, { dari: "2025-02", sampai: "2025-05" }, true)).toHaveLength(3);
 });
+
+import { tipePerCluster } from "./insights";
+it("tipePerCluster: tipe diurutkan menurut akad di dalam tiap cluster", () => {
+  const t = [
+    { utj: "2026-01", akad: "2026-03", tipe: "Gwen", cluster: "Montana" }, { utj: "2026-01", akad: "2026-04", tipe: "Gwen", cluster: "Montana" },
+    { utj: "2026-02", akad: "2026-04", tipe: "Darlene", cluster: "Montana" }, { utj: "2026-02", akad: null, tipe: "Darlene", cluster: "Montana" }, { utj: "2026-02", akad: null, tipe: "Darlene", cluster: "Montana" },
+    { utj: "2026-02", akad: "2026-05", tipe: "Kanaya", cluster: "Non Cluster" }, { utj: "2026-02", akad: null, tipe: "Ruko" },
+  ] as never[];
+  const r = tipePerCluster(t);
+  expect(r.map((c) => c.cluster)).toEqual(["Montana", "Non Cluster", "Tanpa cluster"]);
+  expect(r[0].tipe.map((x) => `${x.tipe}:${x.akad}/${x.utj}`)).toEqual(["Gwen:2/2", "Darlene:1/3"]);
+  expect(r[0]).toMatchObject({ utj: 5, akad: 3 });
+});
