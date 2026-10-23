@@ -39,22 +39,42 @@ export function BatangH({ baris, satuan = "", maks }: { baris: { label: string; 
   );
 }
 
+/** Batang mendatar bertumpuk: tiap baris dibagi per seri (mis. status berkas per bank). Panjang batang mengikuti total terhadap baris terbesar. */
+export function Tumpuk({ baris, seri }: { baris: { label: string; nilai: number[] }[]; seri: string[] }) {
+  const jml = (a: number[]) => a.reduce((x, y) => x + y, 0);
+  const maks = Math.max(1, ...baris.map((b) => jml(b.nilai)));
+  return (
+    <div>
+      <div className="gr-bh" role="list">
+        {baris.map((b) => { const tot = jml(b.nilai); return (
+          <div key={b.label} className="gr-bh-row" role="listitem">
+            <span className="gr-bh-l" title={b.label}>{b.label}</span>
+            <span className="gr-bh-t"><span style={{ display: "flex", height: "100%", width: `${Math.max(2, (tot / maks) * 100)}%` }}>{b.nilai.map((v, i) => (v > 0 ? <i key={seri[i]} title={`${seri[i]}: ${v}`} style={{ width: `${(v / Math.max(1, tot)) * 100}%`, background: WARNA[i % WARNA.length], borderRadius: 0 }} /> : null))}</span></span>
+            <span className="gr-bh-v">{tot}</span>
+          </div>); })}
+      </div>
+      <figcaption className="gr-legenda-h">{seri.map((n, i) => <span key={n}><i style={{ background: WARNA[i % WARNA.length] }} />{n}</span>)}</figcaption>
+    </div>
+  );
+}
+
 /** Garis atau area, satu atau beberapa deret pada sumbu bulan yang sama. nilai null = putus. */
-export function Garis({ labels, deret, tinggi = 170, lebar = 400, area = true, format = (v: number) => String(Math.round(v * 10) / 10), judul }: { labels: string[]; deret: { nama: string; nilai: (number | null)[]; putus?: boolean }[]; tinggi?: number; lebar?: number; area?: boolean; format?: (v: number) => string; judul: string }) {
-  const W = lebar, H = tinggi, pl = 40, pr = 10, pt = 10, pb = 24;
+export function Garis({ labels, deret, tinggi = 170, lebar = 400, area = true, format = (v: number) => (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString("id-ID") : String(Math.round(v * 10) / 10)), judul }: { labels: string[]; deret: { nama: string; nilai: (number | null)[]; putus?: boolean }[]; tinggi?: number; lebar?: number; area?: boolean; format?: (v: number) => string; judul: string }) {
+  const W = lebar, H = tinggi, pr = 10, pt = 10, pb = 24;
   const semua = deret.flatMap((d) => d.nilai.filter((v): v is number => v !== null));
   if (!semua.length || labels.length < 2) return <p className="muted">Belum ada data.</p>;
   const lo = Math.min(...semua), hi = Math.max(...semua), pad = (hi - lo || Math.abs(hi) || 1) * 0.1;
-  const y0 = lo - pad, y1 = hi + pad;
+  const y0 = lo >= 0 ? Math.max(0, lo - pad) : lo - pad, y1 = hi + pad; // data tidak negatif: sumbu tidak turun di bawah 0
   const X = (i: number) => pl + (i * (W - pl - pr)) / (labels.length - 1), Y = (v: number) => pt + ((y1 - v) * (H - pt - pb)) / (y1 - y0);
   const tick = [0, 1, 2, 3].map((k) => y0 + ((y1 - y0) * k) / 3);
+  const pl = Math.max(40, 8 + 6 * Math.max(...tick.map((t) => format(t).length))); // ruang sumbu kiri mengikuti lebar angka
   const langkah = Math.max(1, Math.ceil(labels.length / (W > 450 ? 8 : 5)));
   const jalur = (d: { nilai: (number | null)[] }) => { let p = "", buka = false; d.nilai.forEach((v, i) => { if (v === null) { buka = false; return; } p += `${buka ? "L" : "M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)} `; buka = true; }); return p.trim(); };
   return (
     <figure className="gr-garis">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={judul}>
         {tick.map((t) => <g key={t}><line x1={pl} x2={W - pr} y1={Y(t)} y2={Y(t)} stroke="#DEDDDB" /><text x={pl - 6} y={Y(t) + 4} textAnchor="end" className="gr-ax">{format(t)}</text></g>)}
-        {labels.map((l, i) => (i % langkah === 0 ? <text key={l + i} x={X(i)} y={H - 6} textAnchor="middle" className="gr-ax">{l}</text> : null))}
+        {labels.map((l, i) => (i % langkah === 0 ? <text key={l + i} x={X(i)} y={H - 6} textAnchor={X(i) > W - pr - 16 ? "end" : "middle"} className="gr-ax">{l}</text> : null))}
         {deret.map((d, k) => {
           const warna = WARNA[k % WARNA.length], p = jalur(d);
           const pertama = d.nilai.findIndex((v) => v !== null), terakhir = d.nilai.length - 1 - [...d.nilai].reverse().findIndex((v) => v !== null);

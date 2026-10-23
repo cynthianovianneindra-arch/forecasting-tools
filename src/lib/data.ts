@@ -89,7 +89,8 @@ export async function getData(mode: "kalender" | "excel" = "kalender", filter: F
   let manual: MacroManualDb[] = [];
   try { manual = await listMacroManual(); } catch { manual = []; }
   // urutan prioritas: input manual > data live > Excel
-  const macroGabung = report?.macro ? mergeMacro(mergeMacro(report.macro, live), manual) : null;
+  // Data live/manual tetap dipakai walau Excel tidak memuat sheet INSTRUMEN EKONOMI
+  const macroGabung = report?.macro?.length || live.length || manual.length ? mergeMacro(mergeMacro(report?.macro ?? [], live), manual) : null;
   const makro = macroGabung ? macroContext(macroGabung, utjMonthMap(txns)) : null;
   const liveStatus = (["ihsg", "emas", "inflasi", "birate"] as const).map((k) => {
     const rows = live.filter((x) => x.indikator === k);
