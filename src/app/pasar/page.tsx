@@ -1,6 +1,8 @@
 import { Nav, badge } from "@/components/Nav";
 import { Garis, Temuan } from "@/components/Grafik";
 import { getData } from "@/lib/data";
+import { sesiSaatIni } from "@/lib/auth";
+import { storeConfigured } from "@/lib/store";
 import { dayaBeli, sinyalPasar } from "@/lib/analisaLanjut";
 import { labelBulan, f1 } from "@/lib/format";
 
@@ -8,8 +10,12 @@ export const dynamic = "force-dynamic";
 const rp = (v: number | null) => (v === null ? "-" : `Rp ${Math.round(v).toLocaleString("id-ID")}`);
 const infl = (v: number | null) => (v === null ? null : Math.abs(v) <= 0.2 ? v * 100 : v);
 
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const q = await searchParams;
   const d = await getData();
+  const admin = (await sesiSaatIni())?.rl === "admin";
+  const diambil = d.liveStatus.map((x) => x.diambil).filter((x): x is string => !!x).sort().pop();
+  const terakhir = diambil ? new Date(diambil).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
   const macro = d.macroRows;
   const net = d.netPrice;
   const db = dayaBeli(macro, net);
@@ -36,7 +42,14 @@ export default async function Page() {
   const warnaStatus = db?.status === "Tertekan" ? "neg" : db?.status === "Waspada" ? "mid" : "ok";
   return (<><Nav active="/pasar" updated={d.source === "demo" ? "Sumber: fixture" : `Data ${d.end}`} />
     <main className="wrap stack"><p>{badge(d.source)}</p>
-      <div><h1>Pasar &amp; Ekonomi</h1><p className="muted" style={{ maxWidth: 680 }}>Daya beli masyarakat dan kondisi ekonomi yang memengaruhi pembelian rumah. Korelasi dengan UTJ lemah, jadi ini konteks untuk membaca risiko, bukan penggerak proyeksi.</p></div>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: 16 }}>
+        <div><h1>Pasar &amp; Ekonomi</h1><p className="muted" style={{ maxWidth: 680 }}>Daya beli masyarakat dan kondisi ekonomi yang memengaruhi pembelian rumah. Korelasi dengan UTJ lemah, jadi ini konteks untuk membaca risiko, bukan penggerak proyeksi.</p></div>
+        {admin && storeConfigured() && <form action="/api/macro-sync" method="post" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          <input type="hidden" name="kembali" value="/pasar" />
+          <button className="btn" type="submit">Perbarui data ekonomi</button>
+          <small className="muted">{terakhir ? `Terakhir diperbarui ${terakhir}` : "Belum pernah diperbarui"}. Mengambil IHSG, emas, inflasi, dan BI Rate.</small></form>}
+      </div>
+      {q.ok && <p className="ok">{q.ok}</p>}{q.err && <p className="err">{q.err}</p>}
       {!macro?.length ? <p className="warn">Belum ada data ekonomi. Jalankan sinkron ekonomi (admin) atau unggah Excel yang memuat sheet INSTRUMEN EKONOMI.</p> : !adaUpah ? null : <>
         <Temuan judul={`Daya beli saat ini: ${db.status}`} isi={db.tahunUpah !== null ? `Satu rumah dengan harga bersih rata-rata Rp ${f1(net)} miliar setara ${db.tahunUpah} tahun upah ${db.acuan?.nama ?? "minimum"}. Perkiraan tahun depan ${db.tahunUpahDepan ?? "-"} tahun upah (UMK naik ${db.pertumbuhanUmk ?? "-"}%/tahun, harga mengikuti IHPR).` : "Data upah minimum belum tersedia."} aksi={db.status === "Cukup sehat" ? "pertahankan strategi; pantau BI Rate dan inflasi tiap bulan." : "perkuat skema cicilan ringan (subsidi angsuran, KPR dengan uang muka kecil) dan fokus ke tipe terjangkau."} />
         <div className="kpis">

@@ -22,9 +22,10 @@ async function run(paksa = false) {
   return { hasil };
 }
 
-// Tombol di layar Data (hanya admin): ambil IHSG/emas (Yahoo), inflasi (bps.go.id), BI Rate (bi.go.id).
+// Tombol di layar Data dan Pasar & Ekonomi (hanya admin): ambil IHSG/emas (Yahoo), inflasi (bps.go.id), BI Rate (bi.go.id).
 export async function POST(req: Request) {
-  const back = (k: string, msg: string) => { const u = new URL("/data", req.url); u.searchParams.set(k, msg); return Response.redirect(u, 303); };
+  const kembali = ((await req.formData().catch(() => null))?.get("kembali") === "/pasar" ? "/pasar" : "/data"); // hanya dua tujuan yang diizinkan
+  const back = (k: string, msg: string) => { const u = new URL(kembali, req.url); u.searchParams.set(k, msg); return Response.redirect(u, 303); };
   if (!(await adminSegar())) return Response.json({ error: "Hanya untuk admin" }, { status: 403 });
   try {
     const r = await run(true);
