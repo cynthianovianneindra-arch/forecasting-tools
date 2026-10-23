@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { Nav, badge } from "@/components/Nav";
+import { BeritaProperti } from "@/components/BeritaProperti";
 import { Garis, Temuan } from "@/components/Grafik";
 import { getData } from "@/lib/data";
 import { sesiSaatIni } from "@/lib/auth";
@@ -68,6 +70,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         {sinyal.map((s) => <div key={s.judul} style={{ display: "flex", gap: 10, padding: "8px 0", borderTop: "1px solid #DEDDDB", alignItems: "baseline" }}>
           <span className={"sinyal-b tgt-badge " + (s.arah === "menekan" ? "neg" : s.arah === "mendukung" ? "ok" : "")} style={{ flex: "none" }}>{s.arah === "menekan" ? "Menekan" : s.arah === "mendukung" ? "Mendukung" : "Netral"}</span>
           <div><b>{s.judul}</b><div style={{ fontSize: 13 }}>{s.keterangan}</div></div></div>)}</div>}
+      <Suspense fallback={<div className="card"><h2>Berita properti terbaru</h2><p className="muted">Memuat berita…</p></div>}><BeritaProperti /></Suspense>
       {tiles.length > 0 && <div className="kpis">{tiles.map((t, i) => <div key={t.k} className={"kpi-card" + (i === 0 ? " accent" : i === 1 ? " gold" : "")}><small>{t.nama}</small><span className="big">{t.nilai}</span><span className="sub">{t.bulan}{t.d ? ` · ${t.d}` : ""}</span></div>)}</div>}
       {grafik.length > 0 && <div className="cards" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
         {grafik.map((x) => <div key={x.judul} className="card"><h2>{x.judul}</h2><Garis labels={x.g.labels} deret={x.g.deret} format={x.fmt} judul={x.judul} lebar={460} tinggi={200} /></div>)}
