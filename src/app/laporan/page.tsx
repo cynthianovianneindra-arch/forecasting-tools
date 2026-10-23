@@ -2,7 +2,7 @@ import { Nav, badge } from "@/components/Nav";
 import { Chart } from "@/components/Chart";
 import { ReportPage, Note, Kpi, Kpis, Hl } from "@/components/ReportPage";
 import { getData, f1, labelBulan, labelPanjang } from "@/lib/data";
-import { forecast, parseMetode, METODE_NAMA, METODE_PENJELASAN, addMonths } from "@/lib/forecast";
+import { forecast, parseMetode, rumusExcel, METODE_NAMA, METODE_PENJELASAN, addMonths } from "@/lib/forecast";
 import { MetodeSelect } from "@/components/Metode";
 import { UnduhPdf } from "@/components/UnduhPdf";
 import { persen, statusTarget } from "@/lib/target";
@@ -192,7 +192,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       <div className="c-bottom"><h4>INFORMASI</h4>
         <div className="c-grid">
           <div><b>Tanggal cetak</b><br />{tanggal}</div><div><b>Data penjualan sampai</b><br />{labelPanjang(d.end)}</div>
-          <div><b>Cara hitung UTJ</b><br />{METODE_NAMA[metode]}</div><div><b>Cara hitung akad</b><br />{metode === "ets" ? "(SPR & PPJB + proses bank) x tingkat akad" : "Dari UTJ yang sedang berjalan"}</div>
+          <div><b>Cara hitung UTJ</b><br />{METODE_NAMA[metode]}</div><div><b>Cara hitung akad</b><br />{rumusExcel(metode) ? "(SPR & PPJB + proses bank) x tingkat akad" : "Dari UTJ yang sedang berjalan"}</div>
           <div><b>Sumber data</b><br />{real ? "Penjualan, unit, leads, event, ekonomi" : "Data demo"}</div><div><b>Pembulatan</b><br />UTJ dan akad dibulatkan ke bawah</div>
         </div></div></section>
 
@@ -306,7 +306,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       <div className="rp-cols">
         <div><h3>Cara angka dibuat</h3><ul style={{ paddingLeft: 16, fontSize: 12 }}>
           <li>UTJ: {METODE_NAMA[metode]}. {METODE_PENJELASAN[metode]} Hasilnya dibulatkan ke bawah; bulan yang sudah lewat memakai data nyata.</li>
-          <li>{metode === "ets" ? "Batal: UTJ x tingkat batal tahun lalu. SPR & PPJB: UTJ dikurangi batal. Akad: (SPR & PPJB + proses bank) x tingkat akad tahun lalu. Proses bank: bulan lalu + UTJ - batal - akad (mulai dari 0, seperti di Excel)." : "Akad: dari UTJ yang sedang berjalan, dilihat berapa yang biasanya jadi akad atau batal."}</li>
+          <li>{rumusExcel(metode) ? "Batal: UTJ x tingkat batal tahun lalu. SPR & PPJB: UTJ dikurangi batal. Akad: (SPR & PPJB + proses bank) x tingkat akad tahun lalu. Proses bank: bulan lalu + UTJ - batal - akad (mulai dari 0, seperti di Excel)." : "Akad: dari UTJ yang sedang berjalan, dilihat berapa yang biasanya jadi akad atau batal."}</li>
           <li>Rentang: dari seberapa jauh perkiraan meleset saat dicoba ke data lama ({bt.origins} kali).</li>
           <li>Uang masuk: akad × harga rata-rata.</li>
           <li>Stok: UTJ dikurangi batal, dibanding unit Open.</li>

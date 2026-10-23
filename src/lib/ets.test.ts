@@ -58,3 +58,11 @@ it("forecast ets: baris punya batal, SPR & PPJB, akad, dan proses bank bilangan 
     expect(Number.isInteger(r.akadInt) && Number.isInteger(r.proses!)).toBe(true);
   });
 });
+it("mode excel mencari periode musiman dari 2 bulan sampai separuh data", () => {
+  const pola = [2, 9, 3, 12, 4, 1, 6];
+  const y = Array.from({ length: 42 }, (_, i) => pola[i % 7]);
+  const f = etsFit(y, "excel")!;
+  expect(f.m).toBe(7);
+  const p = etsForecast(y, 7, "excel");
+  p.forEach((v, i) => expect(Math.abs(v - pola[(42 + i) % 7])).toBeLessThan(0.6));
+});
