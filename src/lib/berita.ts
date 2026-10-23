@@ -9,27 +9,34 @@ export interface Dampak { topik: string; arah: Arah; ke: string; alasan: string 
 export const SUMBER_BERITA = [
   { nama: "Bisnis.com", url: "https://ekonomi.bisnis.com/properti", host: /(^|\.)bisnis\.com$/i, tanggalUrl: /\/read\/(\d{4})(\d{2})(\d{2})\//, artikel: /\/read\/\d{8}\// },
   { nama: "CNN Indonesia", url: "https://www.cnnindonesia.com/tag/properti", host: /(^|\.)cnnindonesia\.com$/i, tanggalUrl: /\/(\d{4})(\d{2})(\d{2})\d{6}-\d+-\d+\//, artikel: /\/\d{14}-\d+-\d+\// },
+  // Alamat artikel Berita Jatim dan Jawa Pos tidak memuat tanggal; tanggal dicari dari data terstruktur atau teks di sekitar tautan.
+  { nama: "Berita Jatim", url: "https://beritajatim.com/", host: /(^|\.)beritajatim\.com$/i, tanggalUrl: /(?!)/, artikel: /^\/(?!tag\/|category\/|kategori\/|page\/|author\/|search|indeks|index)(?:[a-z0-9-]+\/)?[a-z0-9]+(?:-[a-z0-9]+){4,}\/?$/i },
+  { nama: "Jawa Pos", url: "https://www.jawapos.com/properti", host: /(^|\.)jawapos\.com$/i, tanggalUrl: /(?!)/, artikel: /^\/[a-z-]+\/\d{6,}\//i },
 ] as const;
 type Sumber = (typeof SUMBER_BERITA)[number];
 
-/** Halaman yang dibaca. saring = ambil hanya judul yang termasuk salah satu kategori minat (halaman umum); opsional = kegagalan tidak dilaporkan (halaman tag yang bisa saja tidak ada). */
-export const HALAMAN_BERITA: { situs: number; url: string; saring: boolean; opsional?: boolean }[] = [
+/** Halaman yang dibaca. saring "properti" = ambil hanya judul yang membahas properti (halaman umum berita daerah); opsional = kegagalan tidak dilaporkan (halaman tag yang bisa saja tidak ada). Fokus: properti Sidoarjo (lokasi Shaistanaya City) dan Jawa Timur, dengan berita properti nasional sebagai pelengkap. */
+export const HALAMAN_BERITA: { situs: number; url: string; saring: false | "properti"; opsional?: boolean }[] = [
+  { situs: 3, url: "https://www.jawapos.com/properti", saring: false },
+  { situs: 2, url: "https://beritajatim.com/", saring: "properti" },
+  { situs: 2, url: "https://beritajatim.com/ekonomi", saring: "properti", opsional: true },
+  { situs: 2, url: "https://beritajatim.com/tag/properti", saring: false, opsional: true },
+  { situs: 2, url: "https://beritajatim.com/tag/sidoarjo", saring: "properti", opsional: true },
   { situs: 0, url: "https://ekonomi.bisnis.com/properti", saring: false },
-  { situs: 0, url: "https://ekonomi.bisnis.com/", saring: true },
-  { situs: 0, url: "https://finansial.bisnis.com/", saring: true, opsional: true },
   { situs: 1, url: "https://www.cnnindonesia.com/tag/properti", saring: false },
-  { situs: 1, url: "https://www.cnnindonesia.com/ekonomi", saring: true },
-  { situs: 1, url: "https://www.cnnindonesia.com/nasional", saring: true },
-  { situs: 1, url: "https://www.cnnindonesia.com/tag/umr", saring: true, opsional: true },
-  { situs: 1, url: "https://www.cnnindonesia.com/tag/demo", saring: true, opsional: true },
 ];
+
+export const SIDOARJO = /Sidoarjo|\bWaru\b|Gedangan|\bKrian\b|Buduran|Tanggulangin|Porong|Sedati|Wonoayu|Sukodono|Tulangan|Balongbendo|Krembung|\bJabon\b|Prambon/i;
+export const JATIM = /Jawa Timur|\bJatim\b|Surabaya|Sidoarjo|Gresik|Malang|Mojokerto|Pasuruan|Probolinggo|Jombang|Kediri|Blitar|Tulungagung|Lamongan|Bojonegoro|Tuban|Madiun|Banyuwangi|Jember|Lumajang|Situbondo|Bondowoso|Pamekasan|Sumenep|Bangkalan|Sampang|Nganjuk|Ngawi|Magetan|Ponorogo|Pacitan|Trenggalek|Kota Batu|Madura|Gerbangkertosusila|Surabaya Raya/i;
+export const PROPERTI = /rumah|properti|perumahan|hunian|\bKPR\b|developer|pengembang|apartemen|real estate|tanah|\bFLPP\b|Tapera|rusun|\bREI\b|Apersi|kavling|\bruko\b|perumnas|\bkos\b|sewa/i;
 
 /** Kategori berita yang dipantau, dikenali dari kata kunci judul. */
 export const KATEGORI: { nama: string; re: RegExp; harusProperti?: boolean }[] = [
+  { nama: "Sidoarjo", re: SIDOARJO }, // lokasi Shaistanaya City
+  { nama: "Jawa Timur", re: JATIM },
   { nama: "Instrumen ekonomi", re: /BI[- ]?Rate|suku bunga|inflasi|deflasi|IHSG|rupiah|\bkurs\b|dolar AS|harga emas|emas (naik|turun|antam|dunia)|obligasi|\bSBN\b|bank sentral|The Fed|pertumbuhan ekonomi|\bPDB\b/i },
   { nama: "Daya beli", re: /daya beli|konsumsi rumah tangga|kelas menengah|\bPHK\b|pemutusan hubungan kerja|pengangguran|lapangan kerja|harga (beras|BBM|bahan pokok|pangan|listrik)|\bTHR\b|penghasilan masyarakat/i },
   { nama: "Pajak properti", re: /\bPPN\b|\bPBB\b|BPHTB|\bPPh\b|pajak (properti|rumah|tanah|penjualan|pertambahan)|insentif pajak|\bDTP\b/i },
-  { nama: "Isu demo", re: /\bdemo\b|demonstrasi|unjuk rasa|aksi massa|kerusuhan|ricuh|mogok kerja|aksi buruh|penjarahan|bentrok/i },
   { nama: "UMR dan upah", re: /\bUMR\b|\bUMK\b|\bUMP\b|upah minimum|kenaikan upah|upah buruh/i },
   { nama: "Keputusan pemerintah", re: /rumah|properti|perumahan|hunian|\bKPR\b|\bFLPP\b|Tapera|rusun|rumah susun|3 juta rumah|\bHGB\b|\bPBG\b|\bIMB\b/i, harusProperti: true },
 ];
@@ -53,6 +60,17 @@ const TOPIK: [RegExp, string][] = [
   [/pengembang|developer|properti|perumahan/i, "Pengembang"],
 ];
 export const topikJudul = (judul: string) => TOPIK.filter(([re]) => re.test(judul)).map(([, n]) => n).filter((n) => n !== "Pengembang" || !TOPIK.slice(0, 6).some(([re]) => re.test(judul))).slice(0, 3);
+
+const BULAN_ID: Record<string, string> = { januari: "01", jan: "01", februari: "02", feb: "02", maret: "03", mar: "03", april: "04", apr: "04", mei: "05", juni: "06", jun: "06", juli: "07", jul: "07", agustus: "08", agu: "08", agt: "08", september: "09", sep: "09", oktober: "10", okt: "10", november: "11", nov: "11", desember: "12", des: "12" };
+/** Tanggal pertama yang tampak di potongan HTML: atribut datetime="YYYY-MM-DD" atau teks seperti "23 Oktober 2026". */
+export function cariTanggal(teks: string): string | null {
+  const a = teks.match(/datetime=["'](\d{4}-\d{2}-\d{2})/i);
+  const b = teks.match(/\b(\d{1,2})\s+(januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember|jan|feb|mar|apr|jun|jul|agu|agt|sep|okt|nov|des)[a-z]*\.?,?\s+(\d{4})\b/i);
+  const ia = a ? teks.indexOf(a[0]) : Infinity, ib = b ? teks.indexOf(b[0]) : Infinity;
+  if (a && ia <= ib) return a[1];
+  if (b) return `${b[3]}-${BULAN_ID[b[2].toLowerCase()] ?? "01"}-${b[1].padStart(2, "0")}`;
+  return null;
+}
 
 function tanggalDariUrl(url: string, s: Sumber): string | null {
   const m = url.match(s.tanggalUrl);
@@ -85,7 +103,10 @@ export function parseBerita(html: string, sumber: Sumber, maks = 10): Berita[] {
   for (const m of html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
     try { const k: { judul: string; url: string; tanggal: string | null }[] = []; jelajahi(JSON.parse(m[1]), k); k.forEach((b) => tambah(b.url, b.judul, b.tanggal)); } catch { /* JSON-LD rusak: abaikan */ }
   }
-  for (const m of html.matchAll(/<a\b[^>]*?href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) tambah(m[1], m[2], null);
+  for (const m of html.matchAll(/<a\b[^>]*?href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const i = m.index ?? 0;
+    tambah(m[1], m[2], cariTanggal(html.slice(i + m[0].length, i + m[0].length + 350)) ?? cariTanggal(html.slice(Math.max(0, i - 150), i)));
+  }
   return [...calon].map(([url, b]) => ({ judul: b.judul, url, sumber: sumber.nama, tanggal: b.tanggal ?? tanggalDariUrl(url, sumber), topik: topikJudul(b.judul), kategori: kategoriBerita(b.judul) }))
     .sort((a, b) => (b.tanggal ?? "").localeCompare(a.tanggal ?? "")).slice(0, maks);
 }
@@ -112,9 +133,9 @@ export async function ambilBerita(f: typeof fetch = fetch, sekarang = Date.now()
     try {
       const r = await f(h.url, { headers: { "user-agent": UA, accept: "text/html,application/xhtml+xml" }, cache: "no-store", signal: AbortSignal.timeout(7000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const semua = parseBerita(await r.text(), s, h.saring ? 60 : 15);
+      const semua = parseBerita(await r.text(), s, h.saring ? 60 : 20);
       if (!semua.length) throw new Error("tidak ada artikel yang dikenali di halaman");
-      return h.saring ? semua.filter((b) => b.kategori.length > 0) : semua;
+      return h.saring === "properti" ? semua.filter((b) => PROPERTI.test(b.judul)) : semua;
     } catch (e) { if (!h.opsional) galat.push(`${s.nama} (${new URL(h.url).pathname === "/" ? new URL(h.url).hostname : new URL(h.url).pathname}): ${e instanceof Error ? e.message : String(e)}`); return [] as Berita[]; }
   }));
   const items = gabungBerita(daftar, 40);
@@ -137,8 +158,6 @@ const ATURAN: { topik: string; syarat: RegExp; naik?: RegExp; turun?: RegExp; ke
     naikArah: "mendukung", turunArah: "menekan", naikAlasan: "Kuota atau kemudahan subsidi bertambah, calon pembeli segmen bawah lebih banyak.", turunAlasan: "Kuota subsidi berkurang atau habis, pembeli segmen bawah tertahan.", netralAlasan: "Kebijakan subsidi memengaruhi pembeli segmen bawah." },
   { topik: "Uang muka", syarat: re("uang muka|\\bDP\\b|\\bLTV\\b|loan to value"), naik: re("naik|diperketat|dinaikkan"), turun: re("turun|ringan|0 ?persen|nol persen|dilonggarkan|dilonggarkan|dihapus|diturunkan"), ke: "Syarat uang muka → minat pembeli awal",
     naikArah: "menekan", turunArah: "mendukung", naikAlasan: "Uang muka lebih tinggi menyulitkan pembeli yang tabungannya terbatas.", turunAlasan: "Uang muka lebih ringan memudahkan pembeli membayar UTJ dan DP.", netralAlasan: "Aturan uang muka memengaruhi daya beli awal." },
-  { topik: "Isu demo", syarat: re("\\bdemo\\b|demonstrasi|unjuk rasa|aksi massa|kerusuhan|ricuh|mogok kerja|aksi buruh|penjarahan|bentrok"), naik: re("kondusif|mereda|damai|dibubarkan|aman|usai"), turun: re("ricuh|rusuh|bentrok|anarkis|penjarahan|lumpuh|korban"), ke: "Kunjungan, survei, dan keputusan beli → UTJ dan akad",
-    naikArah: "netral", turunArah: "menekan", dasar: "menekan", naikAlasan: "Situasi mereda; aktivitas kunjungan dan akad kembali normal.", turunAlasan: "Kericuhan membuat calon pembeli menunda kunjungan, survei, dan keputusan UTJ; akad dan serah terima bisa tertunda.", netralAlasan: "Aksi massa cenderung menahan kunjungan dan keputusan beli selama berlangsung, serta mengganggu mobilitas ke lokasi proyek." },
   { topik: "UMR dan upah", syarat: re("\\bUMR\\b|\\bUMK\\b|\\bUMP\\b|upah minimum|kenaikan upah|upah buruh"), naik: re("naik|kenaikan|dinaikkan|ditetapkan naik|menjadi Rp"), turun: re("tidak naik|ditunda|turun|dipangkas|batal naik"), ke: "Daya beli pekerja dan biaya tukang → UTJ dan biaya bangun",
     naikArah: "mendukung", turunArah: "menekan", naikAlasan: "Upah naik menambah daya beli calon pembeli pekerja formal; di sisi lain upah tukang dan biaya bangun bisa ikut naik.", turunAlasan: "Upah yang tertahan menahan daya beli calon pembeli, terutama segmen rumah subsidi.", netralAlasan: "Penetapan upah memengaruhi daya beli calon pembeli dan biaya tenaga bangun." },
   { topik: "Daya beli", syarat: re("daya beli|konsumsi rumah tangga|kelas menengah|\\bPHK\\b|pemutusan hubungan kerja|pengangguran|lapangan kerja|\\bTHR\\b"), naik: re("pulih|meningkat|menguat|tumbuh|naik|bangkit|terbuka"), turun: re("melemah|turun|anjlok|tertekan|menurun|\\bPHK\\b|pemutusan|pengangguran|lesu|menyusut|tergerus"), ke: "Kemampuan membayar cicilan dan DP → UTJ dan batal",
