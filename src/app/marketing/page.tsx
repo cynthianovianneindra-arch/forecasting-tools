@@ -46,7 +46,7 @@ export default async function Page() {
         <div className="grid">
           <div className="card"><h2>Harga dan diskon</h2>
             <Temuan judul={disRata === null ? "Data diskon belum tersedia" : `Diskon rata-rata ${f1(disRata)}% dari harga`} isi={rDis === null ? undefined : `Hubungan diskon bulanan dengan UTJ: ${rDis.toFixed(2)} (${Math.abs(rDis) < 0.3 ? "lemah: diskon lebih besar belum terbukti menaikkan UTJ" : rDis > 0 ? "searah: diskon besar diikuti UTJ lebih banyak" : "berlawanan"}).`} aksi={rDis !== null && Math.abs(rDis) < 0.3 ? "jangan menaikkan diskon dulu; uji paket non-harga (subsidi angsuran, hadiah) yang biayanya lebih ringan." : undefined} />
-            <Garis labels={bulan.map(labelBulan)} deret={[{ nama: "Diskon rata-rata (%)", nilai: disBulan }]} judul="Diskon rata-rata per bulan" /></div>
+            <Garis labels={bulan.map(labelBulan)} deret={[{ nama: "Diskon rata-rata (%)", nilai: disBulan }]} judul="Diskon rata-rata per bulan" lebar={720} tinggi={190} /></div>
           <div className="card"><h2>Skenario: jika tidak ada PPN DTP</h2>
             {ppn && ppn.adaPpn ? <>
               <Temuan judul={`${ppn.porsiPpn12}% UTJ 12 bulan terakhir memakai promo PPN DTP`} isi={`Bulan dengan PPN DTP rata-rata ${ppn.bulanPpn.rata} UTJ, bulan tanpa ${ppn.bulanLain.rata} UTJ. Batal pembeli ber-PPN ${ppn.batalPpn}% dibanding ${ppn.batalLain}% lainnya.`} />
