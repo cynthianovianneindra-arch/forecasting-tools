@@ -68,6 +68,7 @@ export function Garis({ labels, deret, tinggi = 170, lebar = 400, area = true, f
   const X = (i: number) => pl + (i * (W - pl - pr)) / (labels.length - 1), Y = (v: number) => pt + ((y1 - v) * (H - pt - pb)) / (y1 - y0);
   const tick = [0, 1, 2, 3].map((k) => y0 + ((y1 - y0) * k) / 3);
   const pl = Math.max(40, 8 + 6 * Math.max(...tick.map((t) => format(t).length))); // ruang sumbu kiri mengikuti lebar angka
+  const step = (W - pl - pr) / Math.max(1, labels.length - 1);
   const langkah = Math.max(1, Math.ceil(labels.length / (W > 450 ? 8 : 5)));
   const jalur = (d: { nilai: (number | null)[] }) => { let p = "", buka = false; d.nilai.forEach((v, i) => { if (v === null) { buka = false; return; } p += `${buka ? "L" : "M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)} `; buka = true; }); return p.trim(); };
   return (
@@ -82,6 +83,20 @@ export function Garis({ labels, deret, tinggi = 170, lebar = 400, area = true, f
             {area && k === 0 && pertama >= 0 && !d.nilai.some((v) => v === null) && <path d={`${p} L${X(terakhir).toFixed(1)} ${H - pb} L${X(pertama).toFixed(1)} ${H - pb} Z`} fill={warna} opacity=".10" />}
             <path d={p} fill="none" stroke={warna} strokeWidth="2.2" strokeLinejoin="round" strokeDasharray={d.putus ? "5 4" : undefined} />
           </g>;
+        })}
+        {/* Sentuh atau arahkan kursor ke satu bulan: tampil nilai tiap deret, termasuk "tidak ada data" bila bulan itu kosong */}
+        {labels.map((l, i) => {
+          const baris = [l, ...deret.map((d) => `${d.nama}: ${d.nilai[i] === null || d.nilai[i] === undefined ? "tidak ada data" : format(d.nilai[i] as number)}`)];
+          const tw = Math.max(...baris.map((b) => b.length)) * 5.8 + 18, th = baris.length * 14 + 10;
+          const tx = Math.min(Math.max(X(i) - tw / 2, 2), W - tw - 2);
+          return (
+            <g key={`h${l}${i}`} className="gr-pt" tabIndex={0} aria-label={baris.join(", ")}>
+              <rect x={X(i) - step / 2} y={pt} width={step} height={H - pt - pb} fill="transparent" />
+              <line className="gr-guide" x1={X(i)} x2={X(i)} y1={pt} y2={H - pb} stroke="#8FA1AE" strokeDasharray="3 3" />
+              {deret.map((d, k) => (d.nilai[i] === null || d.nilai[i] === undefined ? null : <circle key={d.nama} className="gr-dot" cx={X(i)} cy={Y(d.nilai[i] as number)} r="4" fill={WARNA[k % WARNA.length]} stroke="#fff" strokeWidth="1.5" />))}
+              <g className="gr-tip"><rect x={tx} y={pt + 2} width={tw} height={th} rx="6" fill="#0A0A0A" opacity=".93" />
+                {baris.map((b, j) => <text key={j} x={tx + 9} y={pt + 2 + 15 + j * 14} fontWeight={j === 0 ? 700 : 400}>{b}</text>)}</g>
+            </g>);
         })}
       </svg>
       {deret.length > 1 && <figcaption className="gr-legenda-h">{deret.map((d, k) => <span key={d.nama}><i style={{ background: WARNA[k % WARNA.length] }} />{d.nama}</span>)}</figcaption>}
