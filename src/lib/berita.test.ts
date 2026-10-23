@@ -56,3 +56,30 @@ it("ambilBerita: gagal sebagian tetap menampilkan yang berhasil, semua gagal mem
   expect(r2.items.length).toBe(3);
   expect(r2.galat).toHaveLength(2);
 });
+
+import { analisaDampak, ringkasDampak } from "./berita";
+
+it("analisaDampak: arah bergantung pada topik", () => {
+  expect(analisaDampak("BI Rate Turun 25 Bps, Cicilan KPR Makin Ringan")[0]).toMatchObject({ topik: "Suku bunga", arah: "mendukung" });
+  expect(analisaDampak("Suku Bunga Acuan Naik, Pengembang Waswas")[0]).toMatchObject({ topik: "Suku bunga", arah: "menekan" });
+  expect(analisaDampak("Insentif PPN DTP Rumah Diperpanjang hingga Akhir Tahun")[0]).toMatchObject({ topik: "Pajak", arah: "mendukung" });
+  expect(analisaDampak("PPN DTP Rumah Berakhir Desember, Harga Naik")[0]).toMatchObject({ topik: "Pajak", arah: "menekan" });
+  expect(analisaDampak("Kuota FLPP Dipangkas, Rumah Subsidi Seret")[0]).toMatchObject({ topik: "Subsidi", arah: "menekan" });
+  expect(analisaDampak("Harga Rumah Tapak Naik 5 Persen")[0]).toMatchObject({ topik: "Harga", arah: "netral" });
+  expect(analisaDampak("Cuaca cerah hari ini di Surabaya")).toEqual([]);
+});
+
+it("ringkasDampak menghitung arah utama dan topik terbanyak", () => {
+  const d = ["BI Rate Turun, KPR Makin Ringan", "Suku Bunga Naik Lagi", "PPN DTP Diperpanjang", "Cuaca cerah di Surabaya"].map((j) => ({ dampak: analisaDampak(j) }));
+  const r = ringkasDampak(d);
+  expect(r.jumlah).toEqual({ mendukung: 2, menekan: 1, netral: 0 });
+  expect(r.tanpaDampak).toBe(1);
+  expect(r.perTopik[0].topik).toBe("Suku bunga");
+});
+
+it("analisaDampak: berita bunga tidak dihitung dua kali sebagai KPR, dan pengaruh pasar netral disembunyikan", () => {
+  const a = analisaDampak("BI Rate Turun, Cicilan KPR Diprediksi Lebih Ringan Tahun Depan");
+  expect(a.map((x) => x.topik)).toEqual(["Suku bunga"]);
+  const b = analisaDampak("Kuota FLPP Dipangkas, Penjualan Rumah Subsidi Makin Seret");
+  expect(b.map((x) => x.topik)).toEqual(["Subsidi"]);
+});

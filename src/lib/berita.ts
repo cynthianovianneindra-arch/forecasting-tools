@@ -2,6 +2,9 @@
 // Pembaca tidak bergantung pada nama class situs: artikel dikenali dari pola alamatnya (bisnis.com /read/YYYYMMDD/, cnnindonesia.com /YYYYMMDDhhmmss-).
 
 export interface Berita { judul: string; url: string; sumber: string; tanggal: string | null; topik: string[] }
+export type Arah = "mendukung" | "menekan" | "netral";
+/** Perkiraan arah pengaruh sebuah berita: bagian penjualan yang tersentuh, arahnya, dan alasannya. */
+export interface Dampak { topik: string; arah: Arah; ke: string; alasan: string }
 
 export const SUMBER_BERITA = [
   { nama: "Bisnis.com", url: "https://ekonomi.bisnis.com/properti", host: /(^|\.)bisnis\.com$/i, tanggalUrl: /\/read\/(\d{4})(\d{2})(\d{2})\//, artikel: /\/read\/\d{8}\// },
@@ -91,4 +94,58 @@ export async function ambilBerita(f: typeof fetch = fetch, sekarang = Date.now()
   const hasil = { items, galat };
   if (items.length) cache = { waktu: sekarang, hasil };
   return hasil;
+}
+
+// ---------- Analisa dampak (aturan kata kunci, bukan AI; hipotesis untuk dibaca bersama data penjualan) ----------
+const re = (s: string) => new RegExp(s, "i");
+const ATURAN: { topik: string; syarat: RegExp; naik?: RegExp; turun?: RegExp; ke: string; naikArah: Arah; turunArah: Arah; naikAlasan: string; turunAlasan: string; netralAlasan: string }[] = [
+  { topik: "Suku bunga", syarat: re("suku bunga|BI[- ]?Rate|bunga (KPR|acuan|kredit)"), naik: re("naik|dinaikkan|menanjak|tinggi"), turun: re("turun|dipangkas|diturunkan|melandai|pemangkasan"), ke: "Cicilan KPR dan daya beli → jumlah UTJ dan batal",
+    naikArah: "menekan", turunArah: "mendukung", naikAlasan: "Bunga naik membuat cicilan lebih berat, calon pembeli lebih sulit lolos KPR sehingga UTJ turun dan batal bisa naik.", turunAlasan: "Bunga turun membuat cicilan lebih ringan sehingga lebih banyak pembeli lolos KPR.", netralAlasan: "Perubahan bunga memengaruhi cicilan KPR; pantau arahnya." },
+  { topik: "KPR", syarat: re("\\bKPR\\b|kredit pemilikan rumah|penyaluran kredit"), naik: re("naik|tumbuh|meningkat|dipermudah|relaksasi|longgar"), turun: re("turun|menurun|diperketat|ketat|ditolak|seret|melambat"), ke: "Persetujuan bank → UTJ yang sampai akad",
+    naikArah: "mendukung", turunArah: "menekan", naikAlasan: "KPR yang makin mudah atau tumbuh membantu UTJ sampai akad.", turunAlasan: "KPR yang ketat atau melambat menambah risiko berkas ditolak atau lama diproses bank.", netralAlasan: "Kebijakan KPR memengaruhi proses bank; cek kolom Proses Bank." },
+  { topik: "Pajak", syarat: re("\\bPPN\\b|\\bDTP\\b|pajak|PBB|BPHTB|bea"), naik: re("diperpanjang|perpanjangan|ditanggung|insentif|bebas|gratis|dilanjutkan|berlanjut|diskon pajak|keringanan"), turun: re("berakhir|dihapus|dicabut|naik|dinaikkan|dikenakan|tidak diperpanjang|batal diperpanjang"), ke: "Harga akhir dan promo PPN DTP → UTJ",
+    naikArah: "mendukung", turunArah: "menekan", naikAlasan: "Insentif pajak yang berlanjut menjaga harga akhir tetap ringan dan mempertahankan promo yang selama ini mendorong UTJ.", turunAlasan: "Insentif pajak yang berakhir atau pajak yang naik menaikkan harga akhir sehingga UTJ ber-PPN DTP bisa hilang.", netralAlasan: "Aturan pajak properti memengaruhi harga akhir pembeli." },
+  { topik: "Subsidi", syarat: re("subsidi|FLPP|Tapera|rumah murah|SBUM|SSB"), naik: re("ditambah|tambahan|naik|diperluas|dipermudah|dilonggarkan|dibuka"), turun: re("dipangkas|habis|dihentikan|dibatasi|dikurangi|turun|ditutup|seret"), ke: "Segmen rumah subsidi → pembeli dan stok tipe bersubsidi",
+    naikArah: "mendukung", turunArah: "menekan", naikAlasan: "Kuota atau kemudahan subsidi bertambah, calon pembeli segmen bawah lebih banyak.", turunAlasan: "Kuota subsidi berkurang atau habis, pembeli segmen bawah tertahan.", netralAlasan: "Kebijakan subsidi memengaruhi pembeli segmen bawah." },
+  { topik: "Uang muka", syarat: re("uang muka|\\bDP\\b|\\bLTV\\b|loan to value"), naik: re("naik|diperketat|dinaikkan"), turun: re("turun|ringan|0 ?persen|nol persen|dilonggarkan|dilonggarkan|dihapus|diturunkan"), ke: "Syarat uang muka → minat pembeli awal",
+    naikArah: "menekan", turunArah: "mendukung", naikAlasan: "Uang muka lebih tinggi menyulitkan pembeli yang tabungannya terbatas.", turunAlasan: "Uang muka lebih ringan memudahkan pembeli membayar UTJ dan DP.", netralAlasan: "Aturan uang muka memengaruhi daya beli awal." },
+  { topik: "Harga", syarat: re("harga (rumah|properti|tanah)|indeks harga"), naik: re("naik|melonjak|mahal"), turun: re("turun|murah|melemah"), ke: "Daya beli dan diskon → konversi UTJ",
+    naikArah: "netral", turunArah: "netral", naikAlasan: "Harga naik mengangkat nilai penjualan tetapi menyulitkan daya beli; baca bersama rasio harga terhadap upah di atas.", turunAlasan: "Harga turun membantu daya beli tetapi menekan margin; baca bersama diskon di halaman Marketing.", netralAlasan: "Pergerakan harga memengaruhi daya beli dan diskon." },
+  { topik: "Penjualan pasar", syarat: re("penjualan (rumah|properti)|permintaan|daya beli|sektor properti|pasar properti"), naik: re("naik|tumbuh|meningkat|menguat|pulih|bangkit"), turun: re("turun|melemah|lesu|menurun|anjlok|tertekan|lemah"), ke: "Sentimen pasar → arus leads dan UTJ",
+    naikArah: "mendukung", turunArah: "menekan", naikAlasan: "Permintaan pasar yang menguat biasanya menambah leads dan UTJ.", turunAlasan: "Pasar yang melemah biasanya mengurangi leads dan UTJ.", netralAlasan: "Kondisi pasar properti memberi konteks arus leads." },
+];
+
+/** Dampak sebuah berita menurut kata kunci judul: sampai 2 pengaruh. Hasilnya hipotesis, bukan ramalan. */
+export function analisaDampak(judul: string): Dampak[] {
+  const out: Dampak[] = [];
+  for (const a of ATURAN) {
+    if (!a.syarat.test(judul)) continue;
+    if (a.topik === "KPR" && out.some((o) => o.topik === "Suku bunga")) continue; // berita bunga sudah mencakup dampaknya ke KPR
+    const n = a.naik?.test(judul), t = a.turun?.test(judul);
+    // bila dua arah cocok, pilih yang kata kuncinya muncul lebih dulu (ukuran kasar)
+    let arah: Arah = "netral", alasan = a.netralAlasan;
+    if (n && t) { const i = judul.search(a.naik!), j = judul.search(a.turun!); if (i <= j) { arah = a.naikArah; alasan = a.naikAlasan; } else { arah = a.turunArah; alasan = a.turunAlasan; } }
+    else if (n) { arah = a.naikArah; alasan = a.naikAlasan; }
+    else if (t) { arah = a.turunArah; alasan = a.turunAlasan; }
+    out.push({ topik: a.topik, arah, ke: a.ke, alasan });
+    if (out.length >= 2) break;
+  }
+  // pengaruh pasar yang netral tidak perlu tampil bila sudah ada pengaruh yang lebih spesifik
+  return out.some((o) => o.arah !== "netral") ? out.filter((o) => !(o.topik === "Penjualan pasar" && o.arah === "netral")) : out;
+}
+
+export interface RingkasDampak { jumlah: Record<Arah, number>; tanpaDampak: number; perTopik: { topik: string; n: number; arah: Arah }[] }
+/** Ringkasan dari banyak berita: berapa yang mendukung, menekan, netral, dan topik yang paling sering muncul. */
+export function ringkasDampak(daftar: { dampak: Dampak[] }[]): RingkasDampak {
+  const jumlah: Record<Arah, number> = { mendukung: 0, menekan: 0, netral: 0 };
+  const topik = new Map<string, { n: number; m: number; k: number }>();
+  let tanpa = 0;
+  for (const b of daftar) {
+    if (!b.dampak.length) { tanpa++; continue; }
+    const utama = b.dampak.find((d) => d.arah !== "netral") ?? b.dampak[0];
+    jumlah[utama.arah]++;
+    for (const d of b.dampak) { const e = topik.get(d.topik) ?? { n: 0, m: 0, k: 0 }; e.n++; if (d.arah === "mendukung") e.m++; if (d.arah === "menekan") e.k++; topik.set(d.topik, e); }
+  }
+  const perTopik = [...topik].map(([t, e]) => ({ topik: t, n: e.n, arah: (e.m > e.k ? "mendukung" : e.k > e.m ? "menekan" : "netral") as Arah })).sort((a, b) => b.n - a.n);
+  return { jumlah, tanpaDampak: tanpa, perTopik };
 }

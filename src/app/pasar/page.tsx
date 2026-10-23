@@ -7,6 +7,7 @@ import { sesiSaatIni } from "@/lib/auth";
 import { storeConfigured } from "@/lib/store";
 import { dayaBeli, sinyalPasar } from "@/lib/analisaLanjut";
 import { labelBulan, f1 } from "@/lib/format";
+import { addMonths } from "@/lib/forecast";
 
 export const dynamic = "force-dynamic";
 const rp = (v: number | null) => (v === null ? "-" : `Rp ${Math.round(v).toLocaleString("id-ID")}`);
@@ -36,6 +37,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     const d2 = b ? (selisih === "persen" ? ((a.v - b.v) / Math.abs(b.v || 1)) * 100 : a.v - b.v) : null;
     return { k, nama, nilai: `${a.v.toLocaleString("id-ID", { maximumFractionDigits: selisih === "persen" ? 0 : 2 })}${satuan}`, bulan: labelBulan(a.bulan), d: d2 === null ? null : `${d2 >= 0 ? "+" : ""}${d2.toFixed(selisih === "persen" ? 1 : 2)}${selisih === "persen" ? "%" : " poin"} vs bulan sebelumnya`, naik: d2 !== null && d2 >= 0 };
   };
+  const mulai12 = addMonths(d.end, -11), r12 = d.txns.filter((t) => t.utj >= mulai12 && t.utj <= d.end);
+  const porsiPpn = r12.length && d.source !== "demo" ? Math.round((r12.filter((t) => (t.promos ?? (t.promo ? [t.promo] : [])).some((x) => x.startsWith("PPN"))).length / r12.length) * 100) : null;
   const tiles = [tile("birate", "BI Rate", "%", "poin"), tile("inflasi", "Inflasi tahunan", "%", "poin"), tile("ihsg", "IHSG", "", "persen"), tile("emas", "Harga emas (USD/oz)", "", "persen")].filter((x): x is NonNullable<typeof x> => !!x);
   const adaUpah = !!db && (db.acuan !== null || db.ihpr !== null);
   const grafik: { judul: string; g: ReturnType<typeof g>; fmt?: (v: number) => string }[] = ([
@@ -70,7 +73,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         {sinyal.map((s) => <div key={s.judul} style={{ display: "flex", gap: 10, padding: "8px 0", borderTop: "1px solid #DEDDDB", alignItems: "baseline" }}>
           <span className={"sinyal-b tgt-badge " + (s.arah === "menekan" ? "neg" : s.arah === "mendukung" ? "ok" : "")} style={{ flex: "none" }}>{s.arah === "menekan" ? "Menekan" : s.arah === "mendukung" ? "Mendukung" : "Netral"}</span>
           <div><b>{s.judul}</b><div style={{ fontSize: 13 }}>{s.keterangan}</div></div></div>)}</div>}
-      <Suspense fallback={<div className="card"><h2>Berita properti terbaru</h2><p className="muted">Memuat berita…</p></div>}><BeritaProperti /></Suspense>
+      <Suspense fallback={<div className="card"><h2>Berita properti terbaru</h2><p className="muted">Memuat berita…</p></div>}><BeritaProperti porsiPpn={porsiPpn} biRate={nilaiSeri("birate").slice(-1)[0]?.v ?? null} /></Suspense>
       {tiles.length > 0 && <div className="kpis">{tiles.map((t, i) => <div key={t.k} className={"kpi-card" + (i === 0 ? " accent" : i === 1 ? " gold" : "")}><small>{t.nama}</small><span className="big">{t.nilai}</span><span className="sub">{t.bulan}{t.d ? ` · ${t.d}` : ""}</span></div>)}</div>}
       {grafik.length > 0 && <div className="cards" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))" }}>
         {grafik.map((x) => <div key={x.judul} className="card"><h2>{x.judul}</h2><Garis labels={x.g.labels} deret={x.g.deret} format={x.fmt} judul={x.judul} lebar={460} tinggi={200} /></div>)}
