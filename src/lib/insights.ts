@@ -32,6 +32,17 @@ const count = <T,>(items: T[], key: (x: T) => string | undefined) => {
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 
 /** Enam kartu data aktual. Semua dihitung di kode dari transaksi. */
+/** Tipe paling laku dinilai per cluster (Montana, Non Cluster, Sierra, dst.): tiap cluster punya urutan tipe sendiri menurut jumlah akad. */
+export function tipePerCluster(t: Txn[]) {
+  const g = new Map<string, Txn[]>();
+  for (const x of t) { const k = x.cluster || "Tanpa cluster"; g.set(k, [...(g.get(k) ?? []), x]); }
+  return [...g].map(([cluster, xs]) => {
+    const tipe = [...count(xs, (x) => x.tipe)].map(([nama, utj]) => ({ tipe: nama, utj, akad: xs.filter((x) => x.tipe === nama && x.akad).length }))
+      .sort((a, b) => b.akad - a.akad || b.utj - a.utj);
+    return { cluster, utj: xs.length, akad: xs.filter((x) => x.akad).length, tipe };
+  }).sort((a, b) => b.akad - a.akad || b.utj - a.utj);
+}
+
 export function cards(t: Txn[]) {
   const n = t.length, akad = t.filter((x) => x.akad).length;
   const funnel = { utj: n, spr: t.filter((x) => x.spr).length, akad, batal: t.filter((x) => x.batal).length, cair: t.filter((x) => x.cair).length };
