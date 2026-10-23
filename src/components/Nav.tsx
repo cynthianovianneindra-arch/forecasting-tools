@@ -16,10 +16,10 @@ const ic = {
   "/akun": <><circle cx="12" cy="8.5" r="3.5" /><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" /></>,
 } as Record<string, React.ReactNode>;
 const dasar = [["/", "Dashboard"], ["/pasar", "Pasar & Ekonomi"], ["/marketing", "Marketing & Leads"], ["/bank", "Proses Bank"], ["/produk", "Produk & Stok"], ["/penjualan", "Penjualan"], ["/simulasi", "Simulasi"], ["/laporan", "Laporan PDF"]];
-const NAMA_HALAMAN: Record<string, string> = { "/akun": "Akun saya", "/pengguna": "Pengguna", "/data": "Data (cadangan)" };
+const NAMA_HALAMAN: Record<string, string> = { "/akun": "Akun saya", "/pengguna": "Pengguna", "/data": "Data & Unggah" };
 export async function Nav({ active, updated }: { active: string; updated: string }) {
   const sesi = await sesiSaatIni();
-  const items = sesi?.rl === "admin" ? [...dasar, ["/pengguna", "Pengguna"]] : dasar;
+  const items = sesi?.rl === "admin" ? [...dasar, ["/data", "Data & Unggah"], ["/pengguna", "Pengguna"]] : dasar;
   if (sesi) after(() => segarkanBilaPerlu()); // data Excel di OneDrive diperbarui otomatis di latar belakang bila sudah basi
   const nama = items.find(([h]) => h === active)?.[1] ?? NAMA_HALAMAN[active] ?? "Dashboard";
   return (
