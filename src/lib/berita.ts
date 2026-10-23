@@ -15,21 +15,24 @@ export const SUMBER_BERITA = [
 ] as const;
 type Sumber = (typeof SUMBER_BERITA)[number];
 
-/** Halaman yang dibaca. saring "properti" = ambil hanya judul yang membahas properti (halaman umum berita daerah); opsional = kegagalan tidak dilaporkan (halaman tag yang bisa saja tidak ada). Fokus: properti Jawa Timur, dengan berita properti nasional sebagai pelengkap. */
+/** Halaman yang dibaca. saring "properti" = ambil hanya judul yang membahas properti (halaman umum berita daerah); opsional = kegagalan tidak dilaporkan (halaman tag yang bisa saja tidak ada). Fokus: properti Sidoarjo (lokasi Shaistanaya City) dan Jawa Timur, dengan berita properti nasional sebagai pelengkap. */
 export const HALAMAN_BERITA: { situs: number; url: string; saring: false | "properti"; opsional?: boolean }[] = [
   { situs: 3, url: "https://www.jawapos.com/properti", saring: false },
   { situs: 2, url: "https://beritajatim.com/", saring: "properti" },
   { situs: 2, url: "https://beritajatim.com/ekonomi", saring: "properti", opsional: true },
   { situs: 2, url: "https://beritajatim.com/tag/properti", saring: false, opsional: true },
+  { situs: 2, url: "https://beritajatim.com/tag/sidoarjo", saring: "properti", opsional: true },
   { situs: 0, url: "https://ekonomi.bisnis.com/properti", saring: false },
   { situs: 1, url: "https://www.cnnindonesia.com/tag/properti", saring: false },
 ];
 
+export const SIDOARJO = /Sidoarjo|\bWaru\b|Gedangan|\bKrian\b|Buduran|Tanggulangin|Porong|Sedati|Wonoayu|Sukodono|Tulangan|Balongbendo|Krembung|\bJabon\b|Prambon/i;
 export const JATIM = /Jawa Timur|\bJatim\b|Surabaya|Sidoarjo|Gresik|Malang|Mojokerto|Pasuruan|Probolinggo|Jombang|Kediri|Blitar|Tulungagung|Lamongan|Bojonegoro|Tuban|Madiun|Banyuwangi|Jember|Lumajang|Situbondo|Bondowoso|Pamekasan|Sumenep|Bangkalan|Sampang|Nganjuk|Ngawi|Magetan|Ponorogo|Pacitan|Trenggalek|Kota Batu|Madura|Gerbangkertosusila|Surabaya Raya/i;
 export const PROPERTI = /rumah|properti|perumahan|hunian|\bKPR\b|developer|pengembang|apartemen|real estate|tanah|\bFLPP\b|Tapera|rusun|\bREI\b|Apersi|kavling|\bruko\b|perumnas|\bkos\b|sewa/i;
 
 /** Kategori berita yang dipantau, dikenali dari kata kunci judul. */
 export const KATEGORI: { nama: string; re: RegExp; harusProperti?: boolean }[] = [
+  { nama: "Sidoarjo", re: SIDOARJO }, // lokasi Shaistanaya City
   { nama: "Jawa Timur", re: JATIM },
   { nama: "Instrumen ekonomi", re: /BI[- ]?Rate|suku bunga|inflasi|deflasi|IHSG|rupiah|\bkurs\b|dolar AS|harga emas|emas (naik|turun|antam|dunia)|obligasi|\bSBN\b|bank sentral|The Fed|pertumbuhan ekonomi|\bPDB\b/i },
   { nama: "Daya beli", re: /daya beli|konsumsi rumah tangga|kelas menengah|\bPHK\b|pemutusan hubungan kerja|pengangguran|lapangan kerja|harga (beras|BBM|bahan pokok|pangan|listrik)|\bTHR\b|penghasilan masyarakat/i },

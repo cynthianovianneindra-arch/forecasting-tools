@@ -86,6 +86,13 @@ it("analisaDampak: berita bunga tidak dihitung dua kali sebagai KPR, dan pengaru
 
 import { kategoriBerita, HALAMAN_BERITA } from "./berita";
 
+it("kategoriBerita: Sidoarjo (lokasi Shaistanaya City) dan Jawa Timur", () => {
+  expect(kategoriBerita("Harga Rumah di Waru Naik Tipis Tahun Ini")).toContain("Sidoarjo");
+  expect(kategoriBerita("Harga Rumah di Sidoarjo Naik")).toContain("Sidoarjo");
+  expect(kategoriBerita("Pasar Hunian Surabaya Barat Ramai")).not.toContain("Sidoarjo");
+  expect(kategoriBerita("Pasar Hunian Surabaya Barat Ramai")).toContain("Jawa Timur");
+});
+
 it("kategoriBerita mengenali Jawa Timur, instrumen ekonomi, daya beli, pajak, UMR, dan keputusan pemerintah", () => {
   expect(kategoriBerita("BI Rate Ditahan 5,75 Persen, Rupiah Menguat")).toContain("Instrumen ekonomi");
   expect(kategoriBerita("Daya Beli Kelas Menengah Melemah, PHK Meningkat")).toContain("Daya beli");
