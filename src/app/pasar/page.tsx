@@ -47,9 +47,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         {admin && storeConfigured() && <form action="/api/macro-sync" method="post" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
           <input type="hidden" name="kembali" value="/pasar" />
           <button className="btn" type="submit">Perbarui data ekonomi</button>
-          <small className="muted">{terakhir ? `Terakhir diperbarui ${terakhir}` : "Belum pernah diperbarui"}. Mengambil IHSG, emas, inflasi, dan BI Rate.</small></form>}
+          <small className="muted" style={{ whiteSpace: "nowrap" }}>{terakhir ? `Terakhir diperbarui ${terakhir}` : "Belum pernah diperbarui"}</small></form>}
       </div>
       {q.ok && <p className="ok">{q.ok}</p>}{q.err && <p className="err">{q.err}</p>}
+      {d.liveStatus.some((x) => x.diambil) && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 12 }} aria-label="Pembaruan terakhir data ekonomi">
+        {d.liveStatus.map((x) => <span key={x.indikator} className="tgt-badge" style={{ fontWeight: 500 }}>
+          <b>{{ ihsg: "IHSG", emas: "Emas", inflasi: "Inflasi", birate: "BI Rate" }[x.indikator]}</b>
+          {x.bulan ? ` · data ${labelBulan(x.bulan)}` : ""}{x.diambil ? ` · dicek ${new Date(x.diambil).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : " · belum ada"}</span>)}
+      </div>}
       {!macro?.length ? <p className="warn">Belum ada data ekonomi. Jalankan sinkron ekonomi (admin) atau unggah Excel yang memuat sheet INSTRUMEN EKONOMI.</p> : !adaUpah ? null : <>
         <Temuan judul={`Daya beli saat ini: ${db.status}`} isi={db.tahunUpah !== null ? `Satu rumah dengan harga bersih rata-rata Rp ${f1(net)} miliar setara ${db.tahunUpah} tahun upah ${db.acuan?.nama ?? "minimum"}. Perkiraan tahun depan ${db.tahunUpahDepan ?? "-"} tahun upah (UMK naik ${db.pertumbuhanUmk ?? "-"}%/tahun, harga mengikuti IHPR).` : "Data upah minimum belum tersedia."} aksi={db.status === "Cukup sehat" ? "pertahankan strategi; pantau BI Rate dan inflasi tiap bulan." : "perkuat skema cicilan ringan (subsidi angsuran, KPR dengan uang muka kecil) dan fokus ke tipe terjangkau."} />
         <div className="kpis">
