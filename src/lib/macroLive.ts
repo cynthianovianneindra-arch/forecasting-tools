@@ -1,4 +1,5 @@
 import type { MacroRow } from "./importExcel";
+import { riwayatBiRate } from "./biRateRiwayat";
 
 export type LiveIndikator = "ihsg" | "emas" | "inflasi" | "birate";
 export interface LiveRow { bulan: string; indikator: LiveIndikator; nilai: number; sumber: string }
@@ -184,6 +185,7 @@ export async function syncLive(deps: { fetch?: typeof fetch; call?: (system: str
   ];
   for (const { ind, urls } of sumberList) {
     // Inflasi dan BI Rate berubah bulanan: bila sudah diambil baru-baru ini, lewati supaya tidak memanggil Claude tanpa perlu.
+    if (ind === "birate" && !deps.lewati?.has(ind)) for (const r of riwayatBiRate(new Date().toISOString().slice(0, 7))) rows.push({ bulan: r.bulan, indikator: "birate", nilai: r.nilai, sumber: "Keputusan RDG Bank Indonesia" });
     if (deps.lewati?.has(ind)) { hasil.push({ indikator: ind, ok: true, sumber: "dilewati (sudah diambil dalam 7 hari terakhir)" }); continue; }
     const galat: string[] = [];
     let berhasil = false;
@@ -211,7 +213,10 @@ export async function syncLive(deps: { fetch?: typeof fetch; call?: (system: str
     }
     if (!berhasil) hasil.push({ indikator: ind, ok: false, error: galat.join(" | "), sumber: urls.map((u) => u[1]).join(" / ") });
   }
-  return { rows, hasil };
+  // Satu baris per bulan dan indikator; yang terakhir (sumber langsung) menimpa riwayat dasar.
+  const unik = new Map<string, LiveRow>();
+  for (const r of rows) unik.set(`${r.indikator}|${r.bulan}`, r);
+  return { rows: [...unik.values()], hasil };
 }
 
 /** Gabungkan riwayat Excel dengan data live; live menimpa bulan yang sama. Inflasi live dalam persen -> pecahan seperti di Excel. */

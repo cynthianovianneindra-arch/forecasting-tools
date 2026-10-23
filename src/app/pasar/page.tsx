@@ -31,10 +31,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const inf = g("inflasi", "Inflasi tahunan (%)", undefined, (v) => infl(v) ?? v), ihsg = g("ihsg", "IHSG"), emas = g("emas", "Emas (USD/oz)"), ihpr = g("ihpr", "IHPR"), umk = g("umkSda", "UMK Sidoarjo", (v) => `${(v / 1e6).toFixed(1)} jt`);
   type Kunci = "emas" | "ihsg" | "inflasi" | "birate" | "ihpr" | "umkSda" | "umkSby";
   const nilaiSeri = (k: Kunci) => (macro ?? []).filter((m) => m[k] !== null && m[k] !== undefined).map((m) => ({ bulan: m.bulan, v: k === "inflasi" ? (infl(m[k] as number) ?? 0) : (m[k] as number) }));
-  // BI Rate: rentang 12 bulan terakhir; bulan tanpa keputusan baru memakai nilai terakhir yang berlaku, bulan sebelum data pertama dikosongkan
-  const sb = nilaiSeri("birate"), akhirBi = sb.length ? sb[sb.length - 1].bulan : null;
-  const bulanBi = akhirBi ? Array.from({ length: 12 }, (_, i) => addMonths(akhirBi, i - 11)) : [];
-  const bi = { labels: bulanBi.map(labelBulan), deret: [{ nama: "BI Rate (%)", nilai: bulanBi.map((b) => sb.filter((x) => x.bulan <= b).slice(-1)[0]?.v ?? null) }], fmt: undefined as ((v: number) => string) | undefined };
   const tile = (k: Kunci, nama: string, satuan: string, selisih: "poin" | "persen") => {
     const s = nilaiSeri(k), a = s[s.length - 1], b = s[s.length - 2];
     if (!a) return null;
@@ -46,7 +42,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const tiles = [tile("birate", "BI Rate", "%", "poin"), tile("inflasi", "Inflasi tahunan", "%", "poin"), tile("ihsg", "IHSG", "", "persen"), tile("emas", "Harga emas (USD/oz)", "", "persen")].filter((x): x is NonNullable<typeof x> => !!x);
   const adaUpah = !!db && (db.acuan !== null || db.ihpr !== null);
   const grafik: { judul: string; g: ReturnType<typeof g>; fmt?: (v: number) => string }[] = ([
-    { judul: "BI Rate (%), 12 bulan terakhir", g: bi }, { judul: "Inflasi tahunan (%)", g: inf }, { judul: "IHSG", g: ihsg }, { judul: "Harga emas (USD/oz)", g: emas }, { judul: "IHPR (Indeks Harga Properti Residensial)", g: ihpr }, { judul: "UMK Sidoarjo", g: umk, fmt: (v) => `${(v / 1e6).toFixed(1)}jt` },
+    { judul: "BI Rate (%)", g: g("birate", "BI Rate (%)") }, { judul: "Inflasi tahunan (%)", g: inf }, { judul: "IHSG", g: ihsg }, { judul: "Harga emas (USD/oz)", g: emas }, { judul: "IHPR (Indeks Harga Properti Residensial)", g: ihpr }, { judul: "UMK Sidoarjo", g: umk, fmt: (v) => `${(v / 1e6).toFixed(1)}jt` },
   ] as { judul: string; g: ReturnType<typeof g>; fmt?: (v: number) => string }[]).filter((x) => x.g.labels.length >= 2);
   const warnaStatus = db?.status === "Tertekan" ? "neg" : db?.status === "Waspada" ? "mid" : "ok";
   return (<><Nav active="/pasar" updated={d.source === "demo" ? "Sumber: fixture" : `Data ${d.end}`} />
