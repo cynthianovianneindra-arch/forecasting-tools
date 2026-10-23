@@ -28,6 +28,13 @@ export default async function Page() {
   const rDis = pearson(pasangan.map((p) => p.x), pasangan.map((p) => p.u));
   const disRata = pasangan.length ? pasangan.reduce((a, p) => a + p.x, 0) / pasangan.length : null;
   const mk = d.mk;
+  // Leads per bulan menurut sumber (database): 12 bulan terakhir, empat sumber terbesar
+  const leadsRaw = d.marketing?.leads ?? [];
+  const bulanLeads = [...new Set(leadsRaw.map((l) => l.bulan))].sort().slice(-12);
+  const totalSumber = new Map<string, number>();
+  for (const l of leadsRaw) if (bulanLeads.includes(l.bulan)) totalSumber.set(l.database, (totalSumber.get(l.database) ?? 0) + l.n);
+  const topSumber = [...totalSumber].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([x]) => x);
+  const leadGaris = bulanLeads.length > 1 && topSumber.length ? { labels: bulanLeads.map(labelBulan), deret: topSumber.map((db) => ({ nama: db, nilai: bulanLeads.map((b) => leadsRaw.filter((l) => l.bulan === b && l.database === db).reduce((a, l) => a + l.n, 0)) })) } : null;
   const sumber = mk?.sumber.map((x) => ({ label: x.database, value: Math.round(x.porsiLeads * 10) / 10 })) ?? [];
   return (<><Nav active="/marketing" updated={d.source === "demo" ? "Sumber: fixture" : `Data ${d.end}`} />
     <main className="wrap stack"><p>{badge(d.source)}</p>
@@ -55,7 +62,13 @@ export default async function Page() {
                 {ppn.skenario.map((s) => <tr key={s.nama}><td>{s.nama}</td><td className="n">{s.utj}</td><td className="n">{s.akad}</td><td className="n">{f1(s.penerimaanM)}</td></tr>)}</tbody></table>
               <p className="muted" style={{ fontSize: 12 }}>Hipotesis: ketiga skenario adalah asumsi berdasarkan porsi UTJ ber-PPN DTP, bukan ramalan. Siapkan promo pengganti sebelum PPN DTP berakhir.</p></> : <p className="muted">Tidak ada UTJ dengan kode promo PPN pada data.</p>}</div>
         </div></>}
-      {sumber.length > 0 && <div className="card"><h2>Sumber leads</h2><Donat data={sumber} tengah={String(mk?.stats.leads ?? "")} sub="leads" satuan="%" persen={false} /></div>}
+      {sumber.length > 0 && <div className="card"><h2>Sumber leads</h2>
+        <div className="dua-sisi">
+          <Donat data={sumber} tengah={String(mk?.stats.leads ?? "")} sub="leads" satuan="%" persen={false} />
+          {leadGaris && <div><b style={{ fontSize: 13 }}>Leads per bulan menurut sumber</b>
+            <Garis labels={leadGaris.labels} deret={leadGaris.deret} judul="Leads per bulan menurut sumber" lebar={480} tinggi={200} area={false} format={(v) => String(Math.round(v))} />
+            <p className="muted" style={{ fontSize: 12, margin: 0 }}>12 bulan terakhir, empat sumber terbesar.</p></div>}
+        </div></div>}
       {pm && pa && <PerformaTim marketing={pm.baris} agent={pa.baris} rataAkad={pm.rataAkad} rataBatal={pm.rataBatal} />}
       {mk && <section className="stack"><h2>Efektivitas event dan leads ({mk.stats.periode})</h2><Analisa mk={mk} /></section>}
       {!mk && d.mkAda && <p className="muted">Tidak ada data marketing pada periode ini.</p>}
